@@ -57,6 +57,25 @@
         <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/ReaKit/smooth_kbsg.jsfx-inc</source>
         <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/ReaKit/utils_kbsg.jsfx-inc</source>
       </version>
+      <version name="1.1.1" author="Quaz (EON Studios)" time="2026-09-28T17:34:06Z">
+        <changelog><![CDATA[De-Esser: no more pop when playback starts or when the effect is enabled while sound is already flowing through it (input monitoring, the enable button during playback). REAPER re-runs a JSFX's @init on those events, and the De-Esser's @init cleared its lookahead buffer, its crossover states and its detector -- a millisecond of silence and the filters restarting from nothing. It initialises once now and re-takes its rate-derived values from @block when the sample rate changes. Measured before and after in a sandbox: the largest one-sample step on play start went from 11 times the test tone's own slope to the slope itself.]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0494bdeedd229945c7efcaff2b5f1926c6ae640f/ReaKit/utils_kbsg.jsfx-inc</source>
+      </version>
     </reapack>
   </category>
 </index>
