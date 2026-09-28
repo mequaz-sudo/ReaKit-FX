@@ -19,11 +19,13 @@ empty space to open the window, click the strip again to close it; drag the mete
 
 ![GainKit](screenshots/session/gainkit.png)
 
-![Four channel strips, GainKit first on each](screenshots/session/gainkit_strips.png)
+![GainKit's four strip faces and its window](screenshots/session/gainkit_faces_window.png)
 
-*Four channels with GainKit first on each, in three of its strip faces: the knob alone (Lead Vox,
-Gtr DI), the VU alone with the track's name over it (BG Vox), and the VU over the knob (Gtr Amp).
-Under it on every channel: Saturation, then 4-Band EQ and the 1175 from the EON suite.*
+*GainKit's four faces for a mixer strip, and its window: the knob alone (Lead Vox), the VU alone
+with the track's name over it (BG Vox), the VU over the knob (Gtr DI), and the same with MONO on
+(Gtr Amp). The window is the master's GainKit, its name typed and set in the face picked on the
+THEME panel's FONT row. Under GainKit on every channel: Saturation, then 4-Band EQ and the 1175
+from the EON suite.*
 
 ![GainKit on four buses and the master](screenshots/session/gainkit_buses.png)
 
