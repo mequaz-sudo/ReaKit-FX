@@ -5,10 +5,11 @@ Five free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and GainKit, EON's own gain-staging plugin. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
-![ReaKit FX embedded in the mixer](screenshots/mixer.png)
+![ReaKit FX](screenshots/hero.png)
 
-*All five embedded in the mixer at the default strip width. Click a strip's empty space to open the
-window, click the strip again to close it.*
+*The five embedded in a mixer at the default strip width, GainKit's window and the De-Esser's, on
+the suite's FL Studio theme. Click a strip's empty space to open the window, click the strip again
+to close it.*
 
 ## The plugins
 
@@ -63,6 +64,11 @@ The display shows the band it is listening to.
   which opts an instance out of theming. GainKit's panel also picks the VU's face and has LOCK,
   which freezes that instance's look while the rest follows the theme. DDC keeps its own fixed
   face.
+
+  ![GainKit on four themes](screenshots/themes.png)
+
+  *GainKit on the EON, SSL, Neve and Ableton themes: the colours and the knob follow the theme, the
+  meter is the meter.*
 - **Link groups** — the gear in the header of those four puts an instance in a group; instances
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
@@ -97,6 +103,6 @@ The `ReaKit/` folder is a copy of the ReaKit library the plugins import (`import
 the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
-*The screenshots are a script's: a sandbox REAPER at 100 % opens each window and embeds the five
-in a mixer, and the pictures are cropped to the plugin's canvas. Every pixel is the plugin drawing
-itself.*
+*The screenshots are a script's: a sandbox REAPER at 100 % publishes a suite theme the way the
+bridge does, feeds the plugins a tone, opens each window and embeds the five in a mixer, and the
+pictures are cropped to the plugin's canvas. Every pixel is the plugin drawing itself.*
