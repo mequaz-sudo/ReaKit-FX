@@ -107,7 +107,7 @@ The `ReaKit/` folder is a copy of the ReaKit library the plugins import (`import
 the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
-*The cover, the strips and the GainKit, Saturation, 3-Band and DDC windows are screenshots of a
-working session. The De-Esser window and the four-theme strip are a script's: a sandbox REAPER at
-100 % publishes a suite theme the way the bridge does, feeds the plugin a tone, opens the window
-and crops to its canvas. Every pixel is the plugin drawing itself.*
+*The cover, the strips and the five windows are screenshots of a working session on the SSL
+theme. The four-theme strip is a script's: a sandbox REAPER at 100 % publishes a suite theme the
+way the bridge does, opens the window and crops to its canvas. Every pixel is the plugin drawing
+itself.*
