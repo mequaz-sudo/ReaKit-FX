@@ -8,10 +8,10 @@ code, no image files, so it scales to any size and renders at full resolution on
 ![ReaKit FX](screenshots/session/hero_plus_ssl.png)
 
 *A session on the suite's SSL theme with GainKit Plus running. Every channel starts with GainKit's
-VU, its track's name over the meter and its colour along the top; Saturation and DDC sit under it.
-The four buses on the right keep their own meter faces, with 3-Band EQ under each, and the master
-ends in GainKit, 3-Band EQ and DDC. Click a strip's empty space to open the window, click the strip
-again to close it; drag the meter to set the gain.*
+VU, its track's name over the meter and its colour along the top; Saturation sits under it, then
+4-Band EQ and the 1175 from the EON suite. The four buses on the right keep their own meter faces,
+with 3-Band EQ under each, and the master ends in GainKit and the suite's ExpressBus. Click a strip's
+empty space to open the window, click the strip again to close it; drag the meter to set the gain.*
 
 ## The plugins
 
@@ -23,13 +23,13 @@ again to close it; drag the meter to set the gain.*
 
 *Four channels with GainKit first on each, in three of its strip faces: the knob alone (Lead Vox,
 Gtr DI), the VU alone with the track's name over it (BG Vox), and the VU over the knob (Gtr Amp).
-Under it on every channel: Saturation, EON's channel EQ and DDC.*
+Under it on every channel: Saturation, then 4-Band EQ and the 1175 from the EON suite.*
 
 ![GainKit on four buses and the master](screenshots/session/gainkit_buses.png)
 
 *Four buses and the master: the VU alone with the name over it, each bus on its own meter face,
-3-Band EQ under the buses and DDC under the master's meter. The master's name is set in another
-face, picked on the THEME panel's FONT row.*
+3-Band EQ under the buses and the EON suite's ExpressBus under the master's meter. The master's
+name is typed, and set in another face picked on the THEME panel's FONT row.*
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
 faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
@@ -65,8 +65,8 @@ under the strip's.
 
 ![The same session on the EON theme, GainKit Plus running](screenshots/session/hero_plus_eon.png)
 
-*The same session on the EON theme: the names and colours come from the tracks, the meters from
-GainKit Plus, nothing typed.*
+*The same session on the EON theme. The channels and buses take their names and colours from
+their tracks, through GainKit Plus; the master's name is typed.*
 
 ### Saturation
 

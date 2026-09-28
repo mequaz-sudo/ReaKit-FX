@@ -155,9 +155,9 @@
     </reapack>
   </category>
   <category name="GainKit Plus">
-    <reapack name="GainKit Plus.lua" type="script" desc="GainKit Plus - the track's name, colour and icon on every GainKit's meter, and three actions for all GainKits at once">
+    <reapack name="GainKit Plus.lua" type="script" desc="GainKit Plus - the track's name and colour on every GainKit's meter, and the actions that handle every GainKit at once">
       <metadata>
-        <description><![CDATA[Companion scripts for GainKit (ReaKit FX). GainKit Plus, a background action, feeds every GainKit its track's name, colour and icon; Insert on selected tracks, Reset all gains and Bypass all act on every GainKit in the project. MIT, EON Studios.]]></description>
+        <description><![CDATA[Companion scripts for GainKit (ReaKit FX). GainKit Plus, a background action, feeds every GainKit its track's name, colour and icon, and can start with REAPER. The others act on every GainKit in the project: Insert on selected tracks, GainKit first in every chain, Reset all gains, All MONO, All STEREO and Bypass all. MIT, EON Studios.]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-09-28T20:57:54Z">
