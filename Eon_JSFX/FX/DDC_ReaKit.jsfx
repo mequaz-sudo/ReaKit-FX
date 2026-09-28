@@ -65,11 +65,22 @@ freemem = 1100000;
 km  = freemem; freemem += 12 * KS;  // 12 knobs (was 7)
 bm  = freemem; freemem += 2 * BS;   // feed segment + auto pill
 
-// Lookahead ring buffers (max 5ms @ 192k = 960, use 1024)
+// Lookahead ring buffers (max 5ms @ 192k = 960, use 1024). ⚠ slider16's range
+// (0..5 ms) is what keeps this enough: widen the slider and grow BOTH these
+// and the dry line below.
 la_buf_L = freemem; freemem += 1024;
 la_buf_R = freemem; freemem += 1024;
 la_pos = 0;
 la_size = 0;
+// The dry signal for the Mix, delayed by the wet path's own latency (the
+// lookahead plus the oversampler's 3 samples) so a partial Mix blends two
+// copies of the SAME moment. Before this the dry was taken before the
+// lookahead and mixed with the delayed wet: at 50 % Mix with 5 ms lookahead a
+// 100 Hz tone cancelled outright (outside audit, 2026-09-28, measured).
+// 2048 = a power of two above 1024 + 3, masked, never modulo.
+dry_buf_L = freemem; freemem += 2048;
+dry_buf_R = freemem; freemem += 2048;
+dry_pos = 0;
 
 // SC HPF biquad state
 sc_hpf_b0 = 1; sc_hpf_b1 = 0; sc_hpf_b2 = 0;
@@ -336,10 +347,16 @@ os_on ? (
   spl1 *= gR;
 );
 
-// ── Mix (parallel compression) ──
+// ── Mix (parallel compression), against the dry of the same moment: the wet
+// left the lookahead and the oversampler (la_size + 3) samples late, so the
+// dry is read that far back from its own ring (written every sample above).
+dry_buf_L[dry_pos] = dry0; dry_buf_R[dry_pos] = dry1;
+_dry_d = la_size + (os_on ? 3 : 0);
+_dry_rd = (dry_pos - _dry_d + 2048) & 2047;
+dry_pos = (dry_pos + 1) & 2047;
 mix_pct < 1 ? (
-  spl0 = dry0 + (spl0 - dry0) * mix_pct;
-  spl1 = dry1 + (spl1 - dry1) * mix_pct;
+  spl0 = dry_buf_L[_dry_rd] + (spl0 - dry_buf_L[_dry_rd]) * mix_pct;
+  spl1 = dry_buf_R[_dry_rd] + (spl1 - dry_buf_R[_dry_rd]) * mix_pct;
 );
 
 spl0_out = spl0;

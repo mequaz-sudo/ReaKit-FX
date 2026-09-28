@@ -383,12 +383,16 @@ rk_ps_active ? (
       ds1_hp_r_xm0 = a1s1hp * ds0_hp_r - b1_s1 * ds1_hp_r + ds1_hp_r_xm1;
       ds1_hp_r_xm1 = a2s1hp * ds0_hp_r - b2_s1 * ds1_hp_r;
       ds1_hp_r *= -1;
-      spl0 = max(-1, min(1, (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain));
-      spl1 = max(-1, min(1, (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain));
+      // No clamp on the way out (2026-09-28): the old max(-1, min(1, ..)) was an
+      // undocumented 0 dBFS limiter in REAPER's floating-point chain, flattening
+      // a hot transient the de-esser was not even touching. The SC MONITOR path
+      // above keeps its clamp; it is a listening aid, not the signal.
+      spl0 = (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain;
+      spl1 = (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain;
     ) : (
       // Hipass: low (unprocessed) + high (compressed)
-      spl0 = max(-1, min(1, (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain));
-      spl1 = max(-1, min(1, (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain));
+      spl0 = (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain;
+      spl1 = (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain;
     );
   );
 
