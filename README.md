@@ -54,16 +54,17 @@ Built on Liteon's de-esser: threshold, frequency, bandwidth, ratio and lookahead
 setting, a band-pass target instead of the broadband one, and a switch to monitor the sidechain.
 The display shows the band it is listening to.
 
-## In every plugin
+## Across the plugins
 
-- **THEME panel** — the header's THEME toggle opens it: a colour theme, a knob style (21 of them),
-  the VU's face where there is a VU, the name bar over the mixer-strip embed, and LOCK, which
-  freezes this instance's look while the rest of the suite follows the theme. NATIVE opts an
-  instance out of theming.
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
   slot it is given.
-- **Link groups** — the gear in the header puts an instance in a group; instances in the same
-  group move together.
+- **THEME panel** — GainKit, Saturation, 3-Band EQ and De-Esser have a THEME toggle in the header:
+  a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
+  which opts an instance out of theming. GainKit's panel also picks the VU's face and has LOCK,
+  which freezes that instance's look while the rest follows the theme. DDC keeps its own fixed
+  face.
+- **Link groups** — the gear in the header of those four puts an instance in a group; instances
+  in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.
 

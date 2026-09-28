@@ -32,10 +32,10 @@ meter in DSP", which is acknowledged here as the published reference for it.
 - **Joanny** — the green checkbox style.
 - **Spice** — the segmented-bar selector style.
 
-## Free FX (`FX/`)
+## The effects
 
-The four free effects run their authors' own DSP and keep their original
-headers:
+GainKit is EON Studios' own code (MIT). The other four run their authors' own
+DSP and keep their original headers:
 
 - **Michael Gruhn (LOSER)** — Saturation, 3-Band EQ and DDC (Digital Drum
   Compressor), (C) 2006–2007.
@@ -44,7 +44,7 @@ headers:
 
 Both released these free with REAPER, for use "in the sense of the author's
 intention" and with acknowledgement, so they are free here and credited in
-each plugin. EON Studios wrote the interfaces. Details: `FX/LICENSE.md`.
+each plugin. EON Studios wrote the interfaces. Details: `LICENSE.md`.
 
 ---
 

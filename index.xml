@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="EON Free FX">
+<index version="1" name="ReaKit FX">
   <category name="FX">
-    <reapack name="EON Free FX" type="effect" desc="EON Free FX - Saturation, 3-Band EQ, DDC, De-Esser and GainKit: free effects with EON Studios interfaces (the ReaKit library)">
+    <reapack name="ReaKit FX" type="effect" desc="ReaKit FX - GainKit, Saturation, 3-Band EQ, DDC and De-Esser: free effects with EON Studios interfaces (the ReaKit library)">
       <metadata>
         <description><![CDATA[Five free effects with EON Studios interfaces. Saturation, 3-Band EQ and DDC (Digital Drum Compressor) by Michael Gruhn (LOSER) and a De-Esser built on Lubomir I. Ivanov's (Liteon), free as their authors released them, with their original terms and credits (LICENSE.md); and GainKit, EON's own gain-staging plugin (MIT). The shared interface library that comes with them is ReaKit (MIT).]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-09-21T20:05:26Z">
         <changelog><![CDATA[First release: Saturation, 3-Band EQ, DDC and De-Esser, with EON Studios interfaces. Free, as LOSER and Liteon released them, and credited in each plugin.]]></changelog>
-        <source main="true" file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/450a57425a31da3b3744c370032ebc9e2f3f39f8/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/450a57425a31da3b3744c370032ebc9e2f3f39f8/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/450a57425a31da3b3744c370032ebc9e2f3f39f8/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/450a57425a31da3b3744c370032ebc9e2f3f39f8/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/450a57425a31da3b3744c370032ebc9e2f3f39f8/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
@@ -24,7 +24,7 @@
       </version>
       <version name="1.0.1" author="Quaz (EON Studios)" time="2026-09-28T14:45:01Z">
         <changelog><![CDATA[The THEME panel gains a NAME BAR row: per instance, show or hide REAPER's own name bar over the plugin's mixer-strip and track-panel embed (hidden by default, as before). A click on the strip closes the plugin's floating window. Digits under 10 px draw regular (bold Arial at 8 and 9 px turns a 5 into a 6), in the plugins and in the link badge. The panel's KNOB chip names the knob actually on screen. 3-Band EQ: the standalone window draws everything at one scale that follows the window, and in a wide, short window the readouts stay clear of the legend.]]></changelog>
-        <source main="true" file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0941e3cf971abcc098da6ba14585b91fe967f31a/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0941e3cf971abcc098da6ba14585b91fe967f31a/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0941e3cf971abcc098da6ba14585b91fe967f31a/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0941e3cf971abcc098da6ba14585b91fe967f31a/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0941e3cf971abcc098da6ba14585b91fe967f31a/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
@@ -40,7 +40,7 @@
       </version>
       <version name="1.1.0" author="Quaz (EON Studios)" time="2026-09-28T17:15:44Z">
         <changelog><![CDATA[The effects have their own repository now; this is the same package, continued. New: GainKit, EON's gain-staging plugin -- an analog VU (the ReaKit meter), one GAIN knob and a STEREO / MONO key, with a mixer-strip face that shows the VU over the knob, the VU alone or the knob alone, its numerals or ticks only, and a VU that grows flatter as the strip is dragged wider; a name you type on the meter's face; hidden HP / LP filters, trims and M/S kept as parameters for old projects. Every plugin's shared includes match ReaKit 1.7.0.]]></changelog>
-        <source main="true" file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
         <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8eff262c72e2ced963040eb4627e7309316cec8c/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
