@@ -22,10 +22,14 @@ local function block()
     OPEN,
     "do",
     "  local plus, me = [[" .. PLUS .. "]], [[" .. own .. "]]",
-    "  local ok, c = pcall(reaper.AddRemoveReaScript, true, 0, plus, true)",
-    "  if ok and c and c > 0 then reaper.Main_OnCommand(c, 0) end",
-    "  local ok2, c2 = pcall(reaper.AddRemoveReaScript, true, 0, me, true)",
-    "  if ok2 and c2 and c2 > 0 then reaper.SetToggleCommandState(0, c2, 1); reaper.RefreshToolbar2(0, c2) end",
+    "  local fh = io.open(plus, \"r\")                      -- uninstalled since? then this block does nothing",
+    "  if fh then",
+    "    fh:close()",
+    "    local ok, c = pcall(reaper.AddRemoveReaScript, true, 0, plus, true)",
+    "    if ok and c and c > 0 then reaper.Main_OnCommand(c, 0) end",
+    "    local ok2, c2 = pcall(reaper.AddRemoveReaScript, true, 0, me, true)",
+    "    if ok2 and c2 and c2 > 0 then reaper.SetToggleCommandState(0, c2, 1); reaper.RefreshToolbar2(0, c2) end",
+    "  end",
     "end",
     CLOSE,
     "" }, "\n")
@@ -46,9 +50,17 @@ end
 local s = read(STARTUP) or ""
 local a = s:find(OPEN, 1, true)
 local on, ok
+if a and not s:find(CLOSE, a, true) then
+  -- the opening marker without its closing one: someone edited the block. Removing "to the end of
+  -- the file" could take their lines with it, so nothing is touched.
+  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then
+    r.MB("The GainKit Plus block in Scripts/__startup.lua has lost its closing line, so it was left alone. Remove the block by hand, then run this action again.", "GainKit Plus", 0)
+  end
+  return
+end
 if a then
   local b = s:find(CLOSE, a, true)
-  local e = b and (s:find("\n", b, true) or #s) or #s          -- through the end of the CLOSE line
+  local e = s:find("\n", b, true) or #s                         -- through the end of the CLOSE line
   local out = s:sub(1, a - 1) .. s:sub(e + 1)
   if out:match("^%s*$") then os.remove(STARTUP); ok = true else ok = write(STARTUP, out) end
   on = false
