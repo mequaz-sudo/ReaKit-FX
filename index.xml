@@ -114,6 +114,25 @@
         <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/994808f58069539518d03ec5122dce0a54604476/ReaKit/smooth_kbsg.jsfx-inc</source>
         <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/994808f58069539518d03ec5122dce0a54604476/ReaKit/utils_kbsg.jsfx-inc</source>
       </version>
+      <version name="1.1.4" author="Quaz (EON Studios)" time="2026-09-28T18:44:04Z">
+        <changelog><![CDATA[3-Band EQ, Saturation, De-Esser: NATIVE on the THEME panel now means native. It used to turn only the knob and button colours native while the background, the text and the knob style stayed themed, and the choice was forgotten when the project reloaded. Each plugin now gates its theming the way GainKit does and keeps the NATIVE pick on a hidden parameter, so it comes back with the project.]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/588df196e8e8b6e4980f149fb66cecad4848028d/ReaKit/utils_kbsg.jsfx-inc</source>
+      </version>
     </reapack>
   </category>
 </index>
