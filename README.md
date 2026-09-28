@@ -19,7 +19,11 @@ again to close it; drag the meter to set the gain.*
 
 ![GainKit](screenshots/session/gainkit.png)
 
-![GainKit's four strip faces, with the other plugins' strips](screenshots/session/mixer.png)
+![GainKit on four buses and the master](screenshots/session/gainkit_buses.png)
+
+*Four buses and the master: the VU alone with the name over it, each bus on its own meter face,
+3-Band EQ under the buses and DDC under the master's meter. The master's name is set in another
+face, picked on the THEME panel's FONT row.*
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
 faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
