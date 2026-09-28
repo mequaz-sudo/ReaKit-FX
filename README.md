@@ -62,8 +62,8 @@ The display shows the band it is listening to.
 - **THEME panel** — GainKit, Saturation, 3-Band EQ and De-Esser have a THEME toggle in the header:
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
   which opts an instance out of theming. GainKit's panel also picks the VU's face and has LOCK,
-  which freezes that instance's look while the rest follows the theme. DDC keeps its own fixed
-  face.
+  which freezes that instance's look while the rest follows the theme. DDC has no panel of its
+  own; its colours and knobs follow the suite's theme.
 
   ![GainKit on four themes](screenshots/themes.png)
 
