@@ -38,8 +38,15 @@ options:gfx_hz=60 no_meter
 options:gmem=ReaKitSaturation
 
 @init
+// ext_noinit: @init runs once, at load. REAPER re-runs it on play start and on
+// the enable button (measured 2026-09-28, wiki 3.2); nothing here holds audio
+// state, but the knob memory is wiped and the smoothers snap, so a knob being
+// dragged when play starts lost its drag. The one rate-derived value,
+// sm_coeff, is re-taken from @block when srate moves.
+ext_noinit = 1.0;
 ext_tail_size = -1;
 gfx_ext_retina = 1;
+HALFPI = $pi * 0.5;
 // Render the embedded UI without REAPER's frame/title-bar decoration
 // (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
 gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
@@ -85,6 +92,7 @@ function recalc_dsp() (
 );
 
 recalc_dsp();
+sat_srate_seen = srate;
 drive_s = drive_t;
 wet_s = wet_t;
 dsp_dirty = 0;
@@ -107,6 +115,7 @@ recalc_dsp();
 rk_link_on_slider();
 
 @block
+srate != sat_srate_seen ? ( sat_srate_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
@@ -136,16 +145,24 @@ wet_s > 0.001 ? (
     f = 0.001; inv_f = 1.0;
   );
 
-  // sin(x*f)/sin(f) waveshaper — polynomial approx, no transcendentals
+  // sin(x*f)/sin(f) waveshaper — polynomial approx, no transcendentals.
+  // It used to clamp the INPUT at +-1 and the output at +-1: in REAPER's
+  // floating-point chain anything over 0 dBFS was brick-wall clipped at
+  // 0 dBFS however low the drive, and a clipped transient is a loud click
+  // (the user, 2026-09-28). Now y is held at the sine's own peak, +-pi/2,
+  // where the slope is already zero, so a hot signal saturates smoothly onto
+  // a flat top and the output may exceed 1 the way the chain allows (at drive
+  // 100 % the peak is exactly 1, as before; at 10 % a signal at 2.0 passes at
+  // 1.98). The series is sin(y) for |y| <= pi/2, which the hold guarantees.
   dry0 = spl0; dry1 = spl1;
 
-  y  = max(-1, min(1, spl0)) * f;
+  y  = max(-HALFPI, min(HALFPI, spl0 * f));
   y2 = y * y;
-  sat0 = min(max(y * (1.0 - y2 * (0.16666667 - y2 * 0.00833333)) * inv_f, -1), 1);
+  sat0 = y * (1.0 - y2 * (0.16666667 - y2 * 0.00833333)) * inv_f;
 
-  y  = max(-1, min(1, spl1)) * f;
+  y  = max(-HALFPI, min(HALFPI, spl1 * f));
   y2 = y * y;
-  sat1 = min(max(y * (1.0 - y2 * (0.16666667 - y2 * 0.00833333)) * inv_f, -1), 1);
+  sat1 = y * (1.0 - y2 * (0.16666667 - y2 * 0.00833333)) * inv_f;
 
   // Crossfade (smooth bypass transitions)
   spl0 = dry0 + (sat0 - dry0) * wet_s;
