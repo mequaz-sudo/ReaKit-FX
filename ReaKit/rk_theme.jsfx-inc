@@ -215,6 +215,33 @@ function rkth_stripview(cur) ( rkth_sv_ok = 1; rkth_sv_cur = cur | 0; );
 // Live while LOCKED: a display choice, not part of the frozen look.
 function rkth_numbers(cur) ( rkth_nu_ok = 1; rkth_nu_cur = cur | 0; );
 
+// ── FONT (per-instance, opt-in) ───────────────────────────────────────────
+// The face of the host's name text (GainKit: the name typed on the meter or
+// the track's, on the window's meter and under the strip's; the user,
+// 2026-09-28: "can we give that box different font options?"). RKTH_NF_N
+// families, 0 = Arial, the default; the chip prints the family's name in the
+// family itself. Click = next, right-click = previous, the wheel steps. The
+// same contract as NUMBERS, row after it:
+//   rkth_namefont(xx_name_font);
+//   rkth_nf_pick >= 0 ? (
+//     xx_name_font = rkth_nf_pick; slider_automate(xx_name_font); rkth_nf_pick = -1;
+//   );
+// The host draws its text with rkth_nf_family(xx_name_font) and hands the
+// same to rk_vu_set_label_font(). Missing families fall back to the system
+// default (REAPER's own substitution), so every pick renders somewhere.
+// ⛔OPT-IN: a host that never calls it has no row, and the panel is as before.
+// Live while LOCKED: a display choice, not part of the frozen look.
+RKTH_NF_N = 9;
+function rkth_nf_family(i) (
+  i == 1 ? "Arial Black" : i == 2 ? "Impact" : i == 3 ? "Georgia" : i == 4 ? "Times New Roman"
+  : i == 5 ? "Courier New" : i == 6 ? "Consolas" : i == 7 ? "Verdana" : i == 8 ? "Segoe UI" : "Arial";
+);
+function rkth_nf_label(i) (
+  i == 1 ? "ARIAL BLACK" : i == 2 ? "IMPACT" : i == 3 ? "GEORGIA" : i == 4 ? "TIMES"
+  : i == 5 ? "COURIER" : i == 6 ? "CONSOLAS" : i == 7 ? "VERDANA" : i == 8 ? "SEGOE UI" : "ARIAL";
+);
+function rkth_namefont(cur) ( rkth_nf_ok = 1; rkth_nf_cur = min(max(cur | 0, 0), RKTH_NF_N - 1); );
+
 // Host hook, called from @serialize so a locked look survives a project
 // reload. ⚠️APPEND-GUARDED: an old project's blob simply ends before this, and
 // file_avail(0) == 0 leaves the instance unlocked, which is the right default.
@@ -614,7 +641,7 @@ function rkth_cl_chipdraw(cx, cy, cw, ch, lbl_str) local(_f) (
 // slider itself — picks surface on rkth_vu_pick for the host to apply.
 function rkth_cluster(x, y, has_vu, cur_vu)
 local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid, _ch, _rh,
-      _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw) (
+      _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw, _nfw, _nfi) (
   // Chip height and dropdown row height, scaled once and reused by EVERY hit
   // test, dropdown anchor and draw below — a chip whose hit rect and drawn rect
   // disagree is the bug this function's comments keep warning about, and two
@@ -722,6 +749,24 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
       gfx_measurestr("HIDDEN", _tw, _th); _nuw = _tw;
       gfx_measurestr("SHOWN", _tw, _th); _nuw = max(_nuw, _tw) + 14*rkth_scale;
     );
+    // FONT: the chip holds the widest family name, each measured in its own face
+    // (the chip prints it that way), so the pick never changes the panel's width.
+    _nfw = 0;
+    rkth_nf_ok ? (
+      // Measured ONCE per scale, not per frame: gfx_setfont builds a font each
+      // call, and nine of them every frame of an open window is not free.
+      rkth_nf_wsc != rkth_scale ? (
+        rkth_nf_w = 0; _nfi = 0;
+        loop(RKTH_NF_N,
+          gfx_setfont(1, rkth_nf_family(_nfi), (RKTH_F_CHIP*rkth_scale)|0, 'b');
+          gfx_measurestr(rkth_nf_label(_nfi), _tw, _th); rkth_nf_w = max(rkth_nf_w, _tw);
+          _nfi += 1;
+        );
+        rkth_nf_wsc = rkth_scale;
+        gfx_setfont(1, "Arial", (RKTH_F_CHIP*rkth_scale)|0, 'b');   // the font is global state: put it back
+      );
+      _nfw = rkth_nf_w + 14*rkth_scale;
+    );
     // ── DROPPED PANEL geometry (user 2026-08-12: "make it drop down not
     // across"). The chips used to FLOW horizontally along the header, which put
     // them on a collision course with each host's right-hand chrome and forced
@@ -744,7 +789,7 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     _pad  = 6*rkth_scale;
     _gap  = 4*rkth_scale;
     _cw = max(thw, knw); has_vu ? ( _cw = max(_cw, max(vuw, syw)); ); _cw = max(_cw, _lkw); _cw = max(_cw, _nbw);
-    _cw = max(_cw, _svw); _cw = max(_cw, _nuw);
+    _cw = max(_cw, _svw); _cw = max(_cw, _nuw); _cw = max(_cw, _nfw);
     // LOCK gets its own row, last, because it governs the WHOLE look rather
     // than any one chip. It is HIDDEN outright on a host that never called
     // rkth_lock_mem() — no buffer, no lock, and a dead control would be worse
@@ -756,10 +801,13 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_nbrow   = rkth_nb_ok ? (has_vu ? 4 : 2) : -1;
     rkth_clp_svrow   = rkth_sv_ok ? (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) : -1;
     rkth_clp_nurow   = rkth_nu_ok ? (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0) : -1;
-    rkth_clp_lockrow = rkth_lk_ok ? (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0)
+    // FONT follows NUMBERS (the name's face, another display choice); LOCK stays last.
+    rkth_clp_nfrow   = rkth_nf_ok ? (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0)
                                   + (rkth_nu_ok ? 1 : 0) : -1;
+    rkth_clp_lockrow = rkth_lk_ok ? (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0)
+                                  + (rkth_nu_ok ? 1 : 0) + (rkth_nf_ok ? 1 : 0) : -1;
     rkth_clp_rows  = (has_vu ? 4 : 2) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0) + (rkth_nu_ok ? 1 : 0)
-                   + (rkth_lk_ok ? 1 : 0);
+                   + (rkth_nf_ok ? 1 : 0) + (rkth_lk_ok ? 1 : 0);
     rkth_clp_pitch = _ch + _gap;
     rkth_clp_w = _pad + _capw + _cw + _pad;
     rkth_clp_h = _pad + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _pad;
@@ -875,6 +923,17 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
       rkth_nu_pick = rkth_nu_cur ? 0 : 1;
       rkth_nu_cur  = rkth_nu_pick;
       lmb_down = 0; rkth_consumed = 1;
+    );
+
+    // ── FONT chip: the name's family. Click = next, right-click = previous,
+    // the wheel steps (up = previous); wraps. Live while LOCKED like NUMBERS.
+    rkth_clp_nfrow >= 0 && (lmb_down || rmb_down || frame_wheel != 0) &&
+      mx >= rkth_clp_cx && mx < rkth_clp_cx + rkth_clp_cw &&
+      my >= rkth_clp_r0 + rkth_clp_nfrow*rkth_clp_pitch &&
+      my <  rkth_clp_r0 + rkth_clp_nfrow*rkth_clp_pitch + _ch ? (
+      rkth_nf_pick = (rkth_nf_cur + (lmb_down ? 1 : (rmb_down || frame_wheel > 0) ? RKTH_NF_N - 1 : 1)) % RKTH_NF_N;
+      rkth_nf_cur  = rkth_nf_pick;
+      lmb_down = 0; rmb_down = 0; frame_wheel = 0; rkth_consumed = 1;
     );
 
     // ── LOCK chip: freeze / unfreeze this instance's whole look. ──
@@ -1073,6 +1132,24 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy) (
         gfx_x = rkth_clp_cx + 5*rkth_scale; gfx_y = _ry + (rkth_clp_ch - _f9) * 0.5;
         gfx_drawstr(rkth_nu_cur ? "HIDDEN" : "SHOWN");
       );
+      // ── FONT row: caption FONT; the chip prints the family's name in the
+      // family itself, lit when it is not the default (Arial), like NUMBERS.
+      // Absent unless the host called rkth_namefont() this frame.
+      rkth_clp_nfrow >= 0 ? (
+        _ry = rkth_clp_r0 + rkth_clp_nfrow*rkth_clp_pitch;
+        gfx_setfont(1, "Arial", _f7, 'b');
+        rkth_setcol(3, 0.62, 0.65, 0.70, 1);
+        gfx_x = rkth_clp_capx; gfx_y = _ry + _cy; gfx_drawstr("FONT");
+        rkth_nf_cur ? ( rkth_setcol(4, 0.95, 0.65, 0.15, 0.9); )
+                    : ( rkth_setcol(1, 0.16, 0.18, 0.22, 1); );
+        gfx_rect(rkth_clp_cx, _ry, rkth_clp_cw, rkth_clp_ch);
+        rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(rkth_clp_cx, _ry, rkth_clp_cw, rkth_clp_ch, 0);
+        gfx_setfont(1, rkth_nf_family(rkth_nf_cur), _f9, 'b');
+        rkth_nf_cur ? gfx_set(0.10, 0.10, 0.12, 1) : rkth_setcol(2, 0.85, 0.87, 0.90, 1);
+        gfx_x = rkth_clp_cx + 5*rkth_scale; gfx_y = _ry + (rkth_clp_ch - _f9) * 0.5;
+        gfx_drawstr(rkth_nf_label(rkth_nf_cur));
+        gfx_setfont(1, "Arial", _f9, 'b');          // the font is global state: put it back
+      );
       // ── LOCK row: same lit-chip language as >ALL, so "engaged" reads the
       // same way everywhere in the panel. Absent entirely when the host never
       // handed us a snapshot buffer (rkth_clp_lockrow < 0).
@@ -1143,6 +1220,10 @@ rkth_sv_pick = -1;      // STRIP pick, the same contract
 rkth_sv_ok   = 0;       // re-established every frame by rkth_stripview()
 rkth_nu_pick = -1;      // NUMBERS pick, the same contract
 rkth_nu_ok   = 0;       // re-established every frame by rkth_numbers()
+rkth_nf_pick = -1;      // FONT pick, the same contract
+rkth_nf_ok   = 0;       // re-established every frame by rkth_namefont()
+rkth_clp_nfrow = -1;    // no FONT row until the layout counts one
+rkth_nf_wsc  = 0;       // the FONT chip's width is measured again at the first frame
 rkth_vu_gen_seen = gmem[GS_THEME_VU_GEN];
 rkth_cl_open = 0;      // collapsible header starts closed (rkth_cluster_hdr)
 rkth_cl_paint = 0;     // per-frame "panel was requested"; set by rkth_cluster,

@@ -28,6 +28,29 @@ the strip wider. Click the middle of the meter's face and type, and the name is 
 like a legend. The high-pass, low-pass, trims and M/S modes it used to show are still there as
 parameters, so old projects sound the same.
 
+#### GainKit Plus
+
+Actions that come with GainKit (install **GainKit Plus** from the same repository; they appear
+in the Actions list as `Script: GainKit Plus…`):
+
+- **GainKit Plus** — run it once and every GainKit in the project shows its track's name as the
+  meter's legend, the track's colour as a thin bar along the top of the strip (and under the
+  window's header), and the track's icon in the window's header. A name typed on the meter
+  still wins. Run it again to stop; put it on a toolbar and the button lights while it runs.
+- **Insert on selected tracks** — GainKit first in the chain of every selected track that has
+  none.
+- **GainKit first in every chain** — moves the GainKit a track already has to the top of its
+  chain, the master's too.
+- **Reset all gains** — every GainKit's GAIN back to 0 dB.
+- **All MONO** / **All STEREO** — every GainKit's key at once.
+- **Bypass all** — every GainKit off; run it again and they are all on.
+
+In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
+finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows
+under a VU-only meter for a moment. The rest of the strip still opens the window with a click.
+The THEME panel's FONT row picks the face the name is printed in, on the window's meter and
+under the strip's.
+
 ### Saturation
 
 ![Saturation](screenshots/session/saturation.png)
@@ -86,7 +109,7 @@ Extensions > ReaPack > Import repositories, paste:
 https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
 ```
 
-Then install **ReaKit FX** from the browser. The plugins appear in REAPER's FX list as
+Then install **ReaKit FX** from the browser, and **GainKit Plus** for the scripts. The plugins appear in REAPER's FX list as
 `JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC` and
 `JS: EON: De-Esser`.
 
@@ -103,7 +126,8 @@ The full text is in [LICENSE.md](LICENSE.md).
 ## Building on it
 
 The `ReaKit/` folder is a copy of the ReaKit library the plugins import (`import
-../../ReaKit/<file>`), byte-identical to the released library. Nothing else is needed: install
+../../ReaKit/<file>`): the released library, plus the label-font hook in `rk_vu.jsfx-inc` that
+GainKit 2.3.0 uses (the library's next release carries it). Nothing else is needed: install
 the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 

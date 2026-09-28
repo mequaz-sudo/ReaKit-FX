@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.2.0
+// Version: 2.3.0
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -30,6 +30,7 @@ slider17:ct_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row
 slider18:ct_strip_view=0<0,2,1{Meter,Knob,VU}>-Strip view (internal; the THEME panel's STRIP row: 0 = VU + knob, 1 = the knob alone, 2 = the VU alone; persists via FX chunk)
 slider19:ct_strip_nums=0<0,1,1{Shown,Hidden}>-Strip numbers (internal; the THEME panel's NUMBERS row: 1 = the strip's VU shows ticks only; persists via FX chunk)
 slider20:ct_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
+slider21:ct_name_font=0<0,8,1{Arial,Arial Black,Impact,Georgia,Times New Roman,Courier New,Consolas,Verdana,Segoe UI}>-Name font (internal; the THEME panel's FONT row: the face of the name on the meter and under the strip's; persists via FX chunk)
 
 in_pin:left input
 in_pin:right input
@@ -88,6 +89,27 @@ vu_ct.rk_vu_init(-18);
 // STRUCTURAL colours are themed; functional ones (VU face, knob/HP-LP hues,
 // link badge) stay hardcoded. Mirrors EON_Drum_Strip.jsfx / EON_StepSeq.jsfx.
 GS_THEME_ID = 2649; GS_THEME_BASE = 2650; GS_THEME_KNOB_P = 2676;
+// GainKit Plus, the helper script: per-TRACK slots it fills with the track's
+// name, colour and icon path, keyed by the track index this instance reads
+// with get_host_placement(). Band EON_GKPLUS, declared in
+// .refs/gmem_regions_supplement.tsv (blocks 476..478, after EON_PADPCM).
+// GEN 0 = nothing published = today's face; the typed name always wins.
+GK_PLUS_BASE = 31195136; GK_PLUS_STRIDE = 320; GK_PLUS_MAX = 512;
+GK_PLUS_COLOR = 1; GK_PLUS_NAMELEN = 2; GK_PLUS_NAME = 3; GK_PLUS_ICONLEN = 27; GK_PLUS_ICON = 28;
+GK_IMG_ICON = 7;                      // the gfx image slot the track icon loads into
+gk_pl_track = -3; gk_pl_gen = -1;     // "never read": the first pass takes the slot
+
+// The name's font family (the THEME panel's FONT row, slider21): rk_theme's
+// list, 0 = Arial. Used for the typed/track name everywhere it prints.
+function gk_font() ( rkth_nf_family(ct_name_font); );
+// The GAIN from a strip gesture (drag, wheel, a reset click): clamped,
+// automated (REAPER mints the undo step ~1 s later, so a drag is one step),
+// the DSP told, and the value shown under a VU-only strip's meter a moment.
+function gk_gain_set(v) local(nv) (
+  nv = min(24, max(-24, v));
+  nv != slider7 ? ( slider7 = nv; slider_automate(slider7); atomic_set(dsp_dirty, 1); );
+  gk_gflash = timer;
+);
 // rkth_band(), not raw gmem: this is the path almost the whole face paints
 // through, so a raw read here is exactly what made LOCK look like it did
 // nothing — the instance kept re-skinning with the suite.
@@ -408,8 +430,8 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
       strcpy(#gk_ne_buf, #gk_name); strcpy(#gk_ne_orig, #gk_name);
       gk_ne_caret = strlen(#gk_ne_buf);
       gk_ne_on = 1; gk_ne_unfocus = 0; gk_ne_i0 = 0; lmb_down = 0;
-    ) : hov && strlen(#gk_name) == 0 ? (
-      gfx_setfont(1, "Arial", f, gk_wt(f));            // an empty face says where a name goes
+    ) : hov && strlen(#gk_dname) == 0 ? (
+      gfx_setfont(1, gk_font(), f, gk_wt(f));          // an empty face says where a name goes
       gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.30);
       gfx_measurestr("NAME", tw, th);
       gfx_x = rkvu_cx - tw * 0.5; gfx_y = zy + (zh - th) * 0.5;
@@ -425,7 +447,7 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
     // against last frame's layout); outside, it commits and still lands.
     gk_ne_on && lmb_down ? (
       hov ? (
-        gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f));
+        gfx_setfont(1, gk_font(), gk_ne_f, gk_wt(gk_ne_f));
         n = strlen(#gk_ne_buf); i = gk_ne_i0; best = n; bd = 1000000;
         loop(n - gk_ne_i0 + 1,
           wc = gk_ne_x0 + gk_ne_w(i) - gk_ne_w(gk_ne_i0);
@@ -471,10 +493,10 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
       gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.55); gfx_rect(zx, zy, zw, zh, 0);
       gk_ne_f = f;
       tw = 0; th = 0;                                    // an empty box measures nothing (gk_ne_w)
-      gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
+      gfx_setfont(1, gk_font(), gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
       while (tw > zw - 6 * sc && gk_ne_f > 7 * sc) (
         gk_ne_f -= 1;
-        gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
+        gfx_setfont(1, gk_font(), gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
       );
       n = strlen(#gk_ne_buf);
       tw <= zw - 6 * sc ? (
@@ -499,26 +521,103 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
     );
   );
 );
-// The name under the strip's VU view meter: the rest of the slot, its full
-// width, as large as fits up to 16 px, down to 7, then cut with "..".
+// ── GainKit Plus: read this track's slot once per @gfx pass ─────────────────
+// Cheap when nothing changed: one gmem read (GEN) per pass. On a change the
+// name, the colour and the icon path are taken; the icon is (re)loaded only
+// when its path changed. #gk_dname is what the face prints: the typed name
+// when there is one, else the track's. Bytes outside printable ASCII are
+// dropped (the script folds names to ASCII first). Defined BEFORE its callers
+// (gk_name_strip, the @gfx body): EEL2 resolves calls at definition time.
+function gk_plus_read() local(t, b, g, n, i, c) (
+  t = get_host_placement();
+  (t >= 0 && t < GK_PLUS_MAX) ? (
+    b = GK_PLUS_BASE + t * GK_PLUS_STRIDE;
+    g = gmem[b];
+    (g != gk_pl_gen || t != gk_pl_track) ? (
+      gk_pl_gen = g; gk_pl_track = t;
+      g > 0 ? (
+        gk_pl_col = gmem[b + GK_PLUS_COLOR] | 0;
+        n = min(gmem[b + GK_PLUS_NAMELEN] | 0, GK_NAME_MAX);
+        strcpy(#gk_tname, ""); i = 0;
+        loop(n,
+          c = gmem[b + GK_PLUS_NAME + i] | 0;
+          (c >= 32 && c < 127) ? ( sprintf(#gk_ne_ch, "%c", c); strcat(#gk_tname, #gk_ne_ch); );
+          i += 1;
+        );
+        n = min(gmem[b + GK_PLUS_ICONLEN] | 0, 259);
+        strcpy(#gk_ipath_new, ""); i = 0;
+        loop(n,
+          c = gmem[b + GK_PLUS_ICON + i] | 0;
+          (c >= 32 && c < 127) ? ( sprintf(#gk_ne_ch, "%c", c); strcat(#gk_ipath_new, #gk_ne_ch); );
+          i += 1;
+        );
+        strcmp(#gk_ipath_new, #gk_ipath) != 0 ? (
+          strcpy(#gk_ipath, #gk_ipath_new);
+          gk_icon_ok = strlen(#gk_ipath) > 0 ? (gfx_loadimg(GK_IMG_ICON, #gk_ipath) >= 0) : 0;
+        );
+      ) : (
+        gk_pl_col = 0; strcpy(#gk_tname, ""); strcpy(#gk_ipath, ""); gk_icon_ok = 0;
+      );
+    );
+  ) : (
+    gk_pl_col = 0; strcpy(#gk_tname, ""); gk_icon_ok = 0;
+  );
+  strlen(#gk_name) > 0 ? strcpy(#gk_dname, #gk_name) : strcpy(#gk_dname, #gk_tname);
+);
+// The track colour as gfx_r/g/b: packed r*65536 + g*256 + b, plus 1 so black
+// is not "none" (arithmetic, not shifts: EEL2's are 32-bit).
+function gk_plus_col() local(c) (
+  c = gk_pl_col - 1;
+  gfx_r = floor(c / 65536) / 255; gfx_g = (floor(c / 256) % 256) / 255; gfx_b = (c % 256) / 255; gfx_a = 1;
+);
+// The icon, square, its longer side = sz, at (x, y)
+function gk_plus_icon(x, y, sz) local(iw, ih) (
+  gfx_getimgdim(GK_IMG_ICON, iw, ih);
+  iw > 0 && ih > 0 ? (
+    gfx_x = x; gfx_y = y; gfx_a = 1;
+    gfx_blit(GK_IMG_ICON, sz / max(iw, ih), 0);
+  );
+);
+// The name under the strip's VU view meter (#gk_dname: the typed name, else the
+// track's from GainKit Plus), in the FONT row's face: the rest of the slot, its
+// full width, as large as fits up to 16 px, down to 7, then cut with "..".
+// Text only: the track icon stays in the window's header (the user, 2026-09-28:
+// "I don't want the track icon next to the name").
 function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
   sc = max(1, gfx_ext_retina);
   bh = y1 - y0;
   f = floor(min(bh * 0.62, 16 * sc));
   f >= 7 * sc ? (
-    gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_name, tw, th);
+    gfx_setfont(1, gk_font(), f, gk_wt(f)); gfx_measurestr(#gk_dname, tw, th);
     while (tw > gk_w - 6 * sc && f > 7 * sc) (
-      f -= 1; gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_name, tw, th);
+      f -= 1; gfx_setfont(1, gk_font(), f, gk_wt(f)); gfx_measurestr(#gk_dname, tw, th);
     );
-    strcpy(#gk_nm_s, #gk_name);
-    n = strlen(#gk_name);
+    strcpy(#gk_nm_s, #gk_dname);
+    n = strlen(#gk_dname);
     while (n > 1 && tw > gk_w - 6 * sc) (
-      n -= 1; strcpy_substr(#gk_nm_s, #gk_name, 0, n); strcat(#gk_nm_s, "..");
+      n -= 1; strcpy_substr(#gk_nm_s, #gk_dname, 0, n); strcat(#gk_nm_s, "..");
       gfx_measurestr(#gk_nm_s, tw, th);
     );
     gk_ink(2, 1, 0.85, 0.88, 0.90);
     gfx_x = (gk_w - tw) * 0.5; gfx_y = y0 + (bh - th) * 0.5;
     gfx_drawstr(#gk_nm_s);
+  );
+);
+// The GAIN under the strip's VU view meter, the same row and fit as the name:
+// while the wheel just set it, and whenever it is not 0 with no name to show.
+function gk_gain_strip(y0, y1) local(sc, bh, f, tw, th) (
+  sc = max(1, gfx_ext_retina);
+  bh = y1 - y0;
+  f = floor(min(bh * 0.62, 14 * sc));
+  f >= 7 * sc ? (
+    gk_gain_str(1);
+    gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_gv, tw, th);
+    while (tw > gk_w - 6 * sc && f > 7 * sc) (
+      f -= 1; gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_gv, tw, th);
+    );
+    gk_ink(2, 1, 0.85, 0.88, 0.90);
+    gfx_x = (gk_w - tw) * 0.5; gfx_y = y0 + (bh - th) * 0.5;
+    gfx_drawstr(#gk_gv);
   );
 );
 
@@ -840,6 +939,8 @@ frame_last_timer = timer;
 hv_speed = 11;
 mouse_wheel = 0;
 rk_link_menu_gate();
+gk_plus_read();                        // GainKit Plus: this track's name, colour, icon (if published)
+vu_ct.rk_vu_set_label_font(ct_name_font ? gk_font() : 0);   // FONT row: the legend's face (0 = the lib's Arial)
 // Adopt a VU face broadcast by a SYNC-latched sibling (zm_theme = this
 // instance's face; the plugin keeps its own theme/sk_kp reader below).
 rkth_vu_f = rkth_vu_follow(zm_theme);
@@ -916,6 +1017,8 @@ is_embedded ? (
   gk_ne_on ? gk_ne_commit();           // the window closed mid-name: keep what was typed
   gk_w = gfx_w; gk_h = gfx_h;
   gk_bg(0, 1, 0.22, 0.24, 0.27); gfx_rect(0, 0, gk_w, gk_h);
+  // GainKit Plus: the track's colour as a thin bar along the top of the strip
+  gk_pl_col > 0 ? ( gk_plus_col(); gfx_rect(0, 0, gk_w, max(1, floor(2 * gk_s + 0.5))); );
 
   // Embedded wheel-fix: REAPER delivers wheel events with a STALE mouse_x/y, so
   // hover tests miss. Cache the cursor on non-wheel frames, reuse it on wheel
@@ -943,16 +1046,24 @@ is_embedded ? (
       gk_bx = 75;  gk_by = 2;   gk_bs = 7;
     );
   ) : ct_strip_view == 2 ? (
-    // VU: the meter alone (a 1.6:1 face, the lib's cap), a thin row under it
-    // for the dots and the badge, and with a name, a row for that (it takes
-    // whatever the slot has below, gk_name_strip). No knob (gk_kr 0), no value,
-    // no MONO pill.
-    gk_dw = 100; gk_dh = strlen(#gk_name) > 0 ? 86 : 70;
-    gk_vx = 1;   gk_vy = 1;   gk_vw = 98; gk_vh = 61.25;
+    // VU: the NAME on top, the meter under it (the user, 2026-09-28: "switch
+    // the VU to the bottom, name to the top"), then a thin row for the dots
+    // and the badge. The meter keeps the size the slot's width gives it; the
+    // name row takes the slot's whole SPARE height above it (the user,
+    // 2026-09-28, on a band sitting dead under the dots: "yes do that"), its
+    // 16 px text centred in it, and none where there is none: a short slot is
+    // all meter, as before. 50 units is every MCP slot's spare at most (REAPER
+    // sizes an embed at the @gfx aspect, 1.2 x its width = 120 units); a TCP
+    // slot taller than that keeps its extra below the dots, so the name never
+    // drifts away from its meter. No knob (gk_kr 0), no value, no MONO pill.
+    gk_s0 = max(0.01, min(gk_w / 100, gk_h / 70));
+    gk_nt = strlen(#gk_dname) > 0 ? min(50, max(0, gk_h / gk_s0 - 70)) : 0;
+    gk_dw = 100; gk_dh = 70 + gk_nt;
+    gk_vx = 1;   gk_vy = 1 + gk_nt;   gk_vw = 98; gk_vh = 61.25;
     gk_kr = 0;   gk_tf = 0;
-    gk_mx0 = 3;  gk_my0 = 63; gk_mw = 6;  gk_mh = 6;  gk_mf = 0;   // MONO on: its cyan dot
-    gk_dx = 14;  gk_dy = 66;
-    gk_bx = 92;  gk_by = 63;  gk_bs = 7;
+    gk_mx0 = 3;  gk_my0 = 63 + gk_nt; gk_mw = 6;  gk_mh = 6;  gk_mf = 0;   // MONO on: its cyan dot
+    gk_dx = 14;  gk_dy = 66 + gk_nt;
+    gk_bx = 92;  gk_by = 63 + gk_nt;  gk_bs = 7;
   ) : gk_lay == 0 ? (
     gk_dw = 110; gk_dh = 44;
     gk_vx = 1;   gk_vy = 1;   gk_vw = 66; gk_vh = 42;
@@ -997,6 +1108,37 @@ is_embedded ? (
     vu_ct.rk_vu_set_flat(gk_fl);
     gk_fl ? vu_ct.rk_vu_draw(gk_s, gk_y(gk_vy), gk_w - 2 * gk_s, gk_vh * gk_s, 0, -1, "")
           : vu_ct.rk_vu_draw(gk_x(gk_vx), gk_y(gk_vy), gk_vw * gk_s, gk_vh * gk_s, 0, -1, "");
+    // The meter is the GAIN control in a strip, the way Tukan's ToolS2 works
+    // (the user, 2026-09-28: "when embedded you can drag the volume up and
+    // down, that's what I want for the VU"). Hovering it makes it a widget, so
+    // REAPER leaves the click to us (no 0x200 there; the row under the meter
+    // and the margins still open the window, house rule 2). A vertical drag
+    // rides the knob library's ladder (100 px = the 48 dB range, Ctrl 1000,
+    // Shift 4000), the wheel steps it (0.02 of the range a notch, Ctrl 0.005,
+    // Shift 0.002), double-click and right-click return it to 0 dB. mx/my are
+    // the cached cursor on a wheel frame (above). The vertical-arrows cursor
+    // says the meter can be dragged; the value shows under a VU-only meter a
+    // moment (gk_gain_set).
+    gk_mrx = gk_fl ? gk_s : gk_x(gk_vx); gk_mrw = gk_fl ? gk_w - 2 * gk_s : gk_vw * gk_s;
+    gk_mhov = mx >= gk_mrx && mx < gk_mrx + gk_mrw && my >= gk_y(gk_vy) && my < gk_y(gk_vy) + gk_vh * gk_s;
+    gk_mhov ? ( emb_widget_active = 1; gfx_setcursor(32645); );
+    gk_mhov && rmb_down ? ( gk_gain_set(0); rmb_down = 0; );
+    gk_mhov && lmb_down ? (
+      timer - gk_mclk < RK_DBLCLICK_T ? ( gk_gain_set(0); gk_mdrag = 0; gk_mclk = 0; )
+                                      : ( gk_mdrag = 1; gk_mdy = my; gk_mclk = timer; gk_gflash = timer; );
+      lmb_down = 0;
+    );
+    gk_mdrag ? (
+      LMB ? (
+        emb_widget_active = 1;
+        gk_gain_set(slider7 + (gk_mdy - my) * 48 / (CTRL ? 1000 : SHIFT ? 4000 : 100));
+        gk_mdy = my;
+      ) : gk_mdrag = 0;
+    );
+    gk_mhov && frame_wheel != 0 ? (
+      gk_gain_set(slider7 + frame_wheel * 48 * (CTRL ? 0.005 : SHIFT ? 0.002 : 0.02));
+      frame_wheel = 0;
+    );
     mouse_wheel = 0;
     gk_vu_corner();                        // it decides for itself whether it fits
   );
@@ -1048,9 +1190,17 @@ is_embedded ? (
   rk_link_draw_badge(gk_x(gk_bx), gk_y(gk_by), gk_bsp, 0.00, 0.70, 0.85, mx, my, lmb_down);
   rk_link_on_gfx_change();
 
-  // The typed name, under the VU view's meter: not a control, so a click on it
-  // opens the window like any dead space (house rule 2), where it is typed.
-  ct_strip_view == 2 && strlen(#gk_name) > 0 ? gk_name_strip(gk_y(70), gk_h - gk_s);
+  // The VU view's name row, ABOVE the meter (under the colour bar): the typed
+  // name, or the GAIN for 1.5 s after a drag or the wheel set it. With no name
+  // the gain prints under the meter instead, whenever it is not 0 or was just
+  // set, so the meter never moves. Neither row is a control: a click there
+  // opens the window like any dead space (house rule 2), where the name is typed.
+  ct_strip_view == 2 ? (
+    gk_gshow = timer - gk_gflash < 1.5 || (abs(slider7) >= 0.05 && strlen(#gk_dname) == 0);
+    gk_nt > 0 ? (
+      gk_gshow ? gk_gain_strip(2 * gk_s, gk_y(gk_nt)) : gk_name_strip(2 * gk_s, gk_y(gk_nt));
+    ) : gk_gshow ? gk_gain_strip(gk_y(70), gk_h - gk_s);
+  );
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
@@ -1081,12 +1231,17 @@ is_embedded ? (
   // ── Header: title, THEME cluster, link gear + badge ──────────────────────
   hdr_h = 26 * ret;
   gk_bg(1, 1, 0.26, 0.28, 0.31); gfx_rect(0, 0, WIN_W, hdr_h);
-  gfx_set(0.15, 0.16, 0.19, 1); gfx_rect(0, hdr_h - 1, WIN_W, 1);
+  // GainKit Plus: the header's rule takes the track's colour, 2 px; the track
+  // icon sits before the title.
+  gk_pl_col > 0 ? ( gk_plus_col(); gfx_rect(0, hdr_h - 2 * ret, WIN_W, 2 * ret); )
+                : ( gfx_set(0.15, 0.16, 0.19, 1); gfx_rect(0, hdr_h - 1, WIN_W, 1); );
+  gk_hx = 8 * ret;
+  gk_icon_ok ? ( gk_plus_icon(gk_hx, (hdr_h - 16 * ret) * 0.5, 16 * ret); gk_hx += 16 * ret + 6 * ret; );
   gfx_setfont(1, "Arial", floor(12 * ret), 'b');
   gk_ink(2, 1, 0.85, 0.88, 0.90);
   gfx_measurestr("GAINKIT", tw, th);
-  gfx_x = 8 * ret; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("GAINKIT");
-  gk_hx = 8 * ret + tw + 6 * ret;
+  gfx_x = gk_hx; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("GAINKIT");
+  gk_hx += tw + 6 * ret;
   gfx_setfont(1, "Arial", floor(10 * ret), 0);
   gk_ink(3, 1, 0.38, 0.42, 0.47);
   gfx_measurestr("ReaKit", tw, th);
@@ -1106,6 +1261,7 @@ is_embedded ? (
   // KNOB (the knob alone); NUMBERS row: the strip meter's numerals or ticks only.
   rkth_stripview(ct_strip_view);
   rkth_numbers(ct_strip_nums);
+  rkth_namefont(ct_name_font);         // FONT row: the name's face (slider21)
   rkth_cluster_hdr(gk_hx, (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) * 0.5, 1, zm_theme);
   rkth_nb_pick >= 0 ? (
     ct_name_bar = rkth_nb_pick; slider_automate(ct_name_bar); rkth_nb_pick = -1;
@@ -1115,6 +1271,9 @@ is_embedded ? (
   );
   rkth_nu_pick >= 0 ? (
     ct_strip_nums = rkth_nu_pick; slider_automate(ct_strip_nums); rkth_nu_pick = -1;
+  );
+  rkth_nf_pick >= 0 ? (
+    ct_name_font = rkth_nf_pick; slider_automate(ct_name_font); rkth_nf_pick = -1;
   );
   ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // NATIVE persists (@slider restores it)
   rkth_vu_pick >= 0 ? ( zm_theme = rkth_vu_pick; rkth_vu_pick = -1; );
@@ -1156,7 +1315,7 @@ is_embedded ? (
   vu_ct.rk_vu_set_flat(0);                       // ...on the 1.6:1 face
   // The typed name is the face's label (rk_vu fits it inside the ticks and
   // draws it under the needle); while it is being typed, gk_name_face's box.
-  vu_ct.rk_vu_draw(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph, 0, -1, gk_ne_on ? "" : #gk_name);
+  vu_ct.rk_vu_draw(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph, 0, -1, gk_ne_on ? "" : #gk_dname);
   !gk_ro ? gk_vu_corner();
   gk_name_face();
   ct_vu_drawn = 1;                         // for the picker at end of frame
