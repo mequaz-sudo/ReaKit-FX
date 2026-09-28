@@ -5,7 +5,7 @@ Five free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and GainKit, EON's own gain-staging plugin. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
-![ReaKit FX](screenshots/hero.png)
+![ReaKit FX](screenshots/session/hero.png)
 
 *A session on the suite's SSL theme. The four strips on the left are GainKit's four faces for a
 mixer strip — the knob alone, the VU over the knob, the same with MONO on, and the VU alone with a
@@ -17,9 +17,9 @@ it.*
 
 ### GainKit
 
-![GainKit](screenshots/gainkit.png)
+![GainKit](screenshots/session/gainkit.png)
 
-![GainKit's four strip faces, with the other plugins' strips](screenshots/mixer.png)
+![GainKit's four strip faces, with the other plugins' strips](screenshots/session/mixer.png)
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
 faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
@@ -30,14 +30,14 @@ parameters, so old projects sound the same.
 
 ### Saturation
 
-![Saturation](screenshots/saturation.png)
+![Saturation](screenshots/session/saturation.png)
 
 LOSER's saturation: one DRIVE knob, a transfer display that shows what the drive is doing to the
 signal, and an output meter. The LED bypasses it.
 
 ### 3-Band EQ
 
-![3-Band EQ](screenshots/3bandeq.png)
+![3-Band EQ](screenshots/session/3bandeq.png)
 
 LOSER's three-band equalizer: low, mid and high gain with the two crossover frequencies, an output
 level, and a switch per band. The standalone window draws everything at one scale, so a wider
@@ -45,7 +45,7 @@ window gets bigger knobs, not more empty space.
 
 ### DDC
 
-![DDC](screenshots/ddc.png)
+![DDC](screenshots/session/ddc.png)
 
 LOSER's Digital Drum Compressor: threshold, ratio, attack, hold and release, knee, mix, a
 sidechain high-pass, stereo link, lookahead, RMS or peak detection, feed-forward, feedback or an
@@ -53,7 +53,7 @@ external sidechain, auto makeup, oversampling, and a gain-reduction meter.
 
 ### De-Esser
 
-![De-Esser](screenshots/deesser.png)
+![De-Esser](screenshots/session/deesser.png)
 
 Built on Liteon's de-esser: threshold, frequency, bandwidth, ratio and lookahead, a fast time
 setting, a band-pass target instead of the broadband one, and a switch to monitor the sidechain.
