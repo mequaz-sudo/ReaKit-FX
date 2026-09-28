@@ -29,6 +29,7 @@ slider1:0<0,100,1>-Drive (%)
 slider2:1<0,1,1>-Drive Enable
 slider3:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider4:sat_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+slider5:sat_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
 
 in_pin:left input
 in_pin:right input
@@ -113,6 +114,7 @@ file_var(0, rk_ps_inited);
 @slider
 recalc_dsp();
 rk_link_on_slider();
+rkth_local_off = sat_native;   // NATIVE restored (rk_theme's hidden-slider pattern)
 
 @block
 srate != sat_srate_seen ? ( sat_srate_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
@@ -175,8 +177,12 @@ rk_ps_active ? meter_process_sample(spl0, spl1);
 gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKitSaturation; follow when live.
 rk_theme_apply();
-sk_kp = (gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
-gmem[GS_THEME_ID] > 0 ? (
+// rkth_active(), not a raw gmem[GS_THEME_ID] test: false when THIS instance
+// picked NATIVE on its THEME panel (the raw test left the background, the text
+// and the knob style themed under native knob colours, 2026-09-28).
+sat_theme_on = rkth_active();
+sk_kp = (sat_theme_on && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+sat_theme_on ? (
   drv_cr=gmem[GS_THEME_BASE+12]; drv_cg=gmem[GS_THEME_BASE+13]; drv_cb=gmem[GS_THEME_BASE+14]; // ACCENT
   drv_lr=gmem[GS_THEME_BASE+15]; drv_lg=gmem[GS_THEME_BASE+16]; drv_lb=gmem[GS_THEME_BASE+17]; // ACCENT2
   _th_bg_r=gmem[GS_THEME_BASE]; _th_bg_g=gmem[GS_THEME_BASE+1]; _th_bg_b=gmem[GS_THEME_BASE+2]; // BG
@@ -371,6 +377,7 @@ gfx_ext_flags & 1 ? (
   rkth_nb_pick >= 0 ? (
     sat_name_bar = rkth_nb_pick; slider_automate(sat_name_bar); rkth_nb_pick = -1;
   );
+  sat_native != rkth_local_off ? ( sat_native = rkth_local_off; slider_automate(sat_native); );   // NATIVE persists
 
   // ── Gear + Link badge (header right) ──
   rk_gear_r = max(5 * ret, hdr_h * 0.20);

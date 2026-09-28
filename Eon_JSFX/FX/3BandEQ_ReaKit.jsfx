@@ -43,6 +43,7 @@ slider9:1<0,1,1>-High Enable
 slider10:1<0,1,1>-Output Enable
 slider11:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider12:eq3_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+slider13:eq3_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
 
 in_pin:left input
 in_pin:right input
@@ -142,6 +143,7 @@ file_var(0, rk_ps_inited);
 @slider
 recalc_gains();
 rk_link_on_slider();
+rkth_local_off = eq3_native;   // NATIVE restored (rk_theme's hidden-slider pattern)
 
 @block
 rk_link_pull();
@@ -184,8 +186,14 @@ gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKit3BEQ; follow the theme's bg +
 // knob STYLE. Per-band cap colours stay semantic (low=blue/mid=green/high=red).
 rk_theme_apply();
-sk_kp = (gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
-gmem[GS_THEME_ID] > 0 ? (
+// rkth_active(), not a raw gmem[GS_THEME_ID] test: false when THIS instance
+// picked NATIVE on its THEME panel (rkth_local_off). The raw test kept the
+// background, the text and the knob style themed while rk_theme_apply had
+// already turned the knob and button colours native -- the half-native look
+// the user called "acting buggy" (2026-09-28). GainKit's pattern.
+eq3_theme_on = rkth_active();
+sk_kp = (eq3_theme_on && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+eq3_theme_on ? (
   _th_bg_r=gmem[GS_THEME_BASE]; _th_bg_g=gmem[GS_THEME_BASE+1]; _th_bg_b=gmem[GS_THEME_BASE+2];
   _th_tx_r=gmem[GS_THEME_BASE+6]; _th_tx_g=gmem[GS_THEME_BASE+7]; _th_tx_b=gmem[GS_THEME_BASE+8]; // TEXT
   _th_td_r=gmem[GS_THEME_BASE+9]; _th_td_g=gmem[GS_THEME_BASE+10]; _th_td_b=gmem[GS_THEME_BASE+11]; // TEXT_DIM
@@ -438,6 +446,7 @@ gfx_ext_flags & 1 ? (
   rkth_nb_pick >= 0 ? (
     eq3_name_bar = rkth_nb_pick; slider_automate(eq3_name_bar); rkth_nb_pick = -1;
   );
+  eq3_native != rkth_local_off ? ( eq3_native = rkth_local_off; slider_automate(eq3_native); );   // NATIVE persists (@slider restores it)
 
   // ── Gear + Link badge (header right) ──
   rk_gear_r = max(5*ret, hdr_h * 0.20);
