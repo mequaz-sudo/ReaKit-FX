@@ -7,15 +7,19 @@ code, no image files, so it scales to any size and renders at full resolution on
 
 ![ReaKit FX](screenshots/hero.png)
 
-*The five embedded in a mixer at the default strip width, GainKit's window and the De-Esser's, on
-the suite's FL Studio theme. Click a strip's empty space to open the window, click the strip again
-to close it.*
+*A session on the suite's SSL theme. The four strips on the left are GainKit's four faces for a
+mixer strip — the knob alone, the VU over the knob, the same with MONO on, and the VU alone with a
+name typed on it — with Saturation, 3-Band EQ and DDC embedded under them; then GainKit's, 3-Band's
+and DDC's windows. Click a strip's empty space to open the window, click the strip again to close
+it.*
 
 ## The plugins
 
 ### GainKit
 
 ![GainKit](screenshots/gainkit.png)
+
+![GainKit's four strip faces, with the other plugins' strips](screenshots/mixer.png)
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
 faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
@@ -103,6 +107,7 @@ The `ReaKit/` folder is a copy of the ReaKit library the plugins import (`import
 the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
-*The screenshots are a script's: a sandbox REAPER at 100 % publishes a suite theme the way the
-bridge does, feeds the plugins a tone, opens each window and embeds the five in a mixer, and the
-pictures are cropped to the plugin's canvas. Every pixel is the plugin drawing itself.*
+*The cover, the strips and the GainKit, 3-Band and DDC windows are cut from one screenshot of a
+working session. The Saturation and De-Esser windows and the four-theme strip are a script's: a
+sandbox REAPER at 100 % publishes a suite theme the way the bridge does, feeds the plugin a tone,
+opens the window and crops to its canvas. Every pixel is the plugin drawing itself.*
