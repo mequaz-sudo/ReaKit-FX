@@ -19,6 +19,12 @@ again to close it; drag the meter to set the gain.*
 
 ![GainKit](screenshots/session/gainkit.png)
 
+![GainKit's strip faces on four channels](screenshots/session/gainkit_faces.png)
+
+*GainKit's faces for a mixer strip, on four channels: the knob alone (Lead Vox, Gtr DI), the VU
+alone with the track's name over it (BG Vox), and the VU over the knob (Gtr Amp). Saturation sits
+under each.*
+
 ![GainKit on four buses and the master](screenshots/session/gainkit_buses.png)
 
 *Four buses and the master: the VU alone with the name over it, each bus on its own meter face,
