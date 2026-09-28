@@ -1,6 +1,9 @@
-# ReaKit Free FX — licence
+# ReaKit FX — licence
 
-Four effects: **Saturation**, **3-Band EQ**, **DDC** and **De-Esser**. Their
+Five effects. **GainKit** is EON Studios' own code, gain staging on a VU, and is
+released under the MIT licence (`LICENSE` at the root of this repository).
+
+The other four, **Saturation**, **3-Band EQ**, **DDC** and **De-Esser**: their
 sound is other people's code, released free with REAPER, and each plugin file
 keeps its author's original header:
 
@@ -19,6 +22,8 @@ They gave these away, so they are free here too, and both authors stay credited
 in the plugins' own interfaces. EON Studios added the interfaces.
 
 The libraries in `ReaKit/` are EON Studios code under the MIT licence — see
-`LICENSE` at the root of this repository. `buttons_kbsg`, `knobs_kbsg` and
-`meters_kbsg` are the same files as the ReaKit library package; the style
-credits for them are in `THIRD_PARTY_CREDITS.md`.
+`LICENSE` at the root of this repository. They are the same files as the ReaKit
+library package (`buttons_kbsg`, `knobs_kbsg`, `meters_kbsg`, `sliders_kbsg`,
+`rk_vu`, `rk_theme`, `rk_gmem_link`, `rk_playstate`, `oversample_kbsg`,
+`smooth_kbsg`, `utils_kbsg`); the style credits for them are in
+`THIRD_PARTY_CREDITS.md`.

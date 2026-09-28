@@ -1,0 +1,1229 @@
+desc:EON: GainKit
+// EON Studios ReaKit — GainKit: gain staging on a VU
+// DSP: HP/LP 4th-order Butterworth, L/R trim, gain, mono/MS format
+// VU: rk_vu, one mono needle fed (L+R)/2 (the ReaKit house meter)
+// GUI (2.2.0): the VU, one GAIN knob and a STEREO / MONO key, all sized from
+//   ONE scale. The TCP/MCP strip shows the VU over the knob, the VU alone, or
+//   the knob alone (the THEME panel's STRIP row, slider18), its VU with numbers
+//   or ticks only (the NUMBERS row, slider19). A mixer strip dragged wider
+//   keeps that stack, and its VU grows with the width, flatter as it goes
+//   (rk_vu_set_flat). The window's VU always has its numbers.
+//   HP, LP, the L/R trims and M/S encode/decode are parameters only now:
+//   the DSP and every slider are unchanged, so an old project sounds the
+//   same, and any of them set away from its default shows as a badge.
+//   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
+//   badge reset or a MONO press mid-play cannot tick.
+// Version: 2.2.0
+
+slider1:20<20,20000,1>-HP Freq (Hz)
+slider2:20000<20,20000,1>-LP Freq (Hz)
+slider3:0<-12,12,0.1>-L Trim (dB)
+slider4:0<-12,12,0.1>-R Trim (dB)
+slider7:0<-24,24,0.1>-Gain (dB)
+// Names and enum fixed 2.2.0, values untouched: the baseline line read
+// {Stereo,Mono,ST}>-MS,MS>ST}>Format, so REAPER listed the parameter as
+// "MS,MS>ST}>Format" with no name for value 3.
+slider12:0<0,3,1{Stereo,Mono,Stereo to M/S,M/S to Stereo}>-Format
+slider15:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
+slider16:0<0,1000000,1>-Embedded view dirty counter (hidden)
+slider17:ct_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+slider18:ct_strip_view=0<0,2,1{Meter,Knob,VU}>-Strip view (internal; the THEME panel's STRIP row: 0 = VU + knob, 1 = the knob alone, 2 = the VU alone; persists via FX chunk)
+slider19:ct_strip_nums=0<0,1,1{Shown,Hidden}>-Strip numbers (internal; the THEME panel's NUMBERS row: 1 = the strip's VU shows ticks only; persists via FX chunk)
+slider20:ct_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+
+options:gfx_hz=60
+options:no_meter
+options:gmem=Swing_Media_Transfer
+// want_all_kb (2026-09-28, the typed name; the user: "take the entire
+// keyboard"): NOT a hard grab. It pre-checks the per-instance "Send all keyboard
+// input to plug-in" FX-menu toggle on a fresh insert (wiki 6.1), so SPACE types
+// into the name box instead of starting the transport. An instance from before
+// keeps its saved state: flip that toggle, or re-insert.
+options:want_all_kb
+
+import ../../ReaKit/utils_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/buttons_kbsg.jsfx-inc
+import ../../ReaKit/sliders_kbsg.jsfx-inc
+import ../../ReaKit/meters_kbsg.jsfx-inc
+import ../../ReaKit/rk_vu.jsfx-inc
+import ../../ReaKit/rk_playstate.jsfx-inc
+import ../../ReaKit/rk_gmem_link.jsfx-inc
+import ../../ReaKit/rk_theme.jsfx-inc
+
+@init
+
+tau = 2 * $pi;
+cDenorm = pow(10,-30);
+KS = 16; BS = 8;
+
+// ── Memory layout ──────────────────────────────────────────────────────────
+// Base kept at 500 from the vu_kbsg days (it squatted 0-437; rk_vu claims
+// nothing) so nothing below moves.
+freemem = 500;
+freemem += 4 * KS;                   // spare since 2.2.0 (the HP/LP fader slots), kept so nothing below moves
+km = freemem; freemem += 7 * KS;     // knob slots: GAIN @4 (window), GAIN @6 (strip); the rest spare since 2.2.0
+bm = freemem; freemem += 9 * BS;     // button slots: MONO @5 (window), MONO @6 (strip); the rest spare
+meter_init(freemem); freemem += 1380; // must match memset size in meter_init() — meters_kbsg.jsfx-inc
+// Appearance LOCK snapshot (rk_theme.jsfx-inc). The lib CANNOT claim this
+// itself: imports run before this @init body, so its claim would be wiped by
+// the `freemem = 500` above and the same addresses handed out twice. Host owns
+// allocation, same as delay_init/meter_init. Without this call the lib leaves
+// rkth_lk_ok = 0 and the LOCK row simply does not appear.
+freemem = rkth_lock_mem(freemem);
+// The VU needle: rk_vu, the ReaKit house meter (clean-room, 300 ms movement),
+// one mono instance fed (L+R)/2, 0 VU at -18 dBFS.
+vu_ct.rk_vu_init(-18);
+
+// ── EON "One Rack" theme listener ────────────────────────────────────────
+// Reads the unified theme band the Swing bridge publishes into the shared
+// Swing_Media_Transfer gmem (slots 2649..2696). gmem[GS_THEME_ID]==0 → bridge
+// idle → keep the hardcoded EON colours. Band = 8 semantic colours x3 floats
+// (0 BG,1 PANEL,2 TEXT,3 TEXT_DIM,4 ACCENT,5 ACCENT2,6 GRID,7 BORDER). Only
+// STRUCTURAL colours are themed; functional ones (VU face, knob/HP-LP hues,
+// link badge) stay hardcoded. Mirrors EON_Drum_Strip.jsfx / EON_StepSeq.jsfx.
+GS_THEME_ID = 2649; GS_THEME_BASE = 2650; GS_THEME_KNOB_P = 2676;
+// rkth_band(), not raw gmem: this is the path almost the whole face paints
+// through, so a raw read here is exactly what made LOCK look like it did
+// nothing — the instance kept re-skinning with the suite.
+function setcolor_band(slot, a, mul) (
+  gfx_r = rkth_band(slot * 3    ) * mul;
+  gfx_g = rkth_band(slot * 3 + 1) * mul;
+  gfx_b = rkth_band(slot * 3 + 2) * mul;
+  gfx_a = a / 255;
+);
+// Themed background fill: themed slot*mul when the bridge is live, else the
+// plugin's own (fr,fg,fb). theme_on is set each @gfx frame.
+function gk_bg(slot, mul, fr, fg, fb) (
+  theme_on ? setcolor_band(slot, 255, mul) : gfx_set(fr, fg, fb, 1);
+);
+// Themed ink/text: (slot, alpha 0..1, fallback r,g,b).
+function gk_ink(slot, a, fr, fg, fb) (
+  theme_on ? setcolor_band(slot, a * 255, 1) : gfx_set(fr, fg, fb, a);
+);
+// VU meter case colour = panel background so the rectangular meter frame is
+// invisible (themed BG when the bridge is live, else the hardcoded panel).
+// Mirrors the Drum Strip's "frame = window bg" trick.
+function gk_frame_bg() (
+  theme_on ? rk_vu_pal_rgb(2, rkth_band(0), rkth_band(1), rkth_band(2))
+           : rk_vu_pal_rgb(2, 0.22, 0.24, 0.27);
+);
+
+// ── The 2.2.0 face ───────────────────────────────────────────────────────
+// Every layout is a design drawn at 1x; gk_x/gk_y place a design coordinate
+// and every size is multiplied by gk_s, so a face grows and shrinks as ONE
+// block and nothing drifts or collides at any window size.
+function gk_x(q) ( gk_ox + q * gk_s; );
+function gk_y(q) ( gk_oy + q * gk_s; );
+
+// The gain as text into #gk_gv, "+2.5 dB" (with_db = 0: "+2.5").
+function gk_gain_str(with_db) local(v) (
+  v = floor(slider7 * 10 + 0.5) / 10;
+  v == 0 ? v = 0;   // EEL2's == is fuzzy: -0.0 and near-zero print as +0.0
+  with_db ? sprintf(#gk_gv, "%+.1f dB", v) : sprintf(#gk_gv, "%+.1f", v);
+);
+
+// The weight for text with DIGITS in it at drawn size fs: bold from 10 px.
+// REAPER draws Arial bold at 8 and 9 px with the "5" closed into a "6" (a
+// "+5.0" read "+6.0"); regular is right at every size (rk_vu's RKVU_BOLD).
+function gk_wt(fs) ( fs >= 10 ? 'b' : 0; );
+
+// The GAIN knob's printed scale in the current colour: nine ticks every 6 dB
+// over the 260-degree sweep all the knob styles share, numerals at -24 -12 0
+// +12 +24 once they are big enough to read. Styles that print their own
+// ticks (Neve 5 and 20, Pultec 12 and 19) keep theirs and get the numerals
+// only; the encoder (11) wears an LED ring out to 1.38r and gets neither.
+function gk_legend(cx, cy, r) local(i, a, r2, fs, tw, th, d) (
+  sk_kp != 11 ? (
+    !(sk_kp == 5 || sk_kp == 12 || sk_kp == 19 || sk_kp == 20) ? (
+      i = 0;
+      loop(9,
+        a = (i * 32.5 - 130) * $pi / 180;
+        r2 = r * ((i & 1) ? 1.17 : 1.22);
+        gfx_line(cx + sin(a) * r * 1.10, cy - cos(a) * r * 1.10,
+                 cx + sin(a) * r2, cy - cos(a) * r2, 1);
+        i += 1;
+      );
+    );
+    fs = floor(r * 0.24);
+    fs >= 7 * max(1, gfx_ext_retina) ? (
+      gfx_setfont(1, "Arial", fs, 0);
+      i = 0;
+      loop(5,
+        d = i * 12 - 24;
+        a = (i * 65 - 130) * $pi / 180;
+        d > 0 ? sprintf(#gk_lg, "+%d", d) : sprintf(#gk_lg, "%d", d);
+        gfx_measurestr(#gk_lg, tw, th);
+        gfx_x = cx + sin(a) * r * 1.40 - tw * 0.5;
+        gfx_y = cy - cos(a) * r * 1.40 - th * 0.5;
+        gfx_drawstr(#gk_lg);
+        i += 1;
+      );
+    );
+  );
+);
+
+// The Format key: it names the format in use, STEREO or MONO (the user,
+// 2026-09-27: "make the label accurate. Stereo or mono vs a mono on and off"),
+// or M/S / S/M while a hidden M/S mode is set (its badge says so too). A press
+// toggles slider12 0 <-> 1; from M/S (2 or 3) it lands on MONO. MONO keeps the
+// lit cyan, so a mono track still stands out down a mixer. Every label is set
+// at ONE size, the largest at which STEREO fits the key (never over fs, never
+// under 6 px x the DPI hint), so the text does not jump when it changes.
+// Returns the hover, so the embed can keep this click away from 0x200.
+function gk_mono_btn(mem, x, y, w, h, fs) local(hov, on, ht, tw, th, f) (
+  hov = mx >= x && mx <= x + w && my >= y && my <= y + h;
+  mem[0] = hov ? min(mem[0] + dt * hv_speed, 1) : max(mem[0] - dt * hv_speed, 0);
+  ht = mem[0] * mem[0];
+  hov && lmb_down ? (
+    slider12 = slider12 == 1 ? 0 : 1;
+    slider_automate(slider12); atomic_set(dsp_dirty, 1);
+    lmb_down = 0;
+  );
+  on = slider12 == 1;
+  on ? gfx_set(0.00, 0.70, 0.85, 1)
+     : gfx_set(min(1, btn_body_hi_r + 0.06 * ht), min(1, btn_body_hi_g + 0.06 * ht),
+               min(1, btn_body_hi_b + 0.06 * ht), 1);
+  gfx_rect(x, y, w, h);
+  gk_ink(7, 0.55 + 0.35 * ht, 0.45, 0.45, 0.48);
+  gfx_rect(x, y, w, h, 0);
+  f = fs;
+  gfx_setfont(1, "Arial", f, 'b');
+  gfx_measurestr("STEREO", tw, th);
+  while (f > 6 * max(1, gfx_ext_retina) && tw > w - 4 * max(1, gfx_ext_retina)) (
+    f -= 1;
+    gfx_setfont(1, "Arial", f, 'b');
+    gfx_measurestr("STEREO", tw, th);
+  );
+  on ? gfx_set(0.02, 0.10, 0.12, 1) : gk_ink(2, 0.80 + 0.20 * ht, 0.80, 0.83, 0.86);
+  slider12 == 0 ? strcpy(#gk_fk, "STEREO") : slider12 == 1 ? strcpy(#gk_fk, "MONO") :
+  slider12 == 2 ? strcpy(#gk_fk, "M/S") : strcpy(#gk_fk, "S/M");
+  gfx_measurestr(#gk_fk, tw, th);
+  gfx_x = x + (w - tw) * 0.5; gfx_y = y + (h - th) * 0.5;
+  gfx_drawstr(#gk_fk);
+  hov;
+);
+
+// Legacy settings: the parameters the face no longer shows, set away from
+// their defaults (an old project, automation, REAPER's own parameter list).
+// The tests are the DSP's own enable tests, so a badge shows exactly when
+// the setting is changing the sound. i: 0 HP, 1 LP, 2 L trim, 3 R trim, 4 M/S.
+function gk_legacy_any() (
+  slider1 > 21 || slider2 < 19999 || slider3 != 0 || slider4 != 0 || slider12 >= 2;
+);
+function gk_legacy_label(i) (
+  i == 0 ? ( slider1 > 21 ? (
+    slider1 >= 1000 ? sprintf(#gk_bl, "HP %.1f kHz", slider1 / 1000) : sprintf(#gk_bl, "HP %d Hz", slider1); 1;
+  ) : 0; ) :
+  i == 1 ? ( slider2 < 19999 ? (
+    slider2 >= 1000 ? sprintf(#gk_bl, "LP %.1f kHz", slider2 / 1000) : sprintf(#gk_bl, "LP %d Hz", slider2); 1;
+  ) : 0; ) :
+  i == 2 ? ( slider3 != 0 ? ( sprintf(#gk_bl, "L TRIM %+.1f", slider3); 1; ) : 0; ) :
+  i == 3 ? ( slider4 != 0 ? ( sprintf(#gk_bl, "R TRIM %+.1f", slider4); 1; ) : 0; ) :
+           ( slider12 >= 2 ? ( strcpy(#gk_bl, slider12 == 2 ? "M/S" : "S/M"); 1; ) : 0; );
+);
+// A click on a badge puts that parameter back to its default.
+function gk_legacy_reset(i) (
+  i == 0 ? ( slider1 = 20;    slider_automate(slider1); ) :
+  i == 1 ? ( slider2 = 20000; slider_automate(slider2); ) :
+  i == 2 ? ( slider3 = 0;     slider_automate(slider3); ) :
+  i == 3 ? ( slider4 = 0;     slider_automate(slider4); ) :
+           ( slider12 = 0;    slider_automate(slider12); );
+  atomic_set(dsp_dirty, 1);
+);
+// Row width at font fs into gk_bd_tot (pill = pad, label, x, pad).
+function gk_badge_measure(fs, bh) local(i, n, tw, th) (
+  gfx_setfont(1, "Arial", fs, gk_wt(fs));
+  gfx_measurestr("×", gk_bd_xw, th);
+  gk_bd_pad = bh * 0.45; gk_bd_gap = bh * 0.40;
+  gk_bd_tot = 0; n = 0; i = 0;
+  loop(5,
+    gk_legacy_label(i) ? (
+      gfx_measurestr(#gk_bl, tw, th);
+      gk_bd_tot += tw + gk_bd_xw + gk_bd_pad * 2.8; n += 1;
+    );
+    i += 1;
+  );
+  gk_bd_tot += gk_bd_gap * max(n - 1, 0);
+);
+function gk_pill(x, y, w, h) local(r) (
+  r = h * 0.5;
+  gfx_rect(x + r, y, w - 2 * r, h);
+  gfx_circle(x + r, y + r - 0.5, r, 1, 1);
+  gfx_circle(x + w - r - 1, y + r - 0.5, r, 1, 1);
+);
+// The badge row. x is the row's centre (c = 1) or left edge; a row wider
+// than avail is set in a smaller font rather than clipped. Amber reads as
+// "look at this" on both theme families; which amber follows how bright the
+// background is (gk_bg_lum), so it can never vanish into it.
+function gk_badges(x, y, avail, bh, fs, c) local(i, tw, th, pw, x0, hov, lt) (
+  gk_legacy_any() ? (
+    gk_badge_measure(fs, bh);
+    gk_bd_tot > avail ? ( fs = max(6, floor(fs * avail / gk_bd_tot)); gk_badge_measure(fs, bh); );
+    gfx_setfont(1, "Arial", fs, gk_wt(fs));   // own it here too: the font is global state (wiki 4.3)
+    x0 = c ? x - gk_bd_tot * 0.5 : x;
+    lt = gk_bg_lum > 0.55;
+    i = 0;
+    loop(5,
+      gk_legacy_label(i) ? (
+        gfx_measurestr(#gk_bl, tw, th);
+        pw = tw + gk_bd_xw + gk_bd_pad * 2.8;
+        hov = mx >= x0 && mx <= x0 + pw && my >= y && my <= y + bh;
+        lt ? gfx_set(0.93, 0.80, 0.47, 1) : gfx_set(0.42, 0.33, 0.10, 1);
+        hov ? ( lt ? gfx_set(0.98, 0.87, 0.58, 1) : gfx_set(0.53, 0.42, 0.13, 1); );
+        gk_pill(x0, y, pw, bh);
+        lt ? gfx_set(0.29, 0.21, 0.02, 1) : gfx_set(0.97, 0.86, 0.55, 1);
+        gfx_x = x0 + gk_bd_pad; gfx_y = y + (bh - th) * 0.5;
+        gfx_drawstr(#gk_bl);
+        gfx_x = x0 + pw - gk_bd_pad - gk_bd_xw;
+        gfx_drawstr("×");
+        hov && lmb_down ? ( gk_legacy_reset(i); lmb_down = 0; );
+        x0 += pw + gk_bd_gap;
+      );
+      i += 1;
+    );
+  );
+);
+
+// The dB reading on a face too small for rk_vu's readout box: the needle's
+// VU value in the face's own ink, in the plate's LOWER-left corner, where
+// rk_vu's box sits on a big face (rkvu_fx/fy/r/cx/cy are the geometry rk_vu
+// just drew). Nothing else lives there: the numerals, the arc and the level
+// band are all higher, and the needle's rest line leans away at -50 degrees.
+// It draws only if its widest reading, "-20.0", clears that line and the
+// coil cover by 2 px — tested on the widest text, not the current one, so it
+// cannot flicker as the value changes. (It sat top-left until 2026-09-25,
+// which was clear while a strip showed four numerals; the numeral fit now
+// shows more, and the -7 landed under it.) Hidden at rest, as the 2.1 embed
+// intended. A flat face (rk_vu_set_flat, the widened stacked strip) brings the
+// scale's -20 end down beside this corner, so there it must also clear that
+// numeral's box: sit below it, or left of it. On the flattest faces it cannot,
+// and the reading is left off; the dial there carries every numeral anyway.
+function gk_vu_corner() local(sc, fs, tw, th, x, y, lx, ly, lw, lh, ok) (
+  vu_mono_db > -20.5 ? (
+    sc = max(1, gfx_ext_retina);
+    fs = floor(max(7 * sc, rkvu_r * 0.22));
+    gfx_setfont(1, "Arial", fs, gk_wt(fs));
+    gfx_measurestr("-20.0", tw, th);
+    x = rkvu_fx + rkvu_r * 0.10;
+    y = rkvu_fy + rkvu_fh - th - rkvu_r * 0.06;
+    ok = 1;
+    rkvu_flat_on && !rkvu_nonum ? (
+      lx = rkvu_cx - sin(RKVU_SWEEP * 0.5) * rkvu_ring;     // the -20's centre
+      ly = rkvu_cy - cos(RKVU_SWEEP * 0.5) * rkvu_ring;
+      lw = _rk_vu_lab_w(0, 0) * rkvu_fsz_x / RKVU_REF_F * 0.5 + RKVU_SNAP;
+      lh = rkvu_hr * rkvu_fsz_x / RKVU_REF_F * 0.5;
+      ok = y >= ly + lh + 2 * sc || x + tw + 2 * sc <= lx - lw;
+    );
+    ok && x + tw + 2 * sc <= min(rkvu_cx - max(rkvu_cy - y, 0) * 1.192,    // tan 50: the rest line
+                                 rkvu_cx - rkvu_r * 0.19) ? (             // the cover's edge
+      gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.85);
+      sprintf(#gk_vt, "%+.1f", min(vu_mono_db, 3));
+      gfx_x = x; gfx_y = y;
+      gfx_drawstr(#gk_vt);
+    );
+  );
+);
+
+// ── The typed name (2026-09-27; the user: the VU view's empty space can carry
+// a name, typed, "an option. not a default") ──────────────────────────────
+// Empty, the default, is no name. The window prints it on the meter's face,
+// where a real meter has its legend (rk_vu's label, fitted inside the ticks),
+// and that is where it is typed: click the middle of the face. The strip's VU
+// view shows it under the meter. #gk_name is saved with the project
+// (@serialize, ser_ver 2); a change is one undo step (slider16, the hidden
+// counter). Typing follows Swing's pad-name editor, proven in REAPER
+// (rk_swing_padname_edit.jsfx-inc): the window's keys only (an embed gets
+// none); Enter, a click outside, or 15 frames without the keyboard commit;
+// Esc drops the edit. SPACE arrives once the FX's "Send all keyboard input to
+// plug-in" is on (want_all_kb pre-checks it on a fresh insert, wiki 6.1); on
+// an instance from before it starts the transport instead, so "_" types a
+// space as well. All of this is @gfx-thread state.
+GK_NAME_MAX = 24;
+function gk_ne_ins(c) local(n) (
+  n = strlen(#gk_ne_buf);
+  n < GK_NAME_MAX ? (
+    gk_ne_caret = min(gk_ne_caret, n);
+    strcpy_substr(#gk_ne_t, #gk_ne_buf, 0, gk_ne_caret);
+    sprintf(#gk_ne_ch, "%c", c);
+    strcat(#gk_ne_t, #gk_ne_ch);
+    strcpy_substr(#gk_ne_u, #gk_ne_buf, gk_ne_caret, n - gk_ne_caret);
+    strcat(#gk_ne_t, #gk_ne_u);
+    strcpy(#gk_ne_buf, #gk_ne_t);
+    gk_ne_caret += 1;
+  );
+);
+function gk_ne_del(p) local(n) (
+  n = strlen(#gk_ne_buf);
+  p >= 0 && p < n ? (
+    strcpy_substr(#gk_ne_t, #gk_ne_buf, 0, p);
+    strcpy_substr(#gk_ne_u, #gk_ne_buf, p + 1, n - p - 1);
+    strcat(#gk_ne_t, #gk_ne_u);
+    strcpy(#gk_ne_buf, #gk_ne_t);
+  );
+);
+// Commit: spaces trimmed at both ends. An unchanged name just closes the box.
+function gk_ne_commit() local(n, a, b) (
+  gk_ne_on ? (
+    n = strlen(#gk_ne_buf); a = 0; b = n;
+    while (a < b && str_getchar(#gk_ne_buf, a) == 32) ( a += 1; );
+    while (b > a && str_getchar(#gk_ne_buf, b - 1) == 32) ( b -= 1; );
+    strcpy_substr(#gk_ne_t, #gk_ne_buf, a, b - a);
+    strcmp(#gk_ne_t, #gk_name) != 0 ? (
+      strcpy(#gk_name, #gk_ne_t);
+      slider16 = (slider16 + 1) % 1000000; slider_automate(slider16);   // saved, and one undo step
+    );
+    gk_ne_on = 0;
+  );
+);
+// Width of #gk_ne_buf's first k characters in the font already set.
+// ⚠️ gfx_measurestr of an EMPTY string writes nothing to its outputs, and an
+// EEL2 local keeps its value from the last call (measured 2026-09-27: the
+// width of 0 characters came back as the previous call's 92 px and the caret
+// sat before the text). So zero first, and 0 characters are 0 px.
+function gk_ne_w(k) local(w, h) (
+  w = 0; h = 0;
+  k > 0 ? ( strcpy_substr(#gk_ne_t, #gk_ne_buf, 0, k); gfx_measurestr(#gk_ne_t, w, h); );
+  w;
+);
+// The name on the window's meter: the hint and outline on hover, click to type,
+// the box while typing. Called right after the meter is drawn: rk_vu's rkvu_*
+// describe that face. The zone is where rk_vu puts its label, a radius wide.
+function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best, bd, i0, i1, wc) (
+  sc = max(1, gfx_ext_retina);
+  f  = floor(rkvu_fsz * 1.4 + 0.5);
+  zw = rkvu_r; zh = f * 1.35;
+  zx = rkvu_cx - zw * 0.5; zy = rkvu_cy - rkvu_r * 0.56 - zh * 0.5;
+  hov = mx >= zx && mx <= zx + zw && my >= zy && my <= zy + zh;
+  // The name changed under an open box (undo, a preset, the project reloaded):
+  // theirs wins, the edit is dropped (Swing's rule).
+  gk_ne_on && strcmp(#gk_name, #gk_ne_orig) != 0 ? gk_ne_on = 0;
+  !gk_ne_on ? (
+    hov && lmb_down ? (
+      strcpy(#gk_ne_buf, #gk_name); strcpy(#gk_ne_orig, #gk_name);
+      gk_ne_caret = strlen(#gk_ne_buf);
+      gk_ne_on = 1; gk_ne_unfocus = 0; gk_ne_i0 = 0; lmb_down = 0;
+    ) : hov && strlen(#gk_name) == 0 ? (
+      gfx_setfont(1, "Arial", f, gk_wt(f));            // an empty face says where a name goes
+      gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.30);
+      gfx_measurestr("NAME", tw, th);
+      gfx_x = rkvu_cx - tw * 0.5; gfx_y = zy + (zh - th) * 0.5;
+      gfx_drawstr("NAME");
+    ) : hov ? (
+      gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.25);  // a named face shows it can be changed
+      gfx_rect(zx, zy, zw, zh, 0);
+    );
+  ) : (
+    (gfx_getchar(65536) & 2) ? gk_ne_unfocus = 0 : gk_ne_unfocus += 1;
+    gk_ne_unfocus > 15 ? gk_ne_commit();
+    // A click inside places the caret (at the glyph edge nearest the pointer,
+    // against last frame's layout); outside, it commits and still lands.
+    gk_ne_on && lmb_down ? (
+      hov ? (
+        gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f));
+        n = strlen(#gk_ne_buf); i = gk_ne_i0; best = n; bd = 1000000;
+        loop(n - gk_ne_i0 + 1,
+          wc = gk_ne_x0 + gk_ne_w(i) - gk_ne_w(gk_ne_i0);
+          abs(wc - mx) < bd ? ( bd = abs(wc - mx); best = i; );
+          i += 1;
+        );
+        gk_ne_caret = best; lmb_down = 0;
+      ) : gk_ne_commit();
+    );
+    // Keys: this frame's first (taken at the top of @gfx), then the queue.
+    c = gk_ne_c0; n = 0;
+    while (gk_ne_on && c > 0 && n < 64) (
+      c == 13 ? (
+        gk_ne_commit();
+      ) : c == 27 ? (
+        gk_ne_on = 0;
+      ) : c == 8 ? (
+        gk_ne_caret > 0 ? ( gk_ne_del(gk_ne_caret - 1); gk_ne_caret -= 1; );
+      ) : c == 'left' ? (
+        gk_ne_caret > 0 ? gk_ne_caret -= 1;
+      ) : c == 'rght' ? (
+        gk_ne_caret < strlen(#gk_ne_buf) ? gk_ne_caret += 1;
+      ) : c == 'home' ? (
+        gk_ne_caret = 0;
+      ) : c == 'end' ? (
+        gk_ne_caret = strlen(#gk_ne_buf);
+      ) : c == 'del' ? (
+        gk_ne_del(gk_ne_caret);
+      ) : c == 95 ? (
+        gk_ne_ins(32);
+      ) : c >= 32 && c <= 126 ? (
+        gk_ne_ins(c);
+      );
+      n += 1;
+      c = gk_ne_on ? gfx_getchar() : 0;
+    );
+    gk_ne_c0 = 0;
+    // The box: a clean field on the plate, rk_vu's label size, smaller to fit
+    // (never under 7 px), and past that a window onto the text that keeps the
+    // caret in view.
+    gk_ne_on ? (
+      gfx_set(rkvu_pl_r, rkvu_pl_g, rkvu_pl_b, 1); gfx_rect(zx, zy, zw, zh);
+      gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.55); gfx_rect(zx, zy, zw, zh, 0);
+      gk_ne_f = f;
+      tw = 0; th = 0;                                    // an empty box measures nothing (gk_ne_w)
+      gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
+      while (tw > zw - 6 * sc && gk_ne_f > 7 * sc) (
+        gk_ne_f -= 1;
+        gfx_setfont(1, "Arial", gk_ne_f, gk_wt(gk_ne_f)); gfx_measurestr(#gk_ne_buf, tw, th);
+      );
+      n = strlen(#gk_ne_buf);
+      tw <= zw - 6 * sc ? (
+        gk_ne_i0 = 0; i1 = n; gk_ne_x0 = rkvu_cx - tw * 0.5;
+      ) : (
+        gk_ne_i0 = min(gk_ne_i0, gk_ne_caret);
+        while (gk_ne_w(gk_ne_caret) - gk_ne_w(gk_ne_i0) > zw - 6 * sc) ( gk_ne_i0 += 1; );
+        i1 = gk_ne_i0;
+        while (i1 < n && gk_ne_w(i1 + 1) - gk_ne_w(gk_ne_i0) <= zw - 6 * sc) ( i1 += 1; );
+        gk_ne_x0 = zx + 3 * sc;
+      );
+      strcpy_substr(#gk_ne_v, #gk_ne_buf, gk_ne_i0, i1 - gk_ne_i0);
+      tw = 0; th = 0;
+      gfx_measurestr(#gk_ne_v, tw, th);
+      gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 1);
+      gfx_x = gk_ne_x0; gfx_y = zy + (zh - th) * 0.5;
+      gfx_drawstr(#gk_ne_v);
+      (time_precise() * 2 | 0) & 1 ? (                  // the caret, blinking
+        wc = gk_ne_x0 + gk_ne_w(gk_ne_caret) - gk_ne_w(gk_ne_i0);
+        gfx_line(wc, zy + zh * 0.2, wc, zy + zh * 0.8, 0);
+      );
+    );
+  );
+);
+// The name under the strip's VU view meter: the rest of the slot, its full
+// width, as large as fits up to 16 px, down to 7, then cut with "..".
+function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
+  sc = max(1, gfx_ext_retina);
+  bh = y1 - y0;
+  f = floor(min(bh * 0.62, 16 * sc));
+  f >= 7 * sc ? (
+    gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_name, tw, th);
+    while (tw > gk_w - 6 * sc && f > 7 * sc) (
+      f -= 1; gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_name, tw, th);
+    );
+    strcpy(#gk_nm_s, #gk_name);
+    n = strlen(#gk_name);
+    while (n > 1 && tw > gk_w - 6 * sc) (
+      n -= 1; strcpy_substr(#gk_nm_s, #gk_name, 0, n); strcat(#gk_nm_s, "..");
+      gfx_measurestr(#gk_nm_s, tw, th);
+    );
+    gk_ink(2, 1, 0.85, 0.88, 0.90);
+    gfx_x = (gk_w - tw) * 0.5; gfx_y = y0 + (bh - th) * 0.5;
+    gfx_drawstr(#gk_nm_s);
+  );
+);
+
+// ── HP filter state (2 cascaded stages × 2 channels) ──────────────────────
+hp_x1l_s1 = hp_x2l_s1 = hp_y1l_s1 = hp_y2l_s1 = 0;
+hp_x1l_s2 = hp_x2l_s2 = hp_y1l_s2 = hp_y2l_s2 = 0;
+hp_x1r_s1 = hp_x2r_s1 = hp_y1r_s1 = hp_y2r_s1 = 0;
+hp_x1r_s2 = hp_x2r_s2 = hp_y1r_s2 = hp_y2r_s2 = 0;
+
+// ── LP filter state (2 cascaded stages × 2 channels) ──────────────────────
+lp_x1l_s1 = lp_x2l_s1 = lp_y1l_s1 = lp_y2l_s1 = 0;
+lp_x1l_s2 = lp_x2l_s2 = lp_y1l_s2 = lp_y2l_s2 = 0;
+lp_x1r_s1 = lp_x2r_s1 = lp_y1r_s1 = lp_y2r_s1 = 0;
+lp_x1r_s2 = lp_x2r_s2 = lp_y1r_s2 = lp_y2r_s2 = 0;
+
+// ── Smoothing state (1-pole, ~5ms) ────────────────────────────────────
+sm_trim_l = 1; sm_trim_r = 1;
+sm_outgain = 1;
+sm_alpha = 0;
+
+dsp_dirty = 0;
+snap_params = 1;
+ext_tail_size = -2;  // let REAPER auto-detect tail (IIR filters settle in ms)
+gfx_ext_retina = 1;
+// Render the embedded UI without REAPER's frame/title-bar decoration
+// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
+gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
+// 0x100 now follows the THEME panel's NAME BAR row (slider17), default
+// 0 = borderless, house rule 1 unchanged. REAPER documents 0x100 as an
+// @init decision, so it is applied HERE from the restored value; the
+// re-apply in the @gfx tail is what makes the row take effect without a
+// reload (measured both ways on 7.79 and 7.80).
+// ⚠️INVERTED SENSE: the row ON (bar SHOWN) means 0x100 CLEARED.
+ct_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+
+rk_ps_init(200);
+rk_link_init(15, 15, freemem);
+// We now share Swing's gmem (for the One-Rack theme band) — relocate the
+// link-group blocks WELL above Swing's reserved bands (its highest is ~26.17M)
+// so they never collide with the kit header / per-pad meta. Region = [base..base+1027].
+rk_link_set_base(27000000);
+rk_link_exclude(15);
+freemem += 64;
+
+// ── Coefficient calculation ────────────────────────────────────────────────
+function recalc_dsp()
+  local(omega, c, s, alpha, a0, fc)
+(
+  // HP biquad coefficients — true 4th-order Butterworth (2 cascaded biquads)
+  // Butterworth pole Q values: Q1=0.5412 (outer pair), Q2=1.3066 (inner pair)
+  // On/off is a TARGET: @sample fades the filter in and out (hp_mix) and
+  // clears its state when it starts from fully off. Switched off, the
+  // coefficients keep their last values, so the fade-out is the same filter.
+  hp_tgt = slider1 > 21;
+  hp_tgt ? (
+    fc = min(slider1, srate * 0.45);
+    omega = 2 * $pi * fc / srate;
+    c = cos(omega); s = sin(omega);
+    // Stage 1 (Q = 0.5412)
+    alpha = s / (2 * 0.5412);
+    a0 = 1 + alpha;
+    hpb0_s1 = ((1 + c) * 0.5) / a0;
+    hpb1_s1 = (-(1 + c))       / a0;
+    hpb2_s1 = ((1 + c) * 0.5) / a0;
+    hpa1_s1 = (-2 * c)          / a0;
+    hpa2_s1 = (1 - alpha)       / a0;
+    // Stage 2 (Q = 1.3066)
+    alpha = s / (2 * 1.3066);
+    a0 = 1 + alpha;
+    hpb0_s2 = ((1 + c) * 0.5) / a0;
+    hpb1_s2 = (-(1 + c))       / a0;
+    hpb2_s2 = ((1 + c) * 0.5) / a0;
+    hpa1_s2 = (-2 * c)          / a0;
+    hpa2_s2 = (1 - alpha)       / a0;
+  );
+
+  // LP biquad coefficients — true 4th-order Butterworth (2 cascaded biquads)
+  lp_tgt = slider2 < 19999;   // a target, faded in @sample like hp_tgt
+  lp_tgt ? (
+    fc = max(slider2, 20);
+    fc = min(fc, srate * 0.45);
+    omega = 2 * $pi * fc / srate;
+    c = cos(omega); s = sin(omega);
+    // Stage 1 (Q = 0.5412)
+    alpha = s / (2 * 0.5412);
+    a0 = 1 + alpha;
+    lpb0_s1 = ((1 - c) * 0.5) / a0;
+    lpb1_s1 = (1 - c)          / a0;
+    lpb2_s1 = ((1 - c) * 0.5) / a0;
+    lpa1_s1 = (-2 * c)          / a0;
+    lpa2_s1 = (1 - alpha)       / a0;
+    // Stage 2 (Q = 1.3066)
+    alpha = s / (2 * 1.3066);
+    a0 = 1 + alpha;
+    lpb0_s2 = ((1 - c) * 0.5) / a0;
+    lpb1_s2 = (1 - c)          / a0;
+    lpb2_s2 = ((1 - c) * 0.5) / a0;
+    lpa1_s2 = (-2 * c)          / a0;
+    lpa2_s2 = (1 - alpha)       / a0;
+  );
+
+  // Gain targets (smoothed per-sample via one-pole)
+  trim_l_tgt = pow(10, slider3 / 20);
+  trim_r_tgt = pow(10, slider4 / 20);
+  out_tgt    = pow(10, slider7 / 20);
+
+  // Smoothing coefficient (~5ms one-pole)
+  srate > 0 ? sm_alpha = 1 - exp(-1 / (0.005 * srate));
+
+  // Format target, mapped exactly as the old switch read slider12 (a stray
+  // fraction lands where it always did), and the 5 ms linear step every
+  // switch fade uses: Format, HP and LP (see @sample). No sample rate yet: a
+  // step of 1, i.e. switch at once as before, never a step of 0 that would
+  // leave every switch unfinished.
+  fmt_tgt = slider12 >= 2 ? (slider12 == 2 ? 2 : 3) : (slider12 == 1 ? 1 : 0);
+  fade_step = srate > 0 ? 1 / (0.005 * srate) : 1;
+);
+
+recalc_dsp();
+// Snap smoothed values to targets on init (no ramp on load)
+sm_trim_l = trim_l_tgt; sm_trim_r = trim_r_tgt;
+sm_outgain = out_tgt;
+hp_mix = hp_tgt; lp_mix = lp_tgt; hp_run = lp_run = 0;
+fw0 = fmt_tgt == 0; fw1 = fmt_tgt == 1; fw2 = fmt_tgt == 2; fw3 = fmt_tgt == 3;
+
+// 2.1's embedded VIEW mode (0 Meter / 1 Filters / 2 Full). Retired in 2.2.0
+// (the STRIP row, slider18, is its successor); the value is still read and
+// written by @serialize because that blob is positional (slider16, its dirty
+// counter, stays declared for the same kind of reason: old automation points at it).
+gk_view_seen ? 0 : ( gk_view = 0; gk_view_seen = 1; );
+
+@slider
+recalc_dsp();
+rk_link_on_slider();
+// NATIVE (the THEME panel's first row) is per instance and lives on slider20,
+// rk_theme's hidden-slider pattern (its header; 1175 does the same): restored
+// here, written back after the cluster call in @gfx. Without it a NATIVE pick
+// did not survive a reload (outside audit, 2026-09-28).
+rkth_local_off = ct_native;
+
+@block
+rk_link_pull() ? atomic_set(dsp_dirty, 1);
+atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp() );
+rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
+
+@sample
+snap_params ? (
+  sm_trim_l = trim_l_tgt; sm_trim_r = trim_r_tgt;
+  sm_outgain = out_tgt;
+  hp_mix = hp_tgt; lp_mix = lp_tgt;
+  fw0 = fmt_tgt == 0; fw1 = fmt_tgt == 1; fw2 = fmt_tgt == 2; fw3 = fmt_tgt == 3;
+  snap_params = 0;
+);
+
+rk_ps_tick();
+rk_ps_active ? (
+
+  // ── HP Filter (2 cascaded biquad stages, true 4th-order Butterworth) ────
+  // On and off fade over 5 ms (2.2.0): an instant switch jumped by everything
+  // the filter was removing, which ticked when its badge reset it mid-play.
+  // Fully on it is the same filter as ever; fully off it is not run at all.
+  hp_mix = hp_tgt ? min(hp_mix + fade_step, 1) : max(hp_mix - fade_step, 0);
+  hp_mix > 0 ? (
+    !hp_run ? (
+      // Starting from fully off: clear the stale state, as enabling always did
+      hp_x1l_s1 = hp_x2l_s1 = hp_y1l_s1 = hp_y2l_s1 = 0;
+      hp_x1l_s2 = hp_x2l_s2 = hp_y1l_s2 = hp_y2l_s2 = 0;
+      hp_x1r_s1 = hp_x2r_s1 = hp_y1r_s1 = hp_y2r_s1 = 0;
+      hp_x1r_s2 = hp_x2r_s2 = hp_y1r_s2 = hp_y2r_s2 = 0;
+      hp_run = 1;
+    );
+    hp_d0 = spl0; hp_d1 = spl1;
+    // Stage 1 L (Q=0.5412)
+    hp_out = hpb0_s1 * (spl0 + cDenorm) + hpb1_s1 * hp_x1l_s1 + hpb2_s1 * hp_x2l_s1 - hpa1_s1 * hp_y1l_s1 - hpa2_s1 * hp_y2l_s1;
+    hp_x2l_s1 = hp_x1l_s1; hp_x1l_s1 = spl0; hp_y2l_s1 = hp_y1l_s1; hp_y1l_s1 = hp_out;
+    spl0 = hp_out;
+    // Stage 2 L (Q=1.3066)
+    hp_out = hpb0_s2 * spl0 + hpb1_s2 * hp_x1l_s2 + hpb2_s2 * hp_x2l_s2 - hpa1_s2 * hp_y1l_s2 - hpa2_s2 * hp_y2l_s2;
+    hp_x2l_s2 = hp_x1l_s2; hp_x1l_s2 = spl0; hp_y2l_s2 = hp_y1l_s2; hp_y1l_s2 = hp_out;
+    spl0 = hp_out;
+    // Stage 1 R (Q=0.5412)
+    hp_out = hpb0_s1 * (spl1 + cDenorm) + hpb1_s1 * hp_x1r_s1 + hpb2_s1 * hp_x2r_s1 - hpa1_s1 * hp_y1r_s1 - hpa2_s1 * hp_y2r_s1;
+    hp_x2r_s1 = hp_x1r_s1; hp_x1r_s1 = spl1; hp_y2r_s1 = hp_y1r_s1; hp_y1r_s1 = hp_out;
+    spl1 = hp_out;
+    // Stage 2 R (Q=1.3066)
+    hp_out = hpb0_s2 * spl1 + hpb1_s2 * hp_x1r_s2 + hpb2_s2 * hp_x2r_s2 - hpa1_s2 * hp_y1r_s2 - hpa2_s2 * hp_y2r_s2;
+    hp_x2r_s2 = hp_x1r_s2; hp_x1r_s2 = spl1; hp_y2r_s2 = hp_y1r_s2; hp_y1r_s2 = hp_out;
+    spl1 = hp_out;
+    hp_mix < 1 ? (
+      spl0 = hp_d0 + (spl0 - hp_d0) * hp_mix;
+      spl1 = hp_d1 + (spl1 - hp_d1) * hp_mix;
+    );
+  ) : ( hp_run = 0; );
+
+  // ── 3. LP Filter (2 cascaded biquad stages, true 4th-order Butterworth) ─
+  // Faded on and off exactly like the HP above.
+  lp_mix = lp_tgt ? min(lp_mix + fade_step, 1) : max(lp_mix - fade_step, 0);
+  lp_mix > 0 ? (
+    !lp_run ? (
+      lp_x1l_s1 = lp_x2l_s1 = lp_y1l_s1 = lp_y2l_s1 = 0;
+      lp_x1l_s2 = lp_x2l_s2 = lp_y1l_s2 = lp_y2l_s2 = 0;
+      lp_x1r_s1 = lp_x2r_s1 = lp_y1r_s1 = lp_y2r_s1 = 0;
+      lp_x1r_s2 = lp_x2r_s2 = lp_y1r_s2 = lp_y2r_s2 = 0;
+      lp_run = 1;
+    );
+    lp_d0 = spl0; lp_d1 = spl1;
+    // Stage 1 L (Q=0.5412)
+    lp_out = lpb0_s1 * (spl0 + cDenorm) + lpb1_s1 * lp_x1l_s1 + lpb2_s1 * lp_x2l_s1 - lpa1_s1 * lp_y1l_s1 - lpa2_s1 * lp_y2l_s1;
+    lp_x2l_s1 = lp_x1l_s1; lp_x1l_s1 = spl0; lp_y2l_s1 = lp_y1l_s1; lp_y1l_s1 = lp_out;
+    spl0 = lp_out;
+    // Stage 2 L (Q=1.3066)
+    lp_out = lpb0_s2 * spl0 + lpb1_s2 * lp_x1l_s2 + lpb2_s2 * lp_x2l_s2 - lpa1_s2 * lp_y1l_s2 - lpa2_s2 * lp_y2l_s2;
+    lp_x2l_s2 = lp_x1l_s2; lp_x1l_s2 = spl0; lp_y2l_s2 = lp_y1l_s2; lp_y1l_s2 = lp_out;
+    spl0 = lp_out;
+    // Stage 1 R (Q=0.5412)
+    lp_out = lpb0_s1 * (spl1 + cDenorm) + lpb1_s1 * lp_x1r_s1 + lpb2_s1 * lp_x2r_s1 - lpa1_s1 * lp_y1r_s1 - lpa2_s1 * lp_y2r_s1;
+    lp_x2r_s1 = lp_x1r_s1; lp_x1r_s1 = spl1; lp_y2r_s1 = lp_y1r_s1; lp_y1r_s1 = lp_out;
+    spl1 = lp_out;
+    // Stage 2 R (Q=1.3066)
+    lp_out = lpb0_s2 * spl1 + lpb1_s2 * lp_x1r_s2 + lpb2_s2 * lp_x2r_s2 - lpa1_s2 * lp_y1r_s2 - lpa2_s2 * lp_y2r_s2;
+    lp_x2r_s2 = lp_x1r_s2; lp_x1r_s2 = spl1; lp_y2r_s2 = lp_y1r_s2; lp_y1r_s2 = lp_out;
+    spl1 = lp_out;
+    lp_mix < 1 ? (
+      spl0 = lp_d0 + (spl0 - lp_d0) * lp_mix;
+      spl1 = lp_d1 + (spl1 - lp_d1) * lp_mix;
+    );
+  ) : ( lp_run = 0; );
+
+  // ── Smooth gain/trim parameters (~5ms one-pole) ─────────────────────────
+  sm_trim_l += (trim_l_tgt - sm_trim_l) * sm_alpha;
+  sm_trim_r += (trim_r_tgt - sm_trim_r) * sm_alpha;
+  sm_outgain += (out_tgt - sm_outgain) * sm_alpha;
+
+  // ── L/R Trim ────────────────────────────────────────────────────────────
+  spl0 *= sm_trim_l;
+  spl1 *= sm_trim_r;
+
+  // ── Format / MS Processing ──────────────────────────────────────────────
+  // Every change crossfades over 5 ms (2.2.0): an instant switch jumped each
+  // channel (by half the L-R difference into mono, by far more into or out of
+  // M/S), which ticked when MONO was pressed or the M/S badge reset mid-play.
+  // Each format has a weight that ramps toward 1 for the chosen one and 0 for
+  // the rest; mid-fade the output is their weighted mix, normalised, so a
+  // switch that changes its mind half way stays smooth. The weights never sum
+  // above 1, so the chosen one reaches 1 only once the others are 0: settled,
+  // the output is that format's own math, exactly as before.
+  fw0 = fmt_tgt == 0 ? min(fw0 + fade_step, 1) : max(fw0 - fade_step, 0);
+  fw1 = fmt_tgt == 1 ? min(fw1 + fade_step, 1) : max(fw1 - fade_step, 0);
+  fw2 = fmt_tgt == 2 ? min(fw2 + fade_step, 1) : max(fw2 - fade_step, 0);
+  fw3 = fmt_tgt == 3 ? min(fw3 + fade_step, 1) : max(fw3 - fade_step, 0);
+  fw1 >= 1 ? (
+    // Mono
+    mono_out = (spl0 + spl1) * 0.5;
+    spl0 = mono_out; spl1 = mono_out;
+  ) : fw2 >= 1 ? (
+    // Stereo → MS encode (full width)
+    mid_tmp = (spl0 + spl1) * 0.5;
+    side_tmp = (spl0 - spl1) * 0.5;
+    spl0 = mid_tmp; spl1 = side_tmp;
+  ) : fw3 >= 1 ? (
+    // MS → Stereo decode
+    dec_l = spl0 + spl1;
+    dec_r = spl0 - spl1;
+    spl0 = dec_l; spl1 = dec_r;
+  ) : fw0 < 1 ? (
+    // Mid-fade. Stereo is (L, R), mono (M, M), encode (M, S), decode (2M, 2S).
+    mono_out = (spl0 + spl1) * 0.5;
+    side_tmp = (spl0 - spl1) * 0.5;
+    fws = fw0 + fw1 + fw2 + fw3;
+    spl0 = (spl0 * fw0 + mono_out * (fw1 + fw2 + 2 * fw3)) / fws;
+    spl1 = (spl1 * fw0 + mono_out * fw1 + side_tmp * (fw2 + 2 * fw3)) / fws;
+  );
+
+  // ── Output Gain ──────────────────────────────────────────────────────────
+  spl0 *= sm_outgain;
+  spl1 *= sm_outgain;
+);
+
+// ── 12. Feed the meters ───────────────────────────────────────────────
+// The VU reads what LEAVES the plugin, processed or passed through. Fed only
+// while the play-state gate was open (until 2026-09-25), it froze mid-swing
+// when processing was switched off for a transport state, instead of falling
+// to rest or showing the dry audio that was actually playing.
+rk_ps_active ? meter_process_sample(spl0, spl1);
+vu_ct.rk_vu_sample((spl0 + spl1) * 0.5);
+
+@gfx 450 540
+gfx_clear = 0x443D38;
+// 0x200 (embedded click-through) is armed conditionally inside the embedded
+// branch — only over dead space — see below.
+
+rk_link_key = gfx_getchar();
+// A name being typed takes this frame's keys (gk_name_face); the link menu none.
+gk_ne_c0 = gk_ne_on ? rk_link_key : 0;
+gk_ne_on ? rk_link_key = 0;
+mx = mouse_x; my = mouse_y;
+LMB       = mouse_cap & 1;
+RMB       = mouse_cap & 2;
+CTRL      = mouse_cap & 4;
+SHIFT     = mouse_cap & 8;
+lmb_down  = LMB && !prev_LMB;
+// Face sheet open (rk_vu_picker, called last): widgets drawn before it must
+// not see this click. Stash the press edge; the picker call restores it.
+// ⚠️ONLY then. With the sheet closed the picker takes what the widgets leave,
+// so a click the THEME panel swallowed (its lower rows hang over the meter's
+// coil cover) cannot also open the sheet (the user, 2026-09-28: the FOLLOW
+// chip "clicked through"; wiki 4.5).
+_ct_pk_lmb = 0;
+!(gfx_ext_flags & 1) && vu_ct.pk_open ? ( _ct_pk_lmb = lmb_down; lmb_down = 0; );
+rmb_down  = RMB && !prev_RMB;
+prev_LMB  = LMB;
+prev_RMB  = RMB;
+frame_wheel = mouse_wheel / 120;
+// The frame clock every hover ramp runs on. 2.1 read `timer` without ever
+// setting it, so dt was 0 and no hover (the knob's swell included) animated.
+timer = time_precise();
+dt = min(timer - frame_last_timer, 0.05);
+frame_last_timer = timer;
+hv_speed = 11;
+mouse_wheel = 0;
+rk_link_menu_gate();
+// Adopt a VU face broadcast by a SYNC-latched sibling (zm_theme = this
+// instance's face; the plugin keeps its own theme/sk_kp reader below).
+rkth_vu_f = rkth_vu_follow(zm_theme);
+rkth_vu_f >= 0 ? ( zm_theme = rkth_vu_f; );
+ret = max(1, gfx_ext_retina);
+
+// One-Rack theme: live only when the Swing bridge is publishing the band.
+// rkth_active(), not a raw gmem[GS_THEME_ID] test: it is also true while this
+// instance is LOCKED, which is what keeps a frozen look alive even if the
+// bridge goes idle. Every band read below goes through rkth_band() for the
+// same reason — raw reads are invisible to the lock.
+theme_on = rkth_active();
+// Map the band onto the button lib's body colours (the rk_theme_apply()
+// mapping), which MONO reads. Idle bridge → they keep their kbsg @init
+// defaults (native look).
+theme_on ? (
+  btn_body_r = rkth_band(3); btn_body_g = rkth_band(4); btn_body_b = rkth_band(5); // PANEL
+  btn_body_hi_r = min(1, btn_body_r + 0.06); btn_body_hi_g = min(1, btn_body_g + 0.06); btn_body_hi_b = min(1, btn_body_b + 0.06);
+  // The GAIN knob: shape follows the theme knob picker, colour is ACCENT.
+  // Knob STYLE is part of "the whole look", so a locked instance reads its
+  // frozen style index out of the snapshot rather than the live picker.
+  sk_kp = (rkth_locked && rkth_lk_ok) ? max(1, rkth_lk_buf[RKTH_LK_KP] | 0)
+                                      : (gmem[GS_THEME_KNOB_P] > 0 ? (gmem[GS_THEME_KNOB_P] | 0) : 1);
+  _th_bg_r = rkth_band(0); _th_bg_g = rkth_band(1); _th_bg_b = rkth_band(2); // BG
+  knb_o_r = rkth_band(12); knb_o_g = rkth_band(13); knb_o_b = rkth_band(14);   // ACCENT
+) : (
+  sk_kp = 1;  // SSL
+  _th_bg_r = 0.22; _th_bg_g = 0.24; _th_bg_b = 0.27;
+  knb_o_r = 0.90; knb_o_g = 0.35; knb_o_b = 0.15;  // native GAIN orange
+);
+// How bright the face's background is: picks the badge amber (gk_badges).
+gk_bg_lum = theme_on ? rkth_band(0) * 0.299 + rkth_band(1) * 0.587 + rkth_band(2) * 0.114
+                     : 0.22 * 0.299 + 0.24 * 0.587 + 0.27 * 0.114;
+
+// ── VU reading, for the corner readout: rk_vu's pos is the linear ratio to
+// the reference (1 = 0 VU) ──
+vu_mono_db = 20 * log10(max(vu_ct.pos, 0.0000001));
+
+is_embedded = (gfx_ext_flags & 1);
+
+is_embedded ? (
+  // ════════════════════════════════════════════════════════════════════════
+  // EMBEDDED — the meter on top, the GAIN knob centred under it as the focus,
+  // the Format key (STEREO / MONO) directly below the knob (the user,
+  // 2026-09-25). One of three designs by the slot's shape (measured, wiki 4.5:
+  // an MCP slot is the strip's width x ~97 by default, taller if the user drags
+  // the FX pane; a TCP slot is 110 x (track height - 70)), each scaled as ONE
+  // block by gk_s:
+  //   0 STRIP  110x44   meter left; knob, key under it         (a short slot)
+  //   1 STACK   84x97   meter; knob (value beside it); key     (the default MCP)
+  //   2 TALL   100x180  meter; knob; value; key                (a tall MCP/TCP)
+  // A strip dragged WIDER keeps STACK (the user, 2026-09-27: "the same format as
+  // the small one"). STACK is bound by the slot's height, so its block stays the
+  // same size, centred, and the extra width goes to the METER: it spans the
+  // slot and is set flat (rk_vu_set_flat), so past 1.7:1 its dial grows with
+  // the width, flatter as it goes, up to the flattest ("it should still scale
+  // if the window thickens", 2026-09-25). A side-by-side WIDE design did that
+  // job for a day; the user wanted the format kept. STRIP is for SHORT slots:
+  // under 75 px (x the DPI hint) as well as wider than 1/0.55 of the height, so
+  // a widened mixer strip is never taken for a TCP one and a TCP slot (110
+  // wide, STRIP below 60.5 tall) chooses exactly as it always did.
+  // STRIP = VU (slider18 2): the meter ALONE, as wide as the slot and at its
+  // top (the user, 2026-09-26, after ZenoMOD's embedded face: "a just vu
+  // option"); MONO on shows as a cyan dot under it, and a typed name (the
+  // window's, 2026-09-27) fills the slot under that, the design growing by a
+  // 16-unit row so a slot the meter already fills keeps room for it. The NUMBERS row (slider19)
+  // hides the meter's numerals in METER and VU alike: ticks only, a bigger dial.
+  // The THEME panel's STRIP row (slider18) swaps in the KNOB view: no meter,
+  // the knob alone as big as the slot allows, its value and MONO under it
+  // (STRIP: MONO left, knob centre, value right). A tall slot centres STACK.
+  // ════════════════════════════════════════════════════════════════════════
+  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  emb_widget_active = 0;
+  gk_ne_on ? gk_ne_commit();           // the window closed mid-name: keep what was typed
+  gk_w = gfx_w; gk_h = gfx_h;
+  gk_bg(0, 1, 0.22, 0.24, 0.27); gfx_rect(0, 0, gk_w, gk_h);
+
+  // Embedded wheel-fix: REAPER delivers wheel events with a STALE mouse_x/y, so
+  // hover tests miss. Cache the cursor on non-wheel frames, reuse it on wheel
+  // frames (Drum Strip idiom) so the hover-wheel reaches the knob.
+  frame_wheel == 0 ? ( emb_hov_mx = mx; emb_hov_my = my; ) : ( mx = emb_hov_mx; my = emb_hov_my; );
+
+  // gk_tf = 0: no room for the value. gk_ta: 1 centred on gk_tx, 0 left-aligned.
+  // gk_vw = 0: no meter (the KNOB view).
+  gk_lay = gk_h < gk_w * 0.55 && gk_h < 75 * ret ? 0 : gk_h < gk_w * 1.45 ? 1 : 2;
+  ct_strip_view == 1 ? (
+    gk_vw = 0;
+    gk_lay == 0 ? (
+      gk_dw = 110; gk_dh = 44;
+      gk_kx = 55;  gk_ky = 22;  gk_kr = 16;
+      gk_tx = 79;  gk_ty = 22;  gk_tf = 9;  gk_ta = 0; gk_tdb = 0;
+      gk_mx0 = 3;  gk_my0 = 16; gk_mw = 30; gk_mh = 12; gk_mf = 8;
+      gk_dx = 8;   gk_dy = 7;
+      gk_bx = 101; gk_by = 1;   gk_bs = 8;
+    ) : (
+      gk_dw = 84;  gk_dh = 97;
+      gk_kx = 42;  gk_ky = 40;  gk_kr = 26;
+      gk_tx = 42;  gk_ty = 75;  gk_tf = 10; gk_ta = 1; gk_tdb = 1;
+      gk_mx0 = 24; gk_my0 = 84; gk_mw = 36; gk_mh = 11; gk_mf = 8;   // 36: STEREO at 8 px
+      gk_dx = 6;   gk_dy = 6;
+      gk_bx = 75;  gk_by = 2;   gk_bs = 7;
+    );
+  ) : ct_strip_view == 2 ? (
+    // VU: the meter alone (a 1.6:1 face, the lib's cap), a thin row under it
+    // for the dots and the badge, and with a name, a row for that (it takes
+    // whatever the slot has below, gk_name_strip). No knob (gk_kr 0), no value,
+    // no MONO pill.
+    gk_dw = 100; gk_dh = strlen(#gk_name) > 0 ? 86 : 70;
+    gk_vx = 1;   gk_vy = 1;   gk_vw = 98; gk_vh = 61.25;
+    gk_kr = 0;   gk_tf = 0;
+    gk_mx0 = 3;  gk_my0 = 63; gk_mw = 6;  gk_mh = 6;  gk_mf = 0;   // MONO on: its cyan dot
+    gk_dx = 14;  gk_dy = 66;
+    gk_bx = 92;  gk_by = 63;  gk_bs = 7;
+  ) : gk_lay == 0 ? (
+    gk_dw = 110; gk_dh = 44;
+    gk_vx = 1;   gk_vy = 1;   gk_vw = 66; gk_vh = 42;
+    gk_kx = 88;  gk_ky = 15;  gk_kr = 11;
+    gk_tf = 0;
+    gk_mx0 = 75; gk_my0 = 31; gk_mw = 26; gk_mh = 11; gk_mf = 8;
+    gk_dx = 71;  gk_dy = 5;
+    gk_bx = 102; gk_by = 35;  gk_bs = 7;
+  ) : gk_lay == 1 ? (
+    gk_dw = 84;  gk_dh = 97;
+    gk_vx = 1;   gk_vy = 1;   gk_vw = 82; gk_vh = 49;
+    gk_kx = 42;  gk_ky = 67;  gk_kr = 14;
+    gk_tx = 61;  gk_ty = 67;  gk_tf = 8;  gk_ta = 0; gk_tdb = 0;
+    gk_mx0 = 24; gk_my0 = 84; gk_mw = 36; gk_mh = 11; gk_mf = 8;     // 36: STEREO at 8 px
+    gk_dx = 10;  gk_dy = 67;
+    gk_bx = 76;  gk_by = 89;  gk_bs = 7;
+  ) : (
+    gk_dw = 100; gk_dh = 180;
+    gk_vx = 2;   gk_vy = 2;   gk_vw = 96; gk_vh = 60;
+    gk_kx = 50;  gk_ky = 102; gk_kr = 24;
+    gk_tx = 50;  gk_ty = 140; gk_tf = 11; gk_ta = 1; gk_tdb = 1;
+    gk_mx0 = 32; gk_my0 = 153; gk_mw = 36; gk_mh = 12; gk_mf = 8;
+    gk_dx = 8;   gk_dy = 76;
+    gk_bx = 2;   gk_by = 170; gk_bs = 8;
+  );
+  gk_s  = min(gk_w / gk_dw, gk_h / gk_dh);
+  gk_ox = (gk_w - gk_dw * gk_s) * 0.5;
+  gk_oy = ct_strip_view == 2 ? 0 : (gk_h - gk_dh * gk_s) * 0.5;   // VU: at the top
+
+  // The meter. Its numerals scale with the face; the dB reading sits in the
+  // plate's corner once the face can hold it clear of the arc (rk_vu's own
+  // readout box does not fit a strip-sized face).
+  gk_vw > 0 ? (
+    rk_vu_theme(zm_theme);
+    gk_frame_bg();
+    vu_ct.rk_vu_set_readout(0);
+    vu_ct.rk_vu_set_numbers(!ct_strip_nums);       // NUMBERS row: HIDDEN = ticks only
+    // STACK's meter spans the slot, one design unit in from each side, and is
+    // flat (above): at the default width that is exactly its old 82-unit rect.
+    // Every other design keeps its own rect and the 1.6:1 face.
+    gk_fl = ct_strip_view == 0 && gk_lay == 1;
+    vu_ct.rk_vu_set_flat(gk_fl);
+    gk_fl ? vu_ct.rk_vu_draw(gk_s, gk_y(gk_vy), gk_w - 2 * gk_s, gk_vh * gk_s, 0, -1, "")
+          : vu_ct.rk_vu_draw(gk_x(gk_vx), gk_y(gk_vy), gk_vw * gk_s, gk_vh * gk_s, 0, -1, "");
+    mouse_wheel = 0;
+    gk_vu_corner();                        // it decides for itself whether it fits
+  );
+
+  // The GAIN knob, centred, and its printed scale (none in the VU view)
+  gk_kr > 0 ? (
+    gk_kcx = gk_x(gk_kx); gk_kcy = gk_y(gk_ky); gk_krp = gk_kr * gk_s;
+    m = km + 6 * KS;
+    nv = ssl_knob_interact(m, gk_kcx, gk_kcy, gk_krp, slider7, -24, 24, 0, 0);
+    emb_widget_active |= m[6];
+    nv != slider7 ? ( slider7 = nv; slider_automate(slider7); atomic_set(dsp_dirty, 1); );
+    gk_ink(3, 1, 0.50, 0.53, 0.58);
+    gk_legend(gk_kcx, gk_kcy, gk_krp);
+    rk_knob_draw(sk_kp, gk_kcx, gk_kcy, gk_krp, slider7, -24, 24, 1, m[0], knb_o_r, knb_o_g, knb_o_b, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  );
+
+  // Its value where the slot has room (text under 6 px is dropped)
+  gk_tfp = floor(gk_tf * gk_s);
+  gk_tfp >= 6 * ret ? (
+    gfx_setfont(1, "Arial", gk_tfp, gk_wt(gk_tfp));
+    gk_ink(2, 1, 0.85, 0.88, 0.90);
+    gk_gain_str(gk_tdb);
+    gfx_measurestr(#gk_gv, tw, th);
+    gfx_x = gk_ta ? gk_x(gk_tx) - tw * 0.5 : gk_x(gk_tx);
+    gfx_y = gk_y(gk_ty) - th * 0.5;
+    gfx_drawstr(#gk_gv);
+  );
+
+  // MONO, a small pill below the knob. Too small to read: a cyan dot in its
+  // place while it is on.
+  floor(gk_mf * gk_s) >= 6 * ret ? (
+    emb_widget_active |= gk_mono_btn(bm + 6 * BS, gk_x(gk_mx0), gk_y(gk_my0),
+                                     gk_mw * gk_s, gk_mh * gk_s, floor(gk_mf * gk_s));
+  ) : slider12 == 1 ? (
+    gfx_set(0.00, 0.70, 0.85, 1);
+    gfx_circle(gk_x(gk_mx0 + gk_mw * 0.5), gk_y(gk_my0 + gk_mh * 0.5), max(1.5, 2 * gk_s), 1, 1);
+  );
+
+  // An amber dot: a hidden setting is changing the sound (the window says which)
+  gk_legacy_any() ? (
+    gfx_set(0.91, 0.66, 0.16, 1);
+    gfx_circle(gk_x(gk_dx), gk_y(gk_dy), max(2, 2.5 * gk_s), 1, 1);
+  );
+
+  // link/group badge: a live control, so its click is kept away from 0x200
+  gk_bsp = gk_bs * gk_s;
+  gk_bcx = gk_x(gk_bx) + gk_bsp * 0.5; gk_bcy = gk_y(gk_by) + gk_bsp * 0.5;
+  (mx - gk_bcx) * (mx - gk_bcx) + (my - gk_bcy) * (my - gk_bcy) <= (gk_bsp * 0.5 + 2) * (gk_bsp * 0.5 + 2) ? emb_widget_active = 1;
+  rk_link_draw_badge(gk_x(gk_bx), gk_y(gk_by), gk_bsp, 0.00, 0.70, 0.85, mx, my, lmb_down);
+  rk_link_on_gfx_change();
+
+  // The typed name, under the VU view's meter: not a control, so a click on it
+  // opens the window like any dead space (house rule 2), where it is typed.
+  ct_strip_view == 2 && strlen(#gk_name) > 0 ? gk_name_strip(gk_y(70), gk_h - gk_s);
+
+  !emb_widget_active ? gfx_ext_flags |= 0x200;
+
+) : (
+  // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
+  // clicks on the EMBED, which runs no @gfx pass while a window is open, so this
+  // is the only pass that can set it; a click on the strip then closes the window.
+  // An idle pass (& 2) leaves the flag alone.
+  !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
+  // ════════════════════════════════════════════════════════════════════════
+  // FLOATING — the VU, the GAIN knob, MONO and the badge row, one block:
+  //   3 TALL 300x450 (EON Floatter's saved size, 350x546, fits it snugly)
+  //   4 WIDE 460x240 once the window is wider than 1.3:1 — meter left, knob right
+  // ONE scale for the whole face, the 3/4-Band EQ rule (c4d3d15): ret takes
+  // the window factor, so the header, the theme cluster, the link menu and
+  // every font grow with the face. Floor 0.5, not the EQs' 1: this face is one
+  // proportional block, and a 1x floor would push MONO and the badges off the
+  // bottom of a small window instead of shrinking them. Cap 3x. The @gfx size
+  // stays 450x540: EON Floatter keys a fresh window on it.
+  // ════════════════════════════════════════════════════════════════════════
+  WIN_W = gfx_w; WIN_H = gfx_h;
+  gk_lay = WIN_W > WIN_H * 1.3 ? 4 : 3;
+  gk_lay == 4 ? ( gk_dw = 460; gk_dh = 240; ) : ( gk_dw = 300; gk_dh = 450; );
+  ret = ret * max(0.5, min(3, min(WIN_W / (gk_dw * ret), WIN_H / (gk_dh * ret))));
+  gk_s = ret;
+  gk_bg(0, 1, 0.22, 0.24, 0.27); gfx_rect(0, 0, WIN_W, WIN_H);
+
+  // ── Header: title, THEME cluster, link gear + badge ──────────────────────
+  hdr_h = 26 * ret;
+  gk_bg(1, 1, 0.26, 0.28, 0.31); gfx_rect(0, 0, WIN_W, hdr_h);
+  gfx_set(0.15, 0.16, 0.19, 1); gfx_rect(0, hdr_h - 1, WIN_W, 1);
+  gfx_setfont(1, "Arial", floor(12 * ret), 'b');
+  gk_ink(2, 1, 0.85, 0.88, 0.90);
+  gfx_measurestr("GAINKIT", tw, th);
+  gfx_x = 8 * ret; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("GAINKIT");
+  gk_hx = 8 * ret + tw + 6 * ret;
+  gfx_setfont(1, "Arial", floor(10 * ret), 0);
+  gk_ink(3, 1, 0.38, 0.42, 0.47);
+  gfx_measurestr("ReaKit", tw, th);
+  gfx_x = gk_hx; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("ReaKit");
+  gk_hx += tw + 10 * ret;
+  // Appearance cluster (THEME · KNOB · VU · SYNC) — interaction runs inside, so
+  // an open panel swallows the click before the gear/badge see it. It sits
+  // after the MEASURED subtitle (2.1 put it at a fixed 100px, over "ReaKit")
+  // and scales with the face; rkth_scale is a shared global, set every frame
+  // immediately before the call.
+  rkth_scale = ret;
+  // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
+  // chip tracks the slider even when it is changed from REAPER's own param
+  // list; the cluster never writes a host slider, it surfaces the pick.
+  rkth_namebar(ct_name_bar);
+  // STRIP row, the same opt-in: METER (VU + knob), VU (the meter alone) or
+  // KNOB (the knob alone); NUMBERS row: the strip meter's numerals or ticks only.
+  rkth_stripview(ct_strip_view);
+  rkth_numbers(ct_strip_nums);
+  rkth_cluster_hdr(gk_hx, (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) * 0.5, 1, zm_theme);
+  rkth_nb_pick >= 0 ? (
+    ct_name_bar = rkth_nb_pick; slider_automate(ct_name_bar); rkth_nb_pick = -1;
+  );
+  rkth_sv_pick >= 0 ? (
+    ct_strip_view = rkth_sv_pick; slider_automate(ct_strip_view); rkth_sv_pick = -1;
+  );
+  rkth_nu_pick >= 0 ? (
+    ct_strip_nums = rkth_nu_pick; slider_automate(ct_strip_nums); rkth_nu_pick = -1;
+  );
+  ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // NATIVE persists (@slider restores it)
+  rkth_vu_pick >= 0 ? ( zm_theme = rkth_vu_pick; rkth_vu_pick = -1; );
+  rk_gear_r = max(5 * ret, hdr_h * 0.20);
+  rk_gear_x = WIN_W - rk_gear_r - 8 * ret;
+  rk_gear_y = hdr_h * 0.5;
+  rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, 0.00, 0.70, 0.85, mx, my, lmb_down);
+  rk_badge_sz = max(9 * ret, hdr_h * 0.36);
+  rk_link_draw_badge(rk_gear_x - rk_gear_r - 4 * ret - rk_badge_sz, rk_gear_y - rk_badge_sz * 0.5,
+                     rk_badge_sz, 0.00, 0.70, 0.85, mx, my, lmb_down);
+
+  // ── The body, centred under the header ───────────────────────────────────
+  gk_ox = (WIN_W - gk_dw * ret) * 0.5;
+  gk_oy = hdr_h + ((WIN_H - hdr_h) - (gk_dh - 26) * ret) * 0.5 - 26 * ret;
+  gk_lay == 3 ? (
+    gk_vx = 8;    gk_vy = 32;   gk_vw = 284; gk_vh = 178;
+    gk_kx = 150;  gk_ky = 292;  gk_kr = 52;
+    gk_tx = 150;  gk_ty = 372;  gk_tf = 16;
+    gk_mx0 = 116; gk_my0 = 392; gk_mw = 68;  gk_mh = 24; gk_mf = 11;
+    gk_bdx = 150; gk_bdy = 426; gk_bdw = 284; gk_bdh = 17; gk_bdf = 10; gk_bdc = 1;
+  ) : (
+    gk_vx = 8;    gk_vy = 34;   gk_vw = 272; gk_vh = 170;
+    gk_kx = 370;  gk_ky = 106;  gk_kr = 38;
+    gk_tx = 370;  gk_ty = 160;  gk_tf = 13;
+    gk_mx0 = 344; gk_my0 = 178; gk_mw = 52;  gk_mh = 22; gk_mf = 10;
+    gk_bdx = 8;   gk_bdy = 214; gk_bdw = 272; gk_bdh = 16; gk_bdf = 9.5; gk_bdc = 0;
+  );
+
+  // The meter: rk_vu's readout box (the VU value, lower left, PEAK by the LED)
+  // once the face is big enough to hold it, the corner reading below that.
+  ct_vu_px = gk_x(gk_vx); ct_vu_py = gk_y(gk_vy); ct_vu_pw = gk_vw * ret; ct_vu_ph = gk_vh * ret;
+  rk_vu_theme(zm_theme);
+  gk_frame_bg();
+  rkvu_gmode = 0;                                        // a level face's labels (rk_vu's rule)
+  rk_vu_geom(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph);   // publishes rkvu_r for this rect
+  gk_ro = rkvu_r >= 60 * max(1, gfx_ext_retina);
+  vu_ct.rk_vu_set_readout(gk_ro ? 1 : 0);
+  vu_ct.rk_vu_set_numbers(1);                    // the window always shows them
+  vu_ct.rk_vu_set_flat(0);                       // ...on the 1.6:1 face
+  // The typed name is the face's label (rk_vu fits it inside the ticks and
+  // draws it under the needle); while it is being typed, gk_name_face's box.
+  vu_ct.rk_vu_draw(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph, 0, -1, gk_ne_on ? "" : #gk_name);
+  !gk_ro ? gk_vu_corner();
+  gk_name_face();
+  ct_vu_drawn = 1;                         // for the picker at end of frame
+  mouse_wheel = 0;
+
+  // The GAIN knob, its printed scale, its value
+  gk_kcx = gk_x(gk_kx); gk_kcy = gk_y(gk_ky); gk_krp = gk_kr * ret;
+  m = km + 4 * KS;
+  nv = ssl_knob_interact(m, gk_kcx, gk_kcy, gk_krp, slider7, -24, 24, 0, 0);
+  nv != slider7 ? ( slider7 = nv; slider_automate(slider7); atomic_set(dsp_dirty, 1); );
+  gk_ink(3, 1, 0.50, 0.53, 0.58);
+  gk_legend(gk_kcx, gk_kcy, gk_krp);
+  rk_knob_draw(sk_kp, gk_kcx, gk_kcy, gk_krp, slider7, -24, 24, 1, m[0], knb_o_r, knb_o_g, knb_o_b, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(gk_tf * ret), gk_wt(floor(gk_tf * ret)));
+  gk_ink(2, 1, 0.85, 0.88, 0.90);
+  gk_gain_str(1);
+  gfx_measurestr(#gk_gv, tw, th);
+  gfx_x = gk_x(gk_tx) - tw * 0.5; gfx_y = gk_y(gk_ty) - th * 0.5;
+  gfx_drawstr(#gk_gv);
+
+  gk_mono_btn(bm + 5 * BS, gk_x(gk_mx0), gk_y(gk_my0), gk_mw * ret, gk_mh * ret, floor(gk_mf * ret));
+  gk_badges(gk_x(gk_bdx), gk_y(gk_bdy), gk_bdw * ret, gk_bdh * ret, floor(gk_bdf * ret), gk_bdc);
+);
+
+rk_link_draw_menu(WIN_W - 220*ret, hdr_h + 4*ret, ret, 0.00, 0.70, 0.85, mx, my, lmb_down);
+rkth_cluster_overlay();   // open THEME/KNOB/VU panels draw on top
+
+// NAME BAR re-applied every VISIBLE pass — that, not the @init line, is what
+// makes the row take effect without a reload. An idle pass (& 2) leaves the
+// flag alone (house rule 4). ⚠️INVERTED SENSE: the row ON means 0x100 CLEARED.
+!(gfx_ext_flags & 2) ? (
+  ct_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+);
+
+// Face picker on the meter's coil cover: a sheet of live miniatures. LAST,
+// floating only, and only when the face was drawn this frame.
+!is_embedded && ct_vu_drawn ? (
+  _ct_pk_lmb ? lmb_down = _ct_pk_lmb;    // the stash, only when the sheet took the click
+  _ct_pk = vu_ct.rk_vu_picker(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph, zm_theme);
+  _ct_pk >= 0 ? zm_theme = _ct_pk;
+);
+ct_vu_drawn = 0;
+
+rk_link_on_gfx_change();
+
+@serialize
+file_var(0, rk_ps_en_play);
+file_var(0, rk_ps_en_rec);
+file_var(0, rk_ps_en_stop);
+file_var(0, rk_ps_inited);
+file_var(0, gk_view);   // 2.1's embedded VIEW mode; unused since 2.2.0 but the blob is positional, so it stays
+// VU face (appended with the appearance cluster). file_avail(0): -1 writing,
+// >0 reading a new blob, 0 = old blob exhausted -> skip, keeping face 0.
+file_avail(0) != 0 ? ( file_var(0, zm_theme); );
+// Appearance LOCK (flag + the 45-value look snapshot), appended LAST. The blob
+// is positional: anything added after this must go BELOW it, never between.
+rkth_lock_serialize();
+// Save-format marker, appended at the TAIL (below the lock blob, as required) so
+// every older blob still reads in full. Written as 1 since the meter moved to
+// rk_vu, 2 since the typed name. A blob that ends before it was saved on
+// vu_kbsg, whose face index 0..10 means a different face on the twenty-face
+// rk_vu: map it once, by look.
+file_avail(0) < 0 ? ser_ver = 2;
+file_avail(0) != 0 ? file_var(0, ser_ver) : ser_ver = 0;
+ser_ver < 1 ? zm_theme = rkth_vu_face_migrate(zm_theme);
+// ser_ver 2 (2026-09-27): the typed name, a length-prefixed string after the
+// marker, its own gate (wiki 3.4: a written gate is never extended). A blob
+// written before it has none, so the name is cleared; a GainKit from before
+// reads the 2 and stops there, the name unread.
+ser_ver >= 2 ? file_string(0, #gk_name) : strcpy(#gk_name, "");
