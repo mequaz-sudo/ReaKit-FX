@@ -44,6 +44,8 @@ in the Actions list as `Script: GainKit Plus…`):
 - **Reset all gains** — every GainKit's GAIN back to 0 dB.
 - **All MONO** / **All STEREO** — every GainKit's key at once.
 - **Bypass all** — every GainKit off; run it again and they are all on.
+- **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
+  `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
 
 In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
 finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows

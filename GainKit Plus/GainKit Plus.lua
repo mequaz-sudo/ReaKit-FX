@@ -15,16 +15,20 @@ local BASE, STRIDE, MAXT = 31195136, 320, 512
 local NAME_MAX, PATH_MAX = 24, 259
 
 -- A toggle: run it again to stop. set_action_options(1) makes a relaunch a clean RESTART, not a
--- stop (the running instance's atexit first, then this chunk, 2 ms apart - wiki 6, measured), so
--- the running instance stamps a heartbeat every tick and a fresh one here means the user pressed
--- the action while it ran: this launch is the "stop" and ends at once. The old instance's atexit
--- has already zeroed the GENs and the toggle state.
+-- stop (wiki 6, measured), so the running instance stamps a heartbeat (EXT/alive) every tick, and
+-- a launch that finds a fresh one, newer than the last stop request (EXT/stop), is the user's
+-- second press: it writes the stop request and ends at once. The running instance sees the
+-- request at its next tick and quits WITHOUT stamping again (REAPER terminates it anyway), so a
+-- start right after a stop is a start, not a second stop. Its atexit zeroes the GENs and the
+-- toggle state.
 local EXT = "EON_GainKitPlus"
 local _, _, sec, cmd = r.get_action_context()
+local now0 = r.time_precise()
 local hb = tonumber(r.GetExtState(EXT, "alive")) or 0
-if r.time_precise() - hb < 1.0 then
+local st = tonumber(r.GetExtState(EXT, "stop")) or 0
+if hb > st and now0 - hb < 1.0 then
+  r.SetExtState(EXT, "stop", tostring(now0), false)
   if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, 0); r.RefreshToolbar2(sec, cmd) end
-  r.SetExtState(EXT, "alive", "0", false)
   return
 end
 if r.set_action_options then r.set_action_options(1) end
@@ -99,6 +103,7 @@ end
 local t_last = 0
 local function loop()
   local now = r.time_precise()
+  if (tonumber(r.GetExtState(EXT, "stop")) or 0) > now0 then return end   -- asked to stop: no stamp, atexit cleans up
   r.SetExtState(EXT, "alive", tostring(now), false)          -- the heartbeat a relaunch reads
   if now - t_last >= 0.3 then t_last = now; tick() end
   r.defer(loop)
