@@ -33,6 +33,16 @@ import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
 
 @init
+// ⭐ ext_noinit: @init runs once, at load. Without it REAPER re-runs @init when
+// playback starts and when the effect is bypassed or enabled (measured in the
+// sandbox, 2026-09-28: window open / close do NOT), and this @init zeroes the
+// lookahead buffer, every crossover state and the detector -- with sound
+// already flowing (input monitoring, the enable button during playback) that
+// is a millisecond of silence and the filters restarting from nothing: the
+// pop the user heard "every time it opens". A sample-rate change no longer
+// re-runs @init either, so everything rate-derived is re-taken from @block
+// (de_rate_check below).
+ext_noinit = 1.0;
 gfx_ext_retina = 1;
 
 // Render the embedded UI without REAPER's frame/title-bar decoration
@@ -189,32 +199,38 @@ function recalc_dsp()
 // ── Fix: clear lookahead buffer to prevent stale audio on project reload ──
 i = 0; loop(LA_MAX, la_buf_l[i] = 0; la_buf_r[i] = 0; i += 1; );
 
-// ── Fix: prime interpolation sources so @block doesn't ramp from 0 ────────
-recalc_dsp();
-src_b1_s0  = tgt_b1_s0;  src_b2_s0  = tgt_b2_s0;
-src_a0s0lp = tgt_a0s0lp; src_a1s0lp = tgt_a1s0lp; src_a2s0lp = tgt_a2s0lp;
-src_a0s0hp = tgt_a0s0hp; src_a1s0hp = tgt_a1s0hp; src_a2s0hp = tgt_a2s0hp;
-src_b1_s1  = tgt_b1_s1;  src_b2_s1  = tgt_b2_s1;
-src_a0s1lp = tgt_a0s1lp; src_a1s1lp = tgt_a1s1lp; src_a2s1lp = tgt_a2s1lp;
-src_a0s1hp = tgt_a0s1hp; src_a1s1hp = tgt_a1s1hp; src_a2s1hp = tgt_a2s1hp;
-
-// Prime current coeffs so @sample has valid values before the first @block
-b1_s0  = src_b1_s0;  b2_s0  = src_b2_s0;
-a0s0lp = src_a0s0lp; a1s0lp = src_a1s0lp; a2s0lp = src_a2s0lp;
-a0s0hp = src_a0s0hp; a1s0hp = src_a1s0hp; a2s0hp = src_a2s0hp;
-b1_s1  = src_b1_s1;  b2_s1  = src_b2_s1;
-a0s1lp = src_a0s1lp; a1s1lp = src_a1s1lp; a2s1lp = src_a2s1lp;
-a0s1hp = src_a0s1hp; a1s1hp = src_a1s1hp; a2s1hp = src_a2s1hp;
-
-// Zero all deltas — no interpolation needed on first block
-d_b1_s0=d_b2_s0=d_a0s0lp=d_a1s0lp=d_a2s0lp=d_a0s0hp=d_a1s0hp=d_a2s0hp=0;
-d_b1_s1=d_b2_s1=d_a0s1lp=d_a1s1lp=d_a2s1lp=d_a0s1hp=d_a1s1hp=d_a2s1hp=0;
+// ── Prime: the rate-derived values, taken at once (no interpolation) so
+// @sample has valid coefficients before the first @block. Called here at load
+// and from @block when the sample rate moves (de_rate_check).
+function de_prime() (
+  recalc_dsp();
+  src_b1_s0  = tgt_b1_s0;  src_b2_s0  = tgt_b2_s0;
+  src_a0s0lp = tgt_a0s0lp; src_a1s0lp = tgt_a1s0lp; src_a2s0lp = tgt_a2s0lp;
+  src_a0s0hp = tgt_a0s0hp; src_a1s0hp = tgt_a1s0hp; src_a2s0hp = tgt_a2s0hp;
+  src_b1_s1  = tgt_b1_s1;  src_b2_s1  = tgt_b2_s1;
+  src_a0s1lp = tgt_a0s1lp; src_a1s1lp = tgt_a1s1lp; src_a2s1lp = tgt_a2s1lp;
+  src_a0s1hp = tgt_a0s1hp; src_a1s1hp = tgt_a1s1hp; src_a2s1hp = tgt_a2s1hp;
+  b1_s0  = src_b1_s0;  b2_s0  = src_b2_s0;
+  a0s0lp = src_a0s0lp; a1s0lp = src_a1s0lp; a2s0lp = src_a2s0lp;
+  a0s0hp = src_a0s0hp; a1s0hp = src_a1s0hp; a2s0hp = src_a2s0hp;
+  b1_s1  = src_b1_s1;  b2_s1  = src_b2_s1;
+  a0s1lp = src_a0s1lp; a1s1lp = src_a1s1lp; a2s1lp = src_a2s1lp;
+  a0s1hp = src_a0s1hp; a1s1hp = src_a1s1hp; a2s1hp = src_a2s1hp;
+  d_b1_s0=d_b2_s0=d_a0s0lp=d_a1s0lp=d_a2s0lp=d_a0s0hp=d_a1s0hp=d_a2s0hp=0;
+  d_b1_s1=d_b2_s1=d_a0s1lp=d_a1s1lp=d_a2s1lp=d_a0s1hp=d_a1s1hp=d_a2s1hp=0;
+  de_srate_seen = srate;
+);
+de_prime();
 
 @slider
 recalc_dsp();
 rk_link_on_slider();
 
 @block
+// de_rate_check: with ext_noinit the sample rate can move under a running
+// instance; the time constants, the lookahead length and every crossover
+// coefficient are rate-derived, so take them again at once.
+srate != de_srate_seen ? de_prime();
 atomic_get(dsp_dirty) ? ( recalc_dsp(); atomic_set(dsp_dirty, 0); );
 rk_link_pull() ? ( recalc_dsp(); );
 
