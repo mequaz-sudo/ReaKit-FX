@@ -5,13 +5,13 @@ Five free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and GainKit, EON's own gain-staging plugin. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
-![ReaKit FX](screenshots/session/hero.png)
+![ReaKit FX](screenshots/session/hero_plus_ssl.png)
 
-*A session on the suite's SSL theme. The four strips on the left are GainKit's four faces for a
-mixer strip — the knob alone, the VU over the knob, the same with MONO on, and the VU alone with a
-name typed on it — with Saturation, 3-Band EQ and DDC embedded under them; then GainKit's, 3-Band's
-and DDC's windows. Click a strip's empty space to open the window, click the strip again to close
-it.*
+*A session on the suite's SSL theme with GainKit Plus running. Every channel starts with GainKit's
+VU, its track's name over the meter and its colour along the top; Saturation and DDC sit under it.
+The four buses on the right keep their own meter faces, with 3-Band EQ under each, and the master
+ends in GainKit, 3-Band EQ and DDC. Click a strip's empty space to open the window, click the strip
+again to close it; drag the meter to set the gain.*
 
 ## The plugins
 
@@ -52,6 +52,11 @@ finer), the wheel steps it, double-click or right-click returns it to 0 dB, and 
 under a VU-only meter for a moment. The rest of the strip still opens the window with a click.
 The THEME panel's FONT row picks the face the name is printed in, on the window's meter and
 under the strip's.
+
+![The same session on the EON theme, GainKit Plus running](screenshots/session/hero_plus_eon.png)
+
+*The same session on the EON theme: the names and colours come from the tracks, the meters from
+GainKit Plus, nothing typed.*
 
 ### Saturation
 
@@ -133,7 +138,7 @@ GainKit 2.3.0 uses (the library's next release carries it). Nothing else is need
 the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
-*The cover, the strips and the five windows are screenshots of a working session on the SSL
-theme. The four-theme strip is a script's: a sandbox REAPER at 100 % publishes a suite theme the
+*The two session pictures, the strips and the five windows are screenshots of working sessions
+on the SSL and EON themes. The four-theme strip is a script's: a sandbox REAPER at 100 % publishes a suite theme the
 way the bridge does, opens the window and crops to its canvas. Every pixel is the plugin drawing
 itself.*
