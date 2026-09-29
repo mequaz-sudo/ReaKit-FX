@@ -5,13 +5,13 @@ Five free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and GainKit, EON's own gain-staging plugin. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
-![ReaKit FX](screenshots/session/hero_plus_ssl.png)
+![ReaKit FX](screenshots/session/cover_ssl.png)
 
-*A session on the suite's SSL theme with GainKit Plus running. Every channel starts with GainKit's
-VU, its track's name over the meter and its colour along the top; Saturation sits under it, then
-4-Band EQ and the 1175 from the EON suite. The four buses on the right keep their own meter faces,
-with 3-Band EQ under each, and the master ends in GainKit and the suite's ExpressBus. Click a strip's
-empty space to open the window, click the strip again to close it; drag the meter to set the gain.*
+*A session on the suite's SSL theme with GainKit Plus running. Every channel and bus starts with
+GainKit: the track's name on a band in the track's colour, the VU over the GAIN knob, and the
+STEREO / MONO key. 4-Band EQ from the EON suite sits under it; the master runs GainKit and 3-Band
+EQ, its name typed. Click a strip's empty space to open the window, click the strip again to close
+it; drag the meter to set the gain.*
 
 ## The plugins
 
@@ -19,36 +19,33 @@ empty space to open the window, click the strip again to close it; drag the mete
 
 ![GainKit](screenshots/session/gainkit.png)
 
-![GainKit's four strip faces and its window](screenshots/session/gainkit_faces_window.png)
+![GainKit's strip faces on the Light theme](screenshots/session/gainkit_faces_light.png)
 
-*GainKit's four faces for a mixer strip, and its window: the knob alone (Lead Vox), the VU alone
-with the track's name over it (BG Vox), the VU over the knob (Gtr DI), and the same with MONO on
-(Gtr Amp). The window is the master's GainKit, its name typed and set in the face picked on the
-THEME panel's FONT row. Under GainKit on every channel: Saturation, then 4-Band EQ and the 1175
-from the EON suite.*
-
-![GainKit on four buses and the master](screenshots/session/gainkit_buses.png)
-
-*Four buses and the master: the VU alone with the name over it, each bus on its own meter face,
-3-Band EQ under the buses and the EON suite's ExpressBus under the master's meter. The master's
-name is typed, and set in another face picked on the THEME panel's FONT row.*
+*GainKit in the mixer on the Light theme, GainKit Plus running. The five channels show the VU over
+the GAIN knob, the meter in the track's colour and the name on top. Three of the buses show the VU
+alone: the STEREO / MONO key under the name and, on two of them, the gain under the meter. Drums
+shows the VU over the knob. Under GainKit: 4-Band EQ from the EON suite.*
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
 faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
 the VU alone, or the knob alone, with numerals or ticks only, and the VU grows flatter as you drag
-the strip wider. Click the middle of the meter's face and type, and the name is printed on the meter
-like a legend. The high-pass, low-pass, trims and M/S modes it used to show are still there as
-parameters, so old projects sound the same.
+the strip wider. The VU alone keeps its own STEREO / MONO key under the name, shows the gain as a
+tint of the meter's face (up from the middle for a boost, down for a cut), and prints the value
+under the meter while you set it, or all the time. Click the middle of the window's meter face and
+type, and the name is printed on the meter like a legend and on top of the strip, in every view:
+as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
+M/S modes it used to show are still there as parameters, so old projects sound the same.
 
 #### GainKit Plus
 
 Actions that come with GainKit (install **GainKit Plus** from the same repository; they appear
 in the Actions list as `Script: GainKit Plus…`):
 
-- **GainKit Plus** — run it once and every GainKit in the project shows its track's name as the
-  meter's legend, the track's colour as a thin bar along the top of the strip (and under the
-  window's header), and the track's icon in the window's header. A name typed on the meter
-  still wins. Run it again to stop; put it on a toolbar and the button lights while it runs.
+- **GainKit Plus** — run it once and every GainKit in the project shows its track's name on top
+  of the strip and as the meter's legend, the track's colour along the top of the strip or as the
+  name's band (and under the window's header), and the track's icon in the window's header; the
+  meter can take the colour too. A name typed on the meter still wins. Run it again to stop; put
+  it on a toolbar and the button lights while it runs.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
   none.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
@@ -61,11 +58,11 @@ in the Actions list as `Script: GainKit Plus…`):
 
 In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
 finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows
-under a VU-only meter for a moment. The rest of the strip still opens the window with a click.
-The THEME panel's FONT row picks the face the name is printed in, on the window's meter and
-under the strip's.
+under the VU alone while you set it and a moment after. The rest of the strip still opens the
+window with a click. The THEME panel's FONT row picks the face the name is printed in, on the
+window's meter and on top of the strip.
 
-![The same session on the EON theme, GainKit Plus running](screenshots/session/hero_plus_eon.png)
+![The same session on the EON theme, GainKit Plus running](screenshots/session/session_eon.png)
 
 *The same session on the EON theme. The channels and buses take their names and colours from
 their tracks, through GainKit Plus; the master's name is typed.*
@@ -107,14 +104,16 @@ The display shows the band it is listening to.
   slot it is given.
 - **THEME panel** — GainKit, Saturation, 3-Band EQ and De-Esser have a THEME toggle in the header:
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
-  which opts an instance out of theming. GainKit's panel also picks the VU's face and has LOCK,
-  which freezes that instance's look while the rest follows the theme. DDC has no panel of its
-  own; its colours and knobs follow the suite's theme.
+  which opts an instance out of theming. GainKit's panel also picks the VU's face, what the strip
+  shows, the name's row (ROW, BAND or OFF) and its FONT, the meter's colour (FACE or TRACK) and
+  when the VU alone prints the gain (TOUCH or ALWAYS), and has LOCK, which freezes that instance's
+  look while the rest follows the theme. DDC has no panel of its own; its colours and knobs follow
+  the suite's theme.
 
-  ![GainKit on four themes](screenshots/themes.png)
+  ![GainKit's strips on four themes](screenshots/session/strips_four_themes.png)
 
-  *GainKit on the EON, SSL, Neve and Ableton themes: the colours and the knob follow the theme, the
-  meter is the meter.*
+  *GainKit's strips on the Light, SSL, Dark and EON themes: the colours and the knob follow the
+  theme, the name bands keep the track's colour.*
 - **Link groups** — the gear in the header of those four puts an instance in a group; instances
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
@@ -144,13 +143,10 @@ The full text is in [LICENSE.md](LICENSE.md).
 
 ## Building on it
 
-The `ReaKit/` folder is a copy of the ReaKit library the plugins import (`import
-../../ReaKit/<file>`): the released library, plus the label-font hook in `rk_vu.jsfx-inc` that
-GainKit 2.3.0 uses (the library's next release carries it). Nothing else is needed: install
-the package and the plugins compile. To write your own, start from the
+The `ReaKit/` folder holds the ReaKit files the plugins import (`import ../../ReaKit/<file>`);
+the ones the ReaKit library also publishes are the same as its 1.7.1 release. Nothing else is
+needed: install the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
-*The two session pictures, the strips and the five windows are screenshots of working sessions
-on the SSL and EON themes. The four-theme strip is a script's: a sandbox REAPER at 100 % publishes a suite theme the
-way the bridge does, opens the window and crops to its canvas. Every pixel is the plugin drawing
-itself.*
+*Every picture here is a screenshot of a working session, on the SSL, Light, Dark and EON themes,
+cropped and never painted over: every pixel is the plugin drawing itself.*
