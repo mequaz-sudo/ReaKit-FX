@@ -696,7 +696,8 @@ function rkth_cl_chipdraw(cx, cy, cw, ch, lbl_str) local(_f) (
 // slider itself — picks surface on rkth_vu_pick for the host to apply.
 function rkth_cluster(x, y, has_vu, cur_vu)
 local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid, _ch, _rh,
-      _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw, _nfw, _nfi, _nsw, _xw, _xi, _xj, _xr) (
+      _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw, _nfw, _nfi, _nsw, _xw, _xi, _xj, _xr,
+      _vp, _av) (
   // Chip height and dropdown row height, scaled once and reused by EVERY hit
   // test, dropdown anchor and draw below — a chip whose hit rect and drawn rect
   // disagree is the bug this function's comments keep warning about, and two
@@ -894,9 +895,22 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_x2row = rkth_x2_ok ? _xr : -1; rkth_x2_ok ? _xr += 1;
     rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
     rkth_clp_rows  = _xr + (rkth_lk_ok ? 1 : 0);
+    // A panel taller than the window closes its top and bottom margins to 3 px,
+    // then its gaps, down to none, before a row falls off the bottom: GainKit's
+    // WIDE face scales everything with a short window's height, and its 12 rows
+    // need 272 px of a 240 px window at 1x, which left VALUE half shown and LOCK
+    // below the edge, where no click reaches it (Codex audit, 2026-09-29). The
+    // chips and their text keep their size; the clamp below still decides where
+    // the panel hangs. A panel that fits is exactly what it was.
+    _vp = _pad;
+    _av = gfx_h - 2*rkth_scale;
+    _vp + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _vp > _av ? (
+      _vp = min(_vp, 3*rkth_scale);
+      _gap = max(0, min(_gap, (_av - 2*_vp - rkth_clp_rows*_ch) / max(1, rkth_clp_rows - 1)));
+    );
     rkth_clp_pitch = _ch + _gap;
     rkth_clp_w = _pad + _capw + _cw + _pad;
-    rkth_clp_h = _pad + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _pad;
+    rkth_clp_h = _vp + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _vp;
     rkth_clp_x = x; rkth_clp_y = y;
     // Clamp into the window, same rule the dropdowns use.
     rkth_clp_x + rkth_clp_w > gfx_w - 2*rkth_scale ? rkth_clp_x = max(0, gfx_w - 2*rkth_scale - rkth_clp_w);
@@ -904,7 +918,7 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_capx = rkth_clp_x + _pad;
     rkth_clp_cx   = rkth_clp_x + _pad + _capw;
     rkth_clp_cw   = _cw;
-    rkth_clp_r0   = rkth_clp_y + _pad;
+    rkth_clp_r0   = rkth_clp_y + _vp;
     rkth_clp_ch   = _ch;
     rkth_clp_vu   = has_vu;
     // One x/width for every chip; rows step by pitch. Hit tests, dropdown
