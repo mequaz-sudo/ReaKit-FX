@@ -46,6 +46,7 @@ gainL = seekgainL = 1;
 gainR = seekgainR = 1;
 c_ampdB = 8.65617025;
 ext_gr_meter = 0;
+gr_worst = 1000000;   // the block's lowest gain so far (@sample), published in @block; 1000000 = none yet
 cDenorm = pow(10,-30);
 dsp_dirty = 0;
 snap_params = 1;
@@ -202,6 +203,17 @@ atomic_get(dsp_dirty) ? (
 // PDC is declared here, at block rate (house rule: never in @init/@slider).
 pdc_delay = (os_on ? 3 : 0) + la_size;
 pdc_bot_ch = 0; pdc_top_ch = 2;
+
+// GR meter, once per block: the lowest gain the last block reached, both
+// channels, in dB for the GUI (slider10) and REAPER's own meter. It used to be
+// written, with a log() and a sliderchange(), on every sample (outside audit,
+// 2026-09-28); the other compressors in the suite all publish here. The host
+// hears about slider10 only when it moved, so an idle DDC stays quiet.
+gr_worst < 1000000 ? (
+  ext_gr_meter = log(gr_worst) * c_ampdB;
+  ext_gr_meter != slider10 ? sliderchange(slider10 = ext_gr_meter);
+);
+gr_worst = 1000000;
 
 @sample
 // ── Snap smoothers on project load (avoid audible ramp) ──
@@ -362,10 +374,9 @@ mix_pct < 1 ? (
 spl0_out = spl0;
 spl1_out = spl1;
 
-// ── GR meter (show worst channel) ──
+// ── GR meter (show worst channel): the block's lowest gain, published in @block ──
 _gr_gain = min(gain_sL.val, gain_sR.val);
-ext_gr_meter = slider10 = log(_gr_gain) * c_ampdB;
-sliderchange(512);
+_gr_gain < gr_worst ? gr_worst = _gr_gain;
 
 @gfx 600 520
 gfx_clear = 0x706E6B;

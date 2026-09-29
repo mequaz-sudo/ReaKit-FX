@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.3.0
+// Version: 2.5.0
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -31,6 +31,9 @@ slider18:ct_strip_view=0<0,2,1{Meter,Knob,VU}>-Strip view (internal; the THEME p
 slider19:ct_strip_nums=0<0,1,1{Shown,Hidden}>-Strip numbers (internal; the THEME panel's NUMBERS row: 1 = the strip's VU shows ticks only; persists via FX chunk)
 slider20:ct_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
 slider21:ct_name_font=0<0,8,1{Arial,Arial Black,Impact,Georgia,Times New Roman,Courier New,Consolas,Verdana,Segoe UI}>-Name font (internal; the THEME panel's FONT row: the face of the name on the meter and under the strip's; persists via FX chunk)
+slider22:ct_name_style=0<0,2,1{Row,Band,Off}>-Name style (internal; the THEME panel's NAME row: the strip's name row as text, as a band in the track's colour, or none; persists via FX chunk)
+slider23:ct_vu_track=0<0,1,1{Face,Track}>-Meter colour (internal; the THEME panel's VU COLOR row: 1 = the meter's face takes the track's colour, from GainKit Plus; persists via FX chunk)
+slider24:ct_val_mode=0<0,1,1{Touch,Always}>-Gain number (internal; the THEME panel's VALUE row: the VU strip's gain number under the meter, while the gain is being set or always; persists via FX chunk)
 
 in_pin:left input
 in_pin:right input
@@ -578,15 +581,25 @@ function gk_plus_icon(x, y, sz) local(iw, ih) (
     gfx_blit(GK_IMG_ICON, sz / max(iw, ih), 0);
   );
 );
-// The name under the strip's VU view meter (#gk_dname: the typed name, else the
-// track's from GainKit Plus), in the FONT row's face: the rest of the slot, its
-// full width, as large as fits up to 16 px, down to 7, then cut with "..".
-// Text only: the track icon stays in the window's header (the user, 2026-09-28:
-// "I don't want the track icon next to the name").
+// The name row's ink. On a BAND in the track's colour it follows that colour
+// alone: dark on a light one, white on a dark one (gk_row_dark 1 / 2). The
+// theme's text colour is for the strip's ground: dark on a light theme, it sank
+// into a blue or red band (the user's session, 2026-09-29: "Bass" on blue,
+// 1.8:1).
+function gk_row_ink() (
+  gk_row_dark == 1 ? gfx_set(0.07, 0.07, 0.08, 1) : (
+    gk_row_dark == 2 ? gfx_set(0.96, 0.96, 0.97, 1) : gk_ink(2, 1, 0.85, 0.88, 0.90);
+  );
+);
+// The name in a strip's name row (#gk_dname: the typed name, else the track's
+// from GainKit Plus), in the FONT row's face: the row's full width, as large as
+// fits up to 16 px, down to 7, then cut with "..". Text only: the track icon
+// stays in the window's header (the user, 2026-09-28: "I don't want the track
+// icon next to the name"). The ink is gk_row_ink()'s.
 function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
   sc = max(1, gfx_ext_retina);
   bh = y1 - y0;
-  f = floor(min(bh * 0.62, 16 * sc));
+  f = floor(min(bh * 0.8, 16 * sc));         // a name row is 14..24 px: its text fills it
   f >= 7 * sc ? (
     gfx_setfont(1, gk_font(), f, gk_wt(f)); gfx_measurestr(#gk_dname, tw, th);
     while (tw > gk_w - 6 * sc && f > 7 * sc) (
@@ -598,7 +611,7 @@ function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
       n -= 1; strcpy_substr(#gk_nm_s, #gk_dname, 0, n); strcat(#gk_nm_s, "..");
       gfx_measurestr(#gk_nm_s, tw, th);
     );
-    gk_ink(2, 1, 0.85, 0.88, 0.90);
+    gk_row_ink();
     gfx_x = (gk_w - tw) * 0.5; gfx_y = y0 + (bh - th) * 0.5;
     gfx_drawstr(#gk_nm_s);
   );
@@ -608,17 +621,94 @@ function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
 function gk_gain_strip(y0, y1) local(sc, bh, f, tw, th) (
   sc = max(1, gfx_ext_retina);
   bh = y1 - y0;
-  f = floor(min(bh * 0.62, 14 * sc));
+  f = floor(min(bh * 0.8, 14 * sc));
   f >= 7 * sc ? (
     gk_gain_str(1);
     gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_gv, tw, th);
     while (tw > gk_w - 6 * sc && f > 7 * sc) (
       f -= 1; gfx_setfont(1, "Arial", f, gk_wt(f)); gfx_measurestr(#gk_gv, tw, th);
     );
-    gk_ink(2, 1, 0.85, 0.88, 0.90);
+    gk_row_ink();
     gfx_x = (gk_w - tw) * 0.5; gfx_y = y0 + (bh - th) * 0.5;
     gfx_drawstr(#gk_gv);
   );
+);
+// The meter's FACE: the picked one (zm_theme), or, with the THEME panel's VU
+// COLOR row on TRACK and a colour from GainKit Plus, a face made of the track's
+// colour (the user, 2026-09-29; off by default). The rule is the one rk_vu's
+// own coloured faces follow (Red, Yellow, Orange, Emerald, Cobalt): the plate
+// is the colour, its shade and the pivot's cap darker tones of it; ink and
+// needle light on a dark plate, dark on a light one; the over-zone and the LED
+// red, unless red would sink into the plate (a red or pink track), then yellow
+// on a dark plate and deep red on a light one; the level band a light tint of
+// a dark plate, a dark one of a light plate. The bezel is the strip's ground.
+function gk_vu_face() local(c, r, g, b, dark, zr, zg, zb) (
+  rk_vu_theme(zm_theme);
+  ct_vu_track && gk_pl_col > 0 ? (
+    c = gk_pl_col - 1;
+    r = floor(c / 65536) / 255; g = (floor(c / 256) % 256) / 255; b = (c % 256) / 255;
+    dark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+    rk_vu_pal_rgb(0, r, g, b);
+    rk_vu_pal_rgb(1, r * 0.82, g * 0.82, b * 0.82);
+    rk_vu_pal_rgb(6, r * 0.25, g * 0.25, b * 0.25);
+    dark ? ( rk_vu_pal_rgb(3, 0.96, 0.93, 0.88); rk_vu_pal_rgb(5, 1, 1, 1); )
+         : ( rk_vu_pal_rgb(3, 0.10, 0.09, 0.08); rk_vu_pal_rgb(5, 0.10, 0.09, 0.08); );
+    dark ? ( zr = 1.00; zg = 0.38; zb = 0.27; ) : ( zr = 0.82; zg = 0.17; zb = 0.17; );
+    sqr(zr - r) + sqr(zg - g) + sqr(zb - b) < 0.30 ? (
+      dark ? ( zr = 1.00; zg = 0.85; zb = 0.29; ) : ( zr = 0.56; zg = 0.05; zb = 0.05; );
+    );
+    rk_vu_pal_rgb(4, zr, zg, zb);
+    rk_vu_pal_rgb(7, min(1, zr * 1.1), zg, zb);
+    dark ? rk_vu_pal_rgb(8, r * 0.45 + 0.55, g * 0.45 + 0.55, b * 0.45 + 0.55)
+         : rk_vu_pal_rgb(8, r * 0.55, g * 0.55, b * 0.55);
+  );
+  gk_frame_bg();
+);
+// The GAIN as a fill of the meter's face (the VU view has no knob; the user,
+// 2026-09-29: "maybe a fill of the meter" -> "face"): the plate tinted from its
+// middle line, upward for a boost, downward for a cut, the whole half at
+// +-24 dB, a line at the level, and a short mark at each edge of the middle
+// line, which is all there is at 0 dB. Light on a dark plate, dark on a light
+// one. Drawn over the face last drawn (rkvu_ox/oy/ow/oh, rk_vu's plate rect).
+function gk_face_fill() local(x0, x1, ym, hh, yl, lite, t) (
+  t = max(1, floor(rkvu_sc + 0.5));
+  x0 = rkvu_ox + 2 * rkvu_sc; x1 = rkvu_ox + rkvu_ow - 2 * rkvu_sc;
+  ym = floor(rkvu_oy + rkvu_oh * 0.5); hh = rkvu_oh * 0.5 - 3 * rkvu_sc;
+  lite = 0.2126 * rkvu_pl_r + 0.7152 * rkvu_pl_g + 0.0722 * rkvu_pl_b < 0.47;
+  yl = floor(ym - hh * min(1, max(-1, slider7 / 24)) + 0.5);
+  abs(slider7) >= 0.05 ? (
+    lite ? gfx_set(1, 1, 1, 0.26) : gfx_set(0, 0, 0, 0.22);
+    gfx_rect(x0, min(ym, yl), x1 - x0, abs(yl - ym));
+    lite ? gfx_set(1, 1, 1, 0.92) : gfx_set(0.08, 0.09, 0.10, 0.88);
+    gfx_rect(x0, yl, x1 - x0, t);
+  );
+  lite ? gfx_set(1, 1, 1, 0.92) : gfx_set(0.08, 0.09, 0.10, 0.88);
+  gfx_rect(x0, ym, 5 * rkvu_sc, t);
+  gfx_rect(x1 - 5 * rkvu_sc, ym, 5 * rkvu_sc, t);
+  gfx_a = 1;
+);
+// A strip's NAME ROW, y 0..h, the same in every view (the THEME panel's NAME
+// row, slider22; the user, 2026-09-29, on a mock-up of the two looks: "both
+// with a switch"). ROW: the name on the strip's ground under the track's thin
+// colour line. BAND: the row filled with the track's colour (GainKit Plus), or
+// the header's tone where there is none, the name printed on it, in dark ink on
+// a light colour and white on a dark one. show_gain: the GAIN in the name's
+// place (the VU view, for a moment after a drag or the wheel set it).
+function gk_name_row(h, show_gain) local(bar) (
+  bar = max(1, floor(2 * max(1, gfx_ext_retina) + 0.5));
+  gk_row_dark = 0;
+  ct_name_style == 1 ? (
+    gk_pl_col > 0 ? (
+      gk_plus_col();
+      gk_row_dark = 0.2126 * gfx_r + 0.7152 * gfx_g + 0.0722 * gfx_b > 0.55 ? 1 : 2;
+    ) : gk_bg(1, 1, 0.26, 0.28, 0.31);
+    gfx_rect(0, 0, gk_w, h);
+    show_gain ? gk_gain_strip(0, h) : gk_name_strip(0, h);
+  ) : (
+    gk_pl_col > 0 ? ( gk_plus_col(); gfx_rect(0, 0, gk_w, bar); );
+    show_gain ? gk_gain_strip(bar, h) : gk_name_strip(bar, h);
+  );
+  gk_row_dark = 0;
 );
 
 // ── HP filter state (2 cascaded stages × 2 channels) ──────────────────────
@@ -1002,12 +1092,17 @@ is_embedded ? (
   // under 75 px (x the DPI hint) as well as wider than 1/0.55 of the height, so
   // a widened mixer strip is never taken for a TCP one and a TCP slot (110
   // wide, STRIP below 60.5 tall) chooses exactly as it always did.
-  // STRIP = VU (slider18 2): the meter ALONE, as wide as the slot and at its
-  // top (the user, 2026-09-26, after ZenoMOD's embedded face: "a just vu
-  // option"); MONO on shows as a cyan dot under it, and a typed name (the
-  // window's, 2026-09-27) fills the slot under that, the design growing by a
-  // 16-unit row so a slot the meter already fills keeps room for it. The NUMBERS row (slider19)
-  // hides the meter's numerals in METER and VU alike: ticks only, a bigger dial.
+  // STRIP = VU (slider18 2): the meter ALONE, as wide as the slot (the user,
+  // 2026-09-26, after ZenoMOD's embedded face: "a just vu option"); MONO on
+  // shows as a cyan dot under it. The NUMBERS row (slider19) hides the meter's
+  // numerals in METER and VU alike: ticks only, a bigger dial.
+  // The NAME ROW (slider22, the THEME panel's NAME row) sits on top of EVERY
+  // view when there is a name, typed or the track's: the same pixel height at a
+  // given strip width (gk_top), so names line up across a mixer whatever view
+  // each strip is in (the user, 2026-09-29). The face below is laid out in what
+  // the row leaves (gk_hh): STACK's meter keeps the slot's width and goes
+  // flatter, the KNOB view's knob gets smaller, the VU view's meter sits at the
+  // bottom of the slot. A short slot (the STRIP design) has no room for it.
   // The THEME panel's STRIP row (slider18) swaps in the KNOB view: no meter,
   // the knob alone as big as the slot allows, its value and MONO under it
   // (STRIP: MONO left, knob centre, value right). A tall slot centres STACK.
@@ -1017,8 +1112,21 @@ is_embedded ? (
   gk_ne_on ? gk_ne_commit();           // the window closed mid-name: keep what was typed
   gk_w = gfx_w; gk_h = gfx_h;
   gk_bg(0, 1, 0.22, 0.24, 0.27); gfx_rect(0, 0, gk_w, gk_h);
+  // The design is chosen on the WHOLE slot, so a name arriving never swaps it.
+  gk_lay = gk_h < gk_w * 0.55 && gk_h < 75 * ret ? 0 : gk_h < gk_w * 1.45 ? 1 : 2;
+  // The name row's height, from the strip's WIDTH alone (14..24 px x the DPI
+  // hint): every view of every strip that wide puts its name on the same line.
+  gk_top = strlen(#gk_dname) > 0 && ct_name_style != 2 && gk_lay > 0
+         ? floor(min(max(gk_w * 0.22, 14 * ret), 24 * ret) + 0.5) : 0;
+  // The VU view's KEY BAND, under the name row: the STEREO / MONO key alone,
+  // centred (the user, 2026-09-29: "can we also show the mono, stereo button").
+  // Sized from the strip's width like the name row; none in a short slot.
+  gk_vukey = ct_strip_view == 2 && gk_lay > 0;
+  gk_band = gk_vukey ? floor(min(max(gk_w * 0.2, 13 * ret), 22 * ret) + 0.5) : 0;
+  gk_hh = gk_h - gk_top - gk_band;
   // GainKit Plus: the track's colour as a thin bar along the top of the strip
-  gk_pl_col > 0 ? ( gk_plus_col(); gfx_rect(0, 0, gk_w, max(1, floor(2 * gk_s + 0.5))); );
+  // (with a name row the row draws it, or is it: gk_name_row, last)
+  gk_pl_col > 0 && gk_top == 0 ? ( gk_plus_col(); gfx_rect(0, 0, gk_w, max(1, floor(2 * ret + 0.5))); );
 
   // Embedded wheel-fix: REAPER delivers wheel events with a STALE mouse_x/y, so
   // hover tests miss. Cache the cursor on non-wheel frames, reuse it on wheel
@@ -1027,7 +1135,6 @@ is_embedded ? (
 
   // gk_tf = 0: no room for the value. gk_ta: 1 centred on gk_tx, 0 left-aligned.
   // gk_vw = 0: no meter (the KNOB view).
-  gk_lay = gk_h < gk_w * 0.55 && gk_h < 75 * ret ? 0 : gk_h < gk_w * 1.45 ? 1 : 2;
   ct_strip_view == 1 ? (
     gk_vw = 0;
     gk_lay == 0 ? (
@@ -1046,24 +1153,28 @@ is_embedded ? (
       gk_bx = 75;  gk_by = 2;   gk_bs = 7;
     );
   ) : ct_strip_view == 2 ? (
-    // VU: the NAME on top, the meter under it (the user, 2026-09-28: "switch
-    // the VU to the bottom, name to the top"), then a thin row for the dots
-    // and the badge. The meter keeps the size the slot's width gives it; the
-    // name row takes the slot's whole SPARE height above it (the user,
-    // 2026-09-28, on a band sitting dead under the dots: "yes do that"), its
-    // 16 px text centred in it, and none where there is none: a short slot is
-    // all meter, as before. 50 units is every MCP slot's spare at most (REAPER
-    // sizes an embed at the @gfx aspect, 1.2 x its width = 120 units); a TCP
-    // slot taller than that keeps its extra below the dots, so the name never
-    // drifts away from its meter. No knob (gk_kr 0), no value, no MONO pill.
-    gk_s0 = max(0.01, min(gk_w / 100, gk_h / 70));
-    gk_nt = strlen(#gk_dname) > 0 ? min(50, max(0, gk_h / gk_s0 - 70)) : 0;
-    gk_dw = 100; gk_dh = 70 + gk_nt;
-    gk_vx = 1;   gk_vy = 1 + gk_nt;   gk_vw = 98; gk_vh = 61.25;
-    gk_kr = 0;   gk_tf = 0;
-    gk_mx0 = 3;  gk_my0 = 63 + gk_nt; gk_mw = 6;  gk_mh = 6;  gk_mf = 0;   // MONO on: its cyan dot
-    gk_dx = 14;  gk_dy = 66 + gk_nt;
-    gk_bx = 92;  gk_by = 63 + gk_nt;  gk_bs = 7;
+    // VU: the meter alone (a 1.6:1 face, the lib's cap). No knob (gk_kr 0): the
+    // meter is the gain control, and the gain shows as a fill of its face
+    // (gk_face_fill). From the top: the name row, the key band (the STEREO /
+    // MONO key, centred), the meter, and a row under it for the gain's number,
+    // the amber dot at its left and the badge at its right (the user,
+    // 2026-09-29: "can we put it at the bottom?"). A SHORT slot keeps the old
+    // block: the meter, a thin row for the dots, MONO as its cyan dot.
+    gk_vukey ? (
+      gk_dw = 100; gk_dh = 78;
+      gk_vx = 1;   gk_vy = 1;   gk_vw = 98; gk_vh = 61.25;
+      gk_kr = 0;   gk_tf = 0;
+      gk_mx0 = 0;  gk_my0 = 0;  gk_mw = 0;  gk_mh = 0;  gk_mf = 0;   // the key is drawn in the band, in pixels
+      gk_dx = 7;   gk_dy = 70.5;
+      gk_bx = 90;  gk_by = 67;  gk_bs = 7;
+    ) : (
+      gk_dw = 100; gk_dh = 70;
+      gk_vx = 1;   gk_vy = 1;   gk_vw = 98; gk_vh = 61.25;
+      gk_kr = 0;   gk_tf = 0;
+      gk_mx0 = 3;  gk_my0 = 63; gk_mw = 6;  gk_mh = 6;  gk_mf = 0;   // MONO on: its cyan dot
+      gk_dx = 14;  gk_dy = 66;
+      gk_bx = 92;  gk_by = 63;  gk_bs = 7;
+    );
   ) : gk_lay == 0 ? (
     gk_dw = 110; gk_dh = 44;
     gk_vx = 1;   gk_vy = 1;   gk_vw = 66; gk_vh = 42;
@@ -1089,16 +1200,16 @@ is_embedded ? (
     gk_dx = 8;   gk_dy = 76;
     gk_bx = 2;   gk_by = 170; gk_bs = 8;
   );
-  gk_s  = min(gk_w / gk_dw, gk_h / gk_dh);
+  gk_s  = min(gk_w / gk_dw, gk_hh / gk_dh);                         // the face, in what the name row leaves
   gk_ox = (gk_w - gk_dw * gk_s) * 0.5;
-  gk_oy = ct_strip_view == 2 ? 0 : (gk_h - gk_dh * gk_s) * 0.5;   // VU: at the top
+  gk_oy = ct_strip_view == 2 ? gk_top + gk_band                     // VU: name, key, meter, number, from the top
+                             : gk_top + (gk_hh - gk_dh * gk_s) * 0.5;
 
   // The meter. Its numerals scale with the face; the dB reading sits in the
   // plate's corner once the face can hold it clear of the arc (rk_vu's own
   // readout box does not fit a strip-sized face).
   gk_vw > 0 ? (
-    rk_vu_theme(zm_theme);
-    gk_frame_bg();
+    gk_vu_face();                                  // the picked face, or the track's colour
     vu_ct.rk_vu_set_readout(0);
     vu_ct.rk_vu_set_numbers(!ct_strip_nums);       // NUMBERS row: HIDDEN = ticks only
     // STACK's meter spans the slot, one design unit in from each side, and is
@@ -1108,6 +1219,7 @@ is_embedded ? (
     vu_ct.rk_vu_set_flat(gk_fl);
     gk_fl ? vu_ct.rk_vu_draw(gk_s, gk_y(gk_vy), gk_w - 2 * gk_s, gk_vh * gk_s, 0, -1, "")
           : vu_ct.rk_vu_draw(gk_x(gk_vx), gk_y(gk_vy), gk_vw * gk_s, gk_vh * gk_s, 0, -1, "");
+    gk_vukey ? gk_face_fill();                     // the VU view: the gain, as a fill of the face
     // The meter is the GAIN control in a strip, the way Tukan's ToolS2 works
     // (the user, 2026-09-28: "when embedded you can drag the volume up and
     // down, that's what I want for the VU"). Hovering it makes it a widget, so
@@ -1168,8 +1280,19 @@ is_embedded ? (
   );
 
   // MONO, a small pill below the knob. Too small to read: a cyan dot in its
-  // place while it is on.
-  floor(gk_mf * gk_s) >= 6 * ret ? (
+  // place while it is on. The VU view's key is the same pill, in its band under
+  // the name row, sized in pixels from the strip's width.
+  gk_vukey ? (
+    gk_kw = floor(gk_w * 0.44); gk_kh = floor(gk_band * 0.72);
+    gk_kf = floor(min(gk_kh * 0.68, gk_w * 0.095));
+    gk_kf >= 6 * ret ? (
+      emb_widget_active |= gk_mono_btn(bm + 6 * BS, floor((gk_w - gk_kw) * 0.5), gk_top + floor((gk_band - gk_kh) * 0.5),
+                                       gk_kw, gk_kh, gk_kf);
+    ) : slider12 == 1 ? (
+      gfx_set(0.00, 0.70, 0.85, 1);
+      gfx_circle(gk_w * 0.5, gk_top + gk_band * 0.5, max(1.5, 2 * gk_s), 1, 1);
+    );
+  ) : floor(gk_mf * gk_s) >= 6 * ret ? (
     emb_widget_active |= gk_mono_btn(bm + 6 * BS, gk_x(gk_mx0), gk_y(gk_my0),
                                      gk_mw * gk_s, gk_mh * gk_s, floor(gk_mf * gk_s));
   ) : slider12 == 1 ? (
@@ -1190,16 +1313,16 @@ is_embedded ? (
   rk_link_draw_badge(gk_x(gk_bx), gk_y(gk_by), gk_bsp, 0.00, 0.70, 0.85, mx, my, lmb_down);
   rk_link_on_gfx_change();
 
-  // The VU view's name row, ABOVE the meter (under the colour bar): the typed
-  // name, or the GAIN for 1.5 s after a drag or the wheel set it. With no name
-  // the gain prints under the meter instead, whenever it is not 0 or was just
-  // set, so the meter never moves. Neither row is a control: a click there
-  // opens the window like any dead space (house rule 2), where the name is typed.
-  ct_strip_view == 2 ? (
-    gk_gshow = timer - gk_gflash < 1.5 || (abs(slider7) >= 0.05 && strlen(#gk_dname) == 0);
-    gk_nt > 0 ? (
-      gk_gshow ? gk_gain_strip(2 * gk_s, gk_y(gk_nt)) : gk_name_strip(2 * gk_s, gk_y(gk_nt));
-    ) : gk_gshow ? gk_gain_strip(gk_y(70), gk_h - gk_s);
+  // The NAME ROW, on top of every view (gk_name_row): the name, typed or the
+  // track's. The VU view has no knob and no value: its gain is the fill of the
+  // face, and its NUMBER prints in the row under the meter, while the gain is
+  // being set and 1.5 s after (VALUE = TOUCH, the default) or always (VALUE =
+  // ALWAYS; the user, 2026-09-29: "make both options in the menu"). Neither
+  // row is a control: a click there opens the window like any dead space
+  // (house rule 2), where the name is typed.
+  gk_top > 0 ? gk_name_row(gk_top, 0);
+  ct_strip_view == 2 && (ct_val_mode == 1 || timer - gk_gflash < 1.5) ? (
+    gk_vukey ? gk_gain_strip(gk_y(63), gk_y(78)) : gk_gain_strip(gk_y(70), gk_h - gk_s);
   );
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
@@ -1261,7 +1384,10 @@ is_embedded ? (
   // KNOB (the knob alone); NUMBERS row: the strip meter's numerals or ticks only.
   rkth_stripview(ct_strip_view);
   rkth_numbers(ct_strip_nums);
+  rkth_namestyle(ct_name_style);       // NAME row: the strip's name row, ROW / BAND / OFF (slider22)
   rkth_namefont(ct_name_font);         // FONT row: the name's face (slider21)
+  rkth_xrow(0, "VU COLOR", ct_vu_track, 2, "FACE", "TRACK", "");     // the meter on its face, or in the track's colour (slider23)
+  rkth_xrow(1, "VALUE", ct_val_mode, 2, "TOUCH", "ALWAYS", "");      // the VU strip's gain number (slider24)
   rkth_cluster_hdr(gk_hx, (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) * 0.5, 1, zm_theme);
   rkth_nb_pick >= 0 ? (
     ct_name_bar = rkth_nb_pick; slider_automate(ct_name_bar); rkth_nb_pick = -1;
@@ -1275,6 +1401,11 @@ is_embedded ? (
   rkth_nf_pick >= 0 ? (
     ct_name_font = rkth_nf_pick; slider_automate(ct_name_font); rkth_nf_pick = -1;
   );
+  rkth_ns_pick >= 0 ? (
+    ct_name_style = rkth_ns_pick; slider_automate(ct_name_style); rkth_ns_pick = -1;
+  );
+  (gk_xp = rkth_xpick(0)) >= 0 ? ( ct_vu_track = gk_xp; slider_automate(ct_vu_track); );
+  (gk_xp = rkth_xpick(1)) >= 0 ? ( ct_val_mode = gk_xp; slider_automate(ct_val_mode); );
   ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // NATIVE persists (@slider restores it)
   rkth_vu_pick >= 0 ? ( zm_theme = rkth_vu_pick; rkth_vu_pick = -1; );
   rk_gear_r = max(5 * ret, hdr_h * 0.20);
@@ -1305,8 +1436,7 @@ is_embedded ? (
   // The meter: rk_vu's readout box (the VU value, lower left, PEAK by the LED)
   // once the face is big enough to hold it, the corner reading below that.
   ct_vu_px = gk_x(gk_vx); ct_vu_py = gk_y(gk_vy); ct_vu_pw = gk_vw * ret; ct_vu_ph = gk_vh * ret;
-  rk_vu_theme(zm_theme);
-  gk_frame_bg();
+  gk_vu_face();                                          // the picked face, or the track's colour
   rkvu_gmode = 0;                                        // a level face's labels (rk_vu's rule)
   rk_vu_geom(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph);   // publishes rkvu_r for this rect
   gk_ro = rkvu_r >= 60 * max(1, gfx_ext_retina);

@@ -155,6 +155,14 @@ function calc_lr2(fc)
 function recalc_dsp()
   local(fh, fl, att_ms, rel_ms, sr_ratio)
 (
+  // The two switches as the audio side sees them, taken here so they change
+  // only between blocks: recalc_dsp runs in @init, @slider and @block, never
+  // in @gfx. @sample used to read slider6 and slider8 directly, and the GUI
+  // writes those the moment they are clicked, mid-block (outside audit,
+  // 2026-09-28). Kept global on purpose: @block and @sample read them.
+  de_bp  = slider6 == 0;   // Target: 1 = Bandpass (two crossovers), 0 = Hipass
+  de_mon = slider8 == 1;   // Monitor: 1 = output the detected band
+
   // Time constants (Liteon preset table)
   slider5 == 0 ? ( att_ms = 0.003;  rel_ms = 50;  );
   slider5 == 1 ? ( att_ms = 0.030;  rel_ms = 100; );
@@ -181,7 +189,7 @@ function recalc_dsp()
   // Crossover coefficients
   // Bandpass: two crossovers — fl (low edge of band), fh (high edge)
   // Hipass:   one crossover at fc
-  slider6 == 0 ? (
+  de_bp ? (
     fh = min(slider2 + slider2 * slider3 / 2, 20000);
     calc_lr2(fh);
     tgt_b1_s1  = lr2_b1;   tgt_b2_s1  = lr2_b2;
@@ -249,7 +257,7 @@ samplesblock > 0 ? (
   d_a0s0hp = (tgt_a0s0hp - src_a0s0hp) / samplesblock; a0s0hp = src_a0s0hp; src_a0s0hp = tgt_a0s0hp;
   d_a1s0hp = (tgt_a1s0hp - src_a1s0hp) / samplesblock; a1s0hp = src_a1s0hp; src_a1s0hp = tgt_a1s0hp;
   d_a2s0hp = (tgt_a2s0hp - src_a2s0hp) / samplesblock; a2s0hp = src_a2s0hp; src_a2s0hp = tgt_a2s0hp;
-  slider6 == 0 ? (
+  de_bp ? (
     d_b1_s1 = (tgt_b1_s1 - src_b1_s1) / samplesblock; b1_s1 = src_b1_s1; src_b1_s1 = tgt_b1_s1;
     d_b2_s1 = (tgt_b2_s1 - src_b2_s1) / samplesblock; b2_s1 = src_b2_s1; src_b2_s1 = tgt_b2_s1;
     d_a0s1lp = (tgt_a0s1lp - src_a0s1lp) / samplesblock; a0s1lp = src_a0s1lp; src_a0s1lp = tgt_a0s1lp;
@@ -305,7 +313,7 @@ rk_ps_active ? (
   s0_hp_r_out *= -1;
 
   // ── s1 on LIVE signal (bandpass detection path) ───────────────────────────
-  slider6 == 0 ? (
+  de_bp ? (
     b1_s1 += d_b1_s1; b2_s1 += d_b2_s1;
     a0s1lp += d_a0s1lp; a1s1lp += d_a1s1lp; a2s1lp += d_a2s1lp;
     a0s1hp += d_a0s1hp; a1s1hp += d_a1s1hp; a2s1hp += d_a2s1hp;
@@ -348,7 +356,7 @@ rk_ps_active ? (
   gain_smooth > gr_peak ? gr_peak = gain_smooth;
 
   // ── Apply to DELAYED signal ───────────────────────────────────────────────
-  slider8 == 1 ? (
+  de_mon ? (
     // SC MONITOR: output the detected band from live signal
     spl0 = max(-1, min(1, cband_l / gain_smooth * outgain));
     spl1 = max(-1, min(1, cband_r / gain_smooth * outgain));
@@ -369,7 +377,7 @@ rk_ps_active ? (
     ds0_hp_r_xm0 = a1s0hp * dinp_r - b1_s0 * ds0_hp_r + ds0_hp_r_xm1;
     ds0_hp_r_xm1 = a2s0hp * dinp_r - b2_s0 * ds0_hp_r;
     ds0_hp_r *= -1;
-    slider6 == 0 ? (
+    de_bp ? (
       // Bandpass: low + compressed_band + high
       ds1_lp_l = a0s1lp * ds0_hp_l + ds1_lp_l_xm0;
       ds1_lp_l_xm0 = a1s1lp * ds0_hp_l - b1_s1 * ds1_lp_l + ds1_lp_l_xm1;
