@@ -22,6 +22,10 @@ it; drag the meter to set the gain.*
 
 ## The plugins
 
+![The six windows on the Light theme](screenshots/session/six_windows_light.png)
+
+*The six windows on the Light theme.*
+
 ### GainKit
 
 ![GainKit](screenshots/session/gainkit.png)
