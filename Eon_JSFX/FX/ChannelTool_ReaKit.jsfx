@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.5.0
+// Version: 2.5.1
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -98,6 +98,7 @@ GS_THEME_ID = 2649; GS_THEME_BASE = 2650; GS_THEME_KNOB_P = 2676;
 // .refs/gmem_regions_supplement.tsv (blocks 476..478, after EON_PADPCM).
 // GEN 0 = nothing published = today's face; the typed name always wins.
 GK_PLUS_BASE = 31195136; GK_PLUS_STRIDE = 320; GK_PLUS_MAX = 512;
+GK_PLUS_MASTER = 512;                 // the master's slot, after the 512 tracks' (get_host_placement() = -1)
 GK_PLUS_COLOR = 1; GK_PLUS_NAMELEN = 2; GK_PLUS_NAME = 3; GK_PLUS_ICONLEN = 27; GK_PLUS_ICON = 28;
 GK_IMG_ICON = 7;                      // the gfx image slot the track icon loads into
 gk_pl_track = -3; gk_pl_gen = -1;     // "never read": the first pass takes the slot
@@ -533,7 +534,8 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
 // (gk_name_strip, the @gfx body): EEL2 resolves calls at definition time.
 function gk_plus_read() local(t, b, g, n, i, c) (
   t = get_host_placement();
-  (t >= 0 && t < GK_PLUS_MAX) ? (
+  t == -1 ? t = GK_PLUS_MASTER;   // the master reads its own slot: the project's name (the user, 2026-09-30)
+  (t >= 0 && t <= GK_PLUS_MASTER) ? (
     b = GK_PLUS_BASE + t * GK_PLUS_STRIDE;
     g = gmem[b];
     (g != gk_pl_gen || t != gk_pl_track) ? (

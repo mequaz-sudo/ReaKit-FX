@@ -1,6 +1,6 @@
--- GainKit Plus -- move every track's GainKit to the FIRST slot of its chain (the master's too),
--- so it stages the signal before anything else. Tracks without one are left alone (Insert on
--- selected tracks adds it first), and so is a GainKit inside an FX container: it stays where the
+-- GainKit Plus -- move the GainKit of every SELECTED track (the master too, when it is selected)
+-- to the FIRST slot of its chain; "GainKit first in every chain" does the whole project. Tracks
+-- without one are left alone, and so is a GainKit inside an FX container: it stays where the
 -- container puts it. One undo step. MIT, EON Studios, 2026.
 local r = reaper
 
@@ -16,8 +16,8 @@ end
 r.Undo_BeginBlock()
 r.PreventUIRefresh(1)
 local moved = 0
-for i = -1, r.CountTracks(0) - 1 do
-  local tr = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
+for i = 0, r.CountSelectedTracks2(0, true) - 1 do             -- true: the master counts when selected
+  local tr = r.GetSelectedTrack2(0, i, true)
   for f = 0, r.TrackFX_GetCount(tr) - 1 do
     if is_gainkit(tr, f) then
       if f > 0 then r.TrackFX_CopyToTrack(tr, f, tr, 0, true); moved = moved + 1 end   -- true = move
@@ -26,4 +26,4 @@ for i = -1, r.CountTracks(0) - 1 do
   end
 end
 r.PreventUIRefresh(-1)
-r.Undo_EndBlock("GainKit Plus: GainKit first in every chain (" .. moved .. " moved)", -1)
+r.Undo_EndBlock("GainKit Plus: GainKit first on the selected tracks (" .. moved .. " moved)", -1)

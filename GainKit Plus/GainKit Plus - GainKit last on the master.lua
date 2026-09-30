@@ -1,5 +1,7 @@
--- GainKit Plus -- put GainKit first in the chain of every selected track that has none (a GainKit
--- inside an FX container counts as one). One undo step. MIT, EON Studios, 2026.
+-- GainKit Plus -- GainKit LAST in the master's chain, so the mix gets a final VU after everything
+-- else: the master's GainKit is moved to the end (the last one, when it has two), or GainKit is
+-- added there when it has none. A GainKit inside an FX container counts as the master's and stays
+-- where it is. One undo step. MIT, EON Studios, 2026.
 local r = reaper
 local NAMES = { "JS: EON: GainKit",                                  -- by its listed name, any install
                 "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx",   -- the ReaPack package's path
@@ -31,25 +33,27 @@ local function each_gainkit(tr, fn)
   for f = 0, r.TrackFX_GetCount(tr) - 1 do walk(f) end
 end
 
-local function has_gainkit(tr)
-  local found = false
-  each_gainkit(tr, function() found = true end)
-  return found
-end
+local m = r.GetMasterTrack(0)
+local n = r.TrackFX_GetCount(m)
+local top = -1
+for f = 0, n - 1 do if is_gainkit(m, f) then top = f end end   -- the last one in the chain
+local any = false
+each_gainkit(m, function() any = true end)
 
 r.Undo_BeginBlock()
 r.PreventUIRefresh(1)
-local added, missed = 0, 0
-for i = 0, r.CountSelectedTracks(0) - 1 do
-  local tr = r.GetSelectedTrack(0, i)
-  if not has_gainkit(tr) then
-    local fx = -1
-    for _, n in ipairs(NAMES) do
-      if fx < 0 then fx = r.TrackFX_AddByName(tr, n, false, -1000) end   -- -1000 = position 0, first
-    end
-    if fx >= 0 then added = added + 1 else missed = missed + 1 end
+local what, missing = "already last", false
+if top >= 0 then
+  if top < n - 1 then r.TrackFX_CopyToTrack(m, top, m, n - 1, true); what = "moved last" end   -- true = move
+elseif any then
+  what = "inside an FX container, left there"
+else
+  local fx = -1
+  for _, nm in ipairs(NAMES) do
+    if fx < 0 then fx = r.TrackFX_AddByName(m, nm, false, -1) end   -- -1 = a new one, at the end
   end
+  if fx >= 0 then what = "added last" else missing = true; what = "not found" end
 end
 r.PreventUIRefresh(-1)
-r.Undo_EndBlock("GainKit Plus: GainKit on the selected tracks", -1)
-if missed > 0 then r.MB("GainKit was not found on this machine (" .. missed .. " track(s) left without it). Install ReaKit FX from ReaPack.", "GainKit Plus", 0) end
+r.Undo_EndBlock("GainKit Plus: GainKit last on the master (" .. what .. ")", -1)
+if missing then r.MB("GainKit was not found on this machine. Install ReaKit FX from ReaPack.", "GainKit Plus", 0) end

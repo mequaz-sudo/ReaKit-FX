@@ -1,6 +1,8 @@
 -- GainKit Plus -- feeds every GainKit in the project its track's name, colour and icon, and
 -- keeps them current while it runs. GainKit draws them: the name as the meter's legend (a name
--- you typed on the meter still wins), the colour as a thin bar, the icon beside the name.
+-- you typed on the meter still wins), the colour as a thin bar, the icon beside the name. The
+-- master's GainKit gets the PROJECT's name (MASTER while the project is unsaved), and a GainKit
+-- inside an FX container counts for its track.
 --
 -- A background script: run it once to start, run it again to stop. It costs one pass over the
 -- tracks every 0.3 s and writes only when something changed.
@@ -9,9 +11,11 @@
 -- .refs/gmem_regions_supplement.tsv): one 320-cell slot per track index, +0 GEN written LAST,
 -- +1 colour (r*65536 + g*256 + b + 1; 0 = none), +2 name length, +3.. name (24 chars),
 -- +27 icon path length, +28.. icon path (absolute, <= 259 chars). GainKit reads its own slot by
--- the track index REAPER gives it (get_host_placement()). MIT, EON Studios, 2026.
+-- the track index REAPER gives it (get_host_placement()); the master, whose index is -1, reads
+-- slot 512, after the tracks'. MIT, EON Studios, 2026.
 local r = reaper
 local BASE, STRIDE, MAXT = 31195136, 320, 512
+local MASTER = 512
 local NAME_MAX, PATH_MAX = 24, 259
 
 -- A toggle: run it again to stop. set_action_options(1) makes a relaunch a clean RESTART, not a
@@ -50,11 +54,31 @@ local function is_gainkit(tr, f)
   return nm:find("GainKit", 1, true) ~= nil
 end
 
+-- A GainKit anywhere on the track, FX containers included: REAPER 7 reaches a container's items
+-- through its container_count / container_item.N (nested containers too). On a REAPER without
+-- containers only the chain itself is searched.
 local function has_gainkit(tr)
-  for i = 0, r.TrackFX_GetCount(tr) - 1 do
-    if is_gainkit(tr, i) then return true end
+  local function walk(f)
+    if is_gainkit(tr, f) then return true end
+    local ok, n = r.TrackFX_GetNamedConfigParm(tr, f, "container_count")
+    if ok then
+      for i = 0, (tonumber(n) or 0) - 1 do
+        local ok2, c = r.TrackFX_GetNamedConfigParm(tr, f, "container_item." .. i)
+        if ok2 and tonumber(c) and walk(tonumber(c)) then return true end
+      end
+    end
+    return false
+  end
+  for f = 0, r.TrackFX_GetCount(tr) - 1 do
+    if walk(f) then return true end
   end
   return false
+end
+
+-- The master's name: the project's, without its extension; MASTER while it has never been saved.
+local function project_name()
+  local nm = (r.GetProjectName(0) or ""):gsub("%.[^.]*$", "")
+  return nm ~= "" and nm or "MASTER"
 end
 
 -- the icon as REAPER keeps it: a full path for a file you chose, a bare name for one of its own
@@ -74,9 +98,9 @@ local function write_str(base, lenidx, chidx, s, cap)
   for i = 1, n do r.gmem_write(base + chidx + i - 1, s:byte(i)) end
 end
 
-local function publish(idx, tr)
+local function publish(idx, tr, name)
   local base = BASE + idx * STRIDE
-  local _, name = r.GetTrackName(tr)
+  if not name then name = select(2, r.GetTrackName(tr)) end
   name = fold(name)
   local col, packed = r.GetTrackColor(tr), 0
   if col ~= 0 then
@@ -106,6 +130,8 @@ local function tick()
     if has_gainkit(tr) then publish(i, tr) else clear(i) end
   end
   for i = n, MAXT - 1 do if last[i] then clear(i) end end
+  local m = r.GetMasterTrack(0)
+  if has_gainkit(m) then publish(MASTER, m, project_name()) else clear(MASTER) end
 end
 
 local t_last = 0
@@ -118,7 +144,7 @@ local function loop()
 end
 
 r.atexit(function()
-  for i = 0, MAXT - 1 do if last[i] then r.gmem_write(BASE + i * STRIDE, 0) end end
+  for i = 0, MASTER do if last[i] then r.gmem_write(BASE + i * STRIDE, 0) end end
   if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, 0); r.RefreshToolbar2(sec, cmd) end
 end)
 loop()

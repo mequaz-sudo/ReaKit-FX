@@ -1,6 +1,5 @@
--- GainKit Plus -- every GainKit's GAIN back to 0 dB (the master's too, and GainKits inside FX
--- containers), one undo step. Only the GAIN: "Gain number" (the THEME panel's VALUE row) is left
--- alone. MIT, EON Studios, 2026.
+-- GainKit Plus -- take GainKit off every track and the master, FX containers included, after
+-- asking once. One undo step: Undo puts every one of them back. MIT, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
@@ -29,15 +28,32 @@ local function each_gainkit(tr, fn)
   for f = 0, r.TrackFX_GetCount(tr) - 1 do walk(f) end
 end
 
-r.Undo_BeginBlock()
-local n = 0
+local function first_gainkit(tr)
+  local found
+  each_gainkit(tr, function(f) if not found then found = f end end)
+  return found
+end
+
+local tracks, total = {}, 0
 for i = -1, r.CountTracks(0) - 1 do
   local tr = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
-  each_gainkit(tr, function(f)
-    for p = 0, r.TrackFX_GetNumParams(tr, f) - 1 do
-      local _, pn = r.TrackFX_GetParamName(tr, f, p, "")
-      if pn == "Gain (dB)" then r.TrackFX_SetParam(tr, f, p, 0); n = n + 1; break end   -- by its whole name
-    end
-  end)
+  local c = 0
+  each_gainkit(tr, function() c = c + 1 end)
+  if c > 0 then tracks[#tracks + 1] = tr; total = total + c end
 end
-r.Undo_EndBlock("GainKit Plus: reset all gains (" .. n .. ")", -1)
+if total == 0 then r.MB("There is no GainKit in this project.", "GainKit Plus", 0); return end
+local ask = "Remove all " .. total .. " GainKit" .. (total == 1 and "" or "s") .. " from this project?\n\nUndo puts them back."
+if r.MB(ask, "GainKit Plus", 1) ~= 1 then return end            -- 1 = OK
+
+r.Undo_BeginBlock()
+r.PreventUIRefresh(1)
+local removed = 0
+for _, tr in ipairs(tracks) do
+  for _ = 1, 1000 do                    -- one at a time: removing an FX renumbers the ones after it
+    local f = first_gainkit(tr)
+    if not f or not r.TrackFX_Delete(tr, f) then break end
+    removed = removed + 1
+  end
+end
+r.PreventUIRefresh(-1)
+r.Undo_EndBlock("GainKit Plus: remove all GainKits (" .. removed .. ")", -1)

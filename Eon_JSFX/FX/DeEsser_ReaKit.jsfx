@@ -1,7 +1,29 @@
+// (C) 2009, Lubomir I. Ivanov
+//
+// NO WARRANTY IS GRANTED. THIS PLUG-IN IS PROVIDED ON AN "AS IS" BASIS, WITHOUT
+// WARRANTY OF ANY KIND. NO LIABILITY IS GRANTED, INCLUDING, BUT NOT LIMITED TO,
+// ANY DIRECT OR INDIRECT,  SPECIAL,  INCIDENTAL OR CONSEQUENTIAL DAMAGE ARISING
+// OUT OF  THE  USE  OR INABILITY  TO  USE  THIS PLUG-IN,  COMPUTER FAILTURE  OF
+// MALFUNCTION INCLUDED.  THE USE OF THE SOURCE CODE,  EITHER  PARTIALLY  OR  IN
+// TOTAL, IS ONLY GRANTED,  IF USED IN THE SENSE OF THE AUTHOR'S INTENTION,  AND
+// USED WITH ACKNOWLEDGEMENT OF THE AUTHOR. FURTHERMORE IS THIS PLUG-IN A  THIRD
+// PARTY CONTRIBUTION,  EVEN IF INCLUDED IN REAPER(TM),  COCKOS INCORPORATED  OR
+// ITS AFFILIATES HAVE NOTHING TO DO WITH IT.  LAST BUT NOT LEAST, BY USING THIS
+// PLUG-IN YOU RELINQUISH YOUR CLAIM TO SUE IT'S AUTHOR, AS WELL AS THE CLAIM TO
+// ENTRUST SOMEBODY ELSE WITH DOING SO.
+//
+// Released under GPL:
+// <http://www.gnu.org/licenses/>.
+//
+//******************************************************************************
+// Includes optimized version of Linkwitz-Riley (LR2) filters
+// by T. Lossius - ttblue project
+//******************************************************************************
+//
+// EON Studios ReaKit — De-Esser: Liteon's de-esser (LR2 crossover + peak compressor), ported,
+// with a ReaKit GUI. It stays under the GPL, as Liteon released it (his header above).
+// Version: 1.0.2
 desc:EON: De-Esser
-// EON Studios ReaKit — De-Esser
-// DSP: Liteon LR2 crossover + peak compressor (ported)
-// Version: 1.0.1
 
 slider1:-20<-60,0,0.1>-Threshold (dB)
 slider2:7500<2000,16000,1>-Frequency (Hz)
@@ -133,6 +155,11 @@ rk_link_exclude(10);
 function calc_lr2(fc)
   local(fpi, wc, wc2, wc22, k, k2, k22, wck2, tmpk)
 (
+  // Below Nyquist at any rate: at 32 kHz the 20 kHz cap on the band's top edge,
+  // and even the 16 kHz end of the Frequency knob, reached Nyquist, where tan()
+  // runs away (outside audit, 2026-09-30). 0.47 * srate is above every edge the
+  // knobs can reach at 44.1 kHz and up, so those projects are unchanged.
+  fc = min(fc, 0.47 * srate);
   fpi   = $pi * fc;
   wc    = 2 * fpi;
   wc2   = wc * wc;

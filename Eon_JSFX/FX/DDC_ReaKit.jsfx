@@ -1,8 +1,24 @@
+// (C) 2006, Michael Gruhn.
+
+// NO WARRANTY IS GRANTED. THIS PLUG-IN IS PROVIDED ON AN "AS IS" BASIS, WITHOUT
+// WARRANTY OF ANY KIND. NO LIABILITY IS GRANTED, INCLUDING, BUT NOT LIMITED TO,
+// ANY DIRECT OR INDIRECT,  SPECIAL,  INCIDENTAL OR CONSEQUENTIAL DAMAGE ARISING
+// OUT OF  THE  USE  OR INABILITY  TO  USE  THIS PLUG-IN,  COMPUTER FAILTURE  OF
+// MALFUNCTION INCLUDED.  THE USE OF THE SOURCE CODE,  EITHER  PARTIALLY  OR  IN
+// TOTAL, IS ONLY GRANTED,  IF USED IN THE SENSE OF THE AUTHOR'S INTENTION,  AND
+// USED WITH ACKNOWLEDGEMENT OF THE AUTHOR. FURTHERMORE IS THIS PLUG-IN A  THIRD
+// PARTY CONTRIBUTION,  EVEN IF INCLUDED IN REAPER(TM),  COCKOS INCORPORATED  OR
+// ITS AFFILIATES HAVE NOTHING TO DO WITH IT.  LAST BUT NOT LEAST, BY USING THIS
+// PLUG-IN YOU RELINQUISH YOUR CLAIM TO SUE IT'S AUTHOR, AS WELL AS THE CLAIM TO
+// ENTRUST SOMEBODY ELSE WITH DOING SO.
+
+// Also Useable For None Digital Drums ;)
+//
+// EON Studios — ReaKit Suite. LOSER's Digital Drum Compressor with a ReaKit GUI (Quaz) and
+// additions around his detector and gain computer: knee, mix, sidechain HPF, stereo link,
+// lookahead, and 2x on the detector. His header above is kept as he wrote it.
+// v2.1.0
 desc:EON: DDC
-// EON Studios — ReaKit Suite
-// DSP: Digital Drum Compressor by LOSER (Michael Gruhn, 2006)
-// ReaKit GUI: Quaz
-// v2.0.0
 options:gmem=Swing_Media_Transfer no_meter
 
 import ../../ReaKit/knobs_kbsg.jsfx-inc
@@ -51,14 +67,16 @@ cDenorm = pow(10,-30);
 dsp_dirty = 0;
 snap_params = 1;
 
-// Gain smoothers (10ms)
-gain_sL.smooth_init(10);
-gain_sL.smooth_set(1);
-gain_sR.smooth_init(10);
-gain_sR.smooth_set(1);
+// The OUTPUT VOLUME's smoother (10 ms): the Output knob and auto make-up move the
+// volume in steps. The gain reduction itself is applied as computed, as LOSER's
+// original does: a 10 ms smoother on it made every attack under ~10 ms sound the
+// same (outside audit, 2026-09-30; the user: "Remove it").
+vol_s.smooth_init(10);
+vol_s.smooth_set(1);
 
-// Oversampling
+// Oversampling: cleared here, then only when 2x is switched on (os_prev, recalc_dsp)
 os.os2_stereo_reset();
+os_prev = -1;
 
 // GUI memory — above DDC's max 1M RMS buffer
 KS = 16; BS = 8;
@@ -175,9 +193,11 @@ function recalc_dsp() (
   // Stereo link
   link_pct = slider14 / 100;
 
-  // Oversampling
+  // Oversampling: the detector's upsampler is cleared when 2x is switched on, not
+  // on every recalc -- recalc_dsp runs on any control change, and clearing it
+  // mid-signal blipped the detector (outside audit, 2026-09-30).
   os_on = slider15;
-  os_on ? os.os2_stereo_reset();
+  os_on != os_prev ? ( os_on ? os.os2_stereo_reset(); os_prev = os_on; );
 
   // Lookahead
   la_ms = slider16;
@@ -190,9 +210,8 @@ function recalc_dsp() (
   );
 
 
-  // Gain smoothers (handle srate changes)
-  gain_sL.smooth_init(10);
-  gain_sR.smooth_init(10);
+  // The output volume's smoother (handles srate changes)
+  vol_s.smooth_init(10);
 );
 
 // ── Detector: stereo link, RMS, gain computer, attack/release ───────────────
@@ -309,10 +328,9 @@ gr_worst < 1000000 ? (
 gr_worst = 1000000;
 
 @sample
-// ── Snap smoothers on project load (avoid audible ramp) ──
+// ── Snap the volume smoother on project load (no ramp up from 1) ──
 snap_params ? (
-  gain_sL.smooth_set(gainL);
-  gain_sR.smooth_set(gainR);
+  vol_s.smooth_set(volume);
   snap_params = 0;
 );
 
@@ -351,9 +369,10 @@ os_on ? (
   ddc_detect(sc_L, sc_R);
 );
 
-// ── Smooth gain (eliminates zipper noise) ──
-gL = gain_sL.smooth(gainL) * volume;
-gR = gain_sR.smooth(gainR) * volume;
+// ── Gain: the reduction as computed, times the smoothed output volume ──
+vol_sm = vol_s.smooth(volume);
+gL = gainL * vol_sm;
+gR = gainR * vol_sm;
 
 // ── Lookahead: delay audio, detection stays current ──
 la_size > 0 ? (
@@ -387,7 +406,7 @@ spl0_out = spl0;
 spl1_out = spl1;
 
 // ── GR meter (show worst channel): the block's lowest gain, published in @block ──
-_gr_gain = min(gain_sL.val, gain_sR.val);
+_gr_gain = min(gainL, gainR);
 _gr_gain < gr_worst ? gr_worst = _gr_gain;
 
 @gfx 600 520
