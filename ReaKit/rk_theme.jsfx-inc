@@ -151,6 +151,19 @@ function rkth_self_paint(t) local(_i, _g) (
 // theme is painted back.
 function rkth_self_tick() local(_r, _k) (
   rkth_bridge_alive() ? ( rkth_self_pend = 0; rkth_self_kpend = 0; ) : (
+    // A remembered look is applied ONCE after a load (rkth_self_applied is
+    // zeroed in @init, which runs before @serialize restores the theme): the
+    // project you open wears the theme it was saved with, over whatever the
+    // previous project left in the band (the user, 2026-09-30). An empty band
+    // takes it too; a bridge-painted band is never touched (the branch above).
+    !rkth_self_applied && rkth_self_theme >= 1 && rkth_self_theme <= RKTH_SELF_N ? (
+      rkth_self_applied = 1;
+      (gmem[GS_THEME_ID] <= 0 || (gmem[GS_THEME_CUR] | 0) != rkth_self_theme
+       || (rkth_self_knob >= 1 && (gmem[GS_THEME_KNOB_P] | 0) != rkth_self_knob - 1)) ? (
+        rkth_self_knob >= 1 ? ( gmem[GS_THEME_KNOB_P] = rkth_self_knob - 1; gmem[GS_THEME_KNOB_S] = rkth_self_knob - 1; );
+        rkth_self_paint(rkth_self_theme);
+      );
+    );
     // EVERY instance remembers the look the band carries (whichever instance
     // painted it): the one that painted may be a DDC, which has no @serialize.
     gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_ID] == gmem[RKTH_SELF_GEN] ? (
@@ -174,11 +187,6 @@ function rkth_self_tick() local(_r, _k) (
         rkth_self_knob = _k;
       );
     ) : rkth_self_kpend = 0;
-    // a remembered look comes back after a reload into an empty band
-    gmem[GS_THEME_ID] <= 0 && rkth_self_theme >= 1 && rkth_self_theme <= RKTH_SELF_N ? (
-      rkth_self_knob >= 1 ? ( gmem[GS_THEME_KNOB_P] = rkth_self_knob - 1; gmem[GS_THEME_KNOB_S] = rkth_self_knob - 1; );
-      rkth_self_paint(rkth_self_theme);
-    );
   );
 );
 // Host hook for @serialize, LAST in the host's list (append-guarded like
@@ -1472,6 +1480,7 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
 // before it existed (its serialized face wins; only future syncs are adopted).
 rkth_vu_pick = -1;
 rkth_dd_hrow = -1;
+rkth_self_applied = 0;   // the remembered theme is applied once per load (rkth_self_tick)
 rkth_nb_pick = -1;      // NAME BAR pick, surfaced for the host to apply
 rkth_nb_ok   = 0;       // host asked for the row? re-established every frame
                         // by the host's rkth_namebar() call, so re-zeroing on
