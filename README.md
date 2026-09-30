@@ -5,6 +5,13 @@ Six free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and EON's own GainKit and Stereo Width. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
+![The six free effects in every mixer strip](screenshots/session/free_strip.png)
+
+*The six, embedded, on every channel of a session: GainKit on top (the track's name and colour
+from GainKit Plus), Saturation, the 3-Band EQ, DDC with its gain-reduction bar, and Stereo Width at
+the bottom; the De-Esser sits on the two vocal tracks. Click a strip's empty space to open a
+plugin's window, click the strip again to close it.*
+
 ![ReaKit FX](screenshots/session/cover_ssl.png)
 
 *A session on the suite's SSL theme with GainKit Plus running. Every channel and bus starts with
