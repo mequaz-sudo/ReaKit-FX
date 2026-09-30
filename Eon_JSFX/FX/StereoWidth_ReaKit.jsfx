@@ -1,7 +1,7 @@
 // Stereo Width (ReaKit)
 // (C) 2026 EON Studios
 // Mid/side stereo width control with correlation meter
-// Version: 1.1.0
+// Version: 1.1.1
 //
 // GUI by EON Studios (ReaKit Libraries)
 desc:EON: Stereo Width
@@ -26,7 +26,7 @@ in_pin:right input
 out_pin:left output
 out_pin:right output
 options:gfx_hz=60 no_meter
-options:gmem=ReaKitStereoWidth
+options:gmem=Swing_Media_Transfer
 
 @init
 ext_tail_size = -1;
@@ -59,6 +59,10 @@ rk_ps_init(-1);
 
 // Instance linking: group in slider3, sync sliders 1-2
 rk_link_init(3, 2, freemem); freemem += 64;
+// The free ReaKit FX share Swing_Media_Transfer (2026-09-30): one theme pick reaches
+// all six, with or without Swing's bridge (rk_theme's standalone painter). The link
+// band moves to EON_RKFX_LINK, above EON_GKPLUS -- 27000000 sat inside EON_PATCHBAY.
+rk_link_set_base(31364400);
 
 // ── DSP state ──
 cDenorm = pow(10,-30);
@@ -109,7 +113,7 @@ file_var(0, rk_ps_en_play);
 file_var(0, rk_ps_en_rec);
 file_var(0, rk_ps_en_stop);
 file_var(0, rk_ps_inited);
-
+rkth_self_serialize();   // the theme this instance painted itself (no bridge), appended last
 @slider
 recalc_dsp();
 rk_link_on_slider();

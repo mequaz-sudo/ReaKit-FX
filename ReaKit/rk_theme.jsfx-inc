@@ -53,6 +53,18 @@ GS_THEME_KNOB_REQ  = 2696; // picker -> bridge: requested knob style (+1)
 GS_THEME_VU_REQ = 2752;  // JSFX -> bridge: 0 = none; else picked face index + 1
 GS_THEME_VU_P   = 2753;  // bridge -> JSFX: broadcast face index + 1 (0 = never)
 GS_THEME_VU_GEN = 2754;  // bridge -> JSFX: bump-on-publish generation counter
+// ── STANDALONE themes (no bridge: the free ReaKit FX on a machine without Swing) ──
+// The picker only ever REQUESTED a theme; Swing's Kit Bridge painted it. Without
+// the bridge the THEME rows were dead (the user's portable install, 2026-09-30).
+// Now a request nobody drains within RKTH_SELF_WAIT frames is painted by the
+// plugin itself, from a built-in table of the first RKTH_SELF_N themes (EON,
+// Dark, Light -- the same numbers rk_lua_theme.lua ships); the other rows stay
+// listed but greyed ("Swing") until a bridge is alive. RKTH_SELF_GEN holds the
+// generation the self-painter wrote LAST: a bridge is alive exactly when
+// GS_THEME_ID is set to something else. 2755 is in the 2752..2759 hole above.
+RKTH_SELF_GEN  = 2755;   // the generation this library painted (0 = never)
+RKTH_SELF_N    = 3;      // themes 1..3 (EON, Dark, Light) paint without a bridge
+RKTH_SELF_WAIT = 20;     // frames a request may sit undrained before we paint it
 RKTH_N   = 14;          // theme count (EON/Dark/Light/REAPER + REAPER Panel/Color/SSL/Neve/API/Tube/Ableton/FL/Pro Tools/PT Light)
 RKTH_VIS = 8;           // dropdown rows shown at once; the rest scroll (wheel over the open
                         // panel; scrollbar thumb shows). Hover-wheel on the chip cycles all.
@@ -97,6 +109,86 @@ RKTH_H_ROW  = 17;   // dropdown row height                           was 14
 function rkth_name(i) (
   i==0?"EON":i==1?"Dark":i==2?"Light":i==3?"REAPER":i==4?"REAPER Pnl":i==5?"REAPER Clr":
   i==6?"SSL":i==7?"Neve":i==8?"API":i==9?"Tube":i==10?"Ableton":i==11?"FL Studio":i==12?"Pro Tools":"PT Light";
+);
+// A bridge is alive: the band carries a generation this library did not write.
+function rkth_bridge_alive() ( gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_ID] != gmem[RKTH_SELF_GEN]; );
+// The themes the picker may set right now: all of them under a bridge, the
+// built-in three without one.
+function rkth_n_avail() ( rkth_bridge_alive() ? RKTH_N : RKTH_SELF_N; );
+// The built-in palettes: t = 1 EON, 2 Dark, 3 Light; slot 0..7 = BG PANEL TEXT
+// TEXT_DIM ACCENT ACCENT2 GRID BORDER; ch 0..2 = r g b, 0..1. Verbatim from
+// rk_lua_theme.lua T.FIXED (2026-09-30) -- keep the two in step.
+function rkth_self_col(t, slot, ch) local(_c) (
+  _c =
+    t == 1 ? (slot==0?0xD6CFC2:slot==1?0xC2BDB3:slot==2?0x2B2822:slot==3?0x4F4B43:slot==4?0xFF8C32:slot==5?0x4D4D52:0x938A78) :
+    t == 2 ? (slot==0?0x1E1E22:slot==1?0x2A2A30:slot==2?0xDDDDE0:slot==3?0x91919A:slot==4?0xFF8C32:slot==5?0x4A4A55:0x414148) :
+             (slot==0?0xF0F0F2:slot==1?0xE0E0E5:slot==2?0x222228:slot==3?0x626268:slot==4?0xFF8C32:slot==5?0xC0C0CC:0xC0C0C8);
+  (ch == 0 ? floor(_c / 65536) : ch == 1 ? floor(_c / 256) % 256 : _c % 256) / 255;
+);
+// The EON role hues (drive, gain, freq, shape, dynamics, time), shared by the three.
+function rkth_self_role(role, ch) local(_c) (
+  _c = role==0?0xFF8C32:role==1?0xC8CED6:role==2?0x4FA3D8:role==3?0x8E7BD6:role==4?0xE0606B:0x4FC08A;
+  (ch == 0 ? floor(_c / 65536) : ch == 1 ? floor(_c / 256) % 256 : _c % 256) / 255;
+);
+// Paint theme t (1..RKTH_SELF_N) into the band the way core.publish_theme_band
+// does: roles and knobs first, colours, CUR, then GS_THEME_ID LAST as the
+// handshake. The generation is odd and large so it can never equal a bridge's
+// small monotonic counter.
+function rkth_self_paint(t) local(_i, _g) (
+  _i = 0; loop(18, gmem[GS_THEME_ROLE_BASE + _i] = rkth_self_role(floor(_i / 3), _i % 3); _i += 1; );
+  _i = 0; loop(24, gmem[GS_THEME_BASE + _i] = rkth_self_col(t, floor(_i / 3), _i % 3); _i += 1; );
+  gmem[GS_THEME_KNOB_P] > 0 ? 0 : ( gmem[GS_THEME_KNOB_P] = 1; gmem[GS_THEME_KNOB_S] = 1; );
+  gmem[GS_THEME_CUR] = t;
+  _g = gmem[RKTH_SELF_GEN]; _g = (_g >= 1000000001) ? _g + 2 : 1000000001;
+  gmem[RKTH_SELF_GEN] = _g;
+  gmem[GS_THEME_ID] = _g;
+  rkth_self_theme = t;
+);
+// Every frame (from rk_theme_apply): with no bridge alive, a theme or knob
+// request that has sat for RKTH_SELF_WAIT frames is ours to serve. A request
+// for a theme past RKTH_SELF_N is dropped (the row is greyed; a wheel-cycle
+// wraps within the three). After a load into an empty band, a remembered
+// theme is painted back.
+function rkth_self_tick() local(_r, _k) (
+  rkth_bridge_alive() ? ( rkth_self_pend = 0; rkth_self_kpend = 0; ) : (
+    // EVERY instance remembers the look the band carries (whichever instance
+    // painted it): the one that painted may be a DDC, which has no @serialize.
+    gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_ID] == gmem[RKTH_SELF_GEN] ? (
+      rkth_self_theme = gmem[GS_THEME_CUR] | 0;
+      rkth_self_knob  = (gmem[GS_THEME_KNOB_P] | 0) + 1;
+    );
+    _r = gmem[GS_THEME_REQ] | 0;
+    _r > 0 ? (
+      rkth_self_pend += 1;
+      rkth_self_pend >= RKTH_SELF_WAIT ? (
+        _r <= RKTH_SELF_N ? rkth_self_paint(_r);
+        gmem[GS_THEME_REQ] = 0; rkth_self_pend = 0;
+      );
+    ) : rkth_self_pend = 0;
+    _k = gmem[GS_THEME_KNOB_REQ] | 0;
+    _k > 0 ? (
+      rkth_self_kpend += 1;
+      rkth_self_kpend >= RKTH_SELF_WAIT ? (
+        gmem[GS_THEME_KNOB_P] = _k - 1; gmem[GS_THEME_KNOB_S] = _k - 1;
+        gmem[GS_THEME_KNOB_REQ] = 0; rkth_self_kpend = 0;
+        rkth_self_knob = _k;
+      );
+    ) : rkth_self_kpend = 0;
+    // a remembered look comes back after a reload into an empty band
+    gmem[GS_THEME_ID] <= 0 && rkth_self_theme >= 1 && rkth_self_theme <= RKTH_SELF_N ? (
+      rkth_self_knob >= 1 ? ( gmem[GS_THEME_KNOB_P] = rkth_self_knob - 1; gmem[GS_THEME_KNOB_S] = rkth_self_knob - 1; );
+      rkth_self_paint(rkth_self_theme);
+    );
+  );
+);
+// Host hook for @serialize, LAST in the host's list (append-guarded like
+// rkth_lock_serialize): the theme and knob this instance painted itself, so
+// the look comes back with the project on a machine without Swing.
+function rkth_self_serialize() (
+  file_avail(0) != 0 ? (
+    file_var(0, rkth_self_theme);
+    file_var(0, rkth_self_knob);
+  );
 );
 // ── LOCK ("keep this instance's look while the suite's theme moves on") ────
 // A third appearance mode alongside FOLLOW and NATIVE. It cannot work by
@@ -361,6 +453,7 @@ function rk_role_col(role, on, fr, fg, fb) (
 // Small detail (borders, knurls, thumb caps, on-accent label ink) stays at the
 // library defaults — it reads on any background.
 function rk_theme_apply() local(pr, pg, pb, a1r, a1g, a1b, a2r, a2g, a2b, _on) (
+  rkth_self_tick();
   // First call: capture the libraries' native @init defaults so theme-off and
   // the per-instance NATIVE opt-out can RESTORE them (a themed write used to
   // stick forever once the bridge went idle).
@@ -425,9 +518,9 @@ local(hit, k, ry, consumed) (
   consumed = 0;
   hit = mx >= x && mx < x + w && my >= y && my < y + h;
   hit ? (
-    lmb ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = (rkth_cv % RKTH_N) + 1; rkth_open = 0; consumed = 1; );
+    lmb ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = (rkth_cv % rkth_n_avail()) + 1; rkth_open = 0; consumed = 1; );
     rmb ? ( rkth_open = 1 - rkth_open; rkth_sc = 0; consumed = 1; );
-    whl != 0 ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = ((rkth_cv - 1 + (whl > 0 ? 1 : -1) + RKTH_N) % RKTH_N) + 1; consumed = 1; );
+    whl != 0 ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = ((rkth_cv - 1 + (whl > 0 ? 1 : -1) + rkth_n_avail()) % rkth_n_avail()) + 1; consumed = 1; );
   );
   rkth_open && !consumed ? (
     (mx >= rkth_ddx && mx < rkth_ddx + rkth_ddw && my >= rkth_ddy && my < rkth_ddy + rkth_ddh && whl != 0) ? (
@@ -442,7 +535,8 @@ local(hit, k, ry, consumed) (
           // mutually exclusive modes, and picking a theme is by definition
           // asking to follow one again.
           (rkth_sc + k) == 0 ? ( rkth_local_off = 1; rkth_locked = 0; )
-                             : ( rkth_local_off = 0; rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
+                             : (rkth_sc + k) <= rkth_n_avail() ? ( rkth_local_off = 0; rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
+                             // a greyed row (needs Swing): the click just closes the list
         );
         k += 1;
       );
@@ -500,8 +594,10 @@ local(k, idx, ry) (
       ) : (
         (rkth_local_off ? idx == 0 : idx == rkth_cv) ? gfx_set(0.30, 0.72, 0.92, 1) : rkth_setcol(3, 0.72, 0.74, 0.78, 1);
       );
+      idx > rkth_n_avail() ? gfx_set(0.45, 0.47, 0.52, 1);   // greyed: this theme needs Swing's bridge
       gfx_x = rkth_ddx + 10*rkth_scale; gfx_y = ry + 3*rkth_scale;
       gfx_drawstr(idx == 0 ? "NATIVE" : rkth_name(idx - 1));
+      idx > rkth_n_avail() ? gfx_drawstr("  - Swing");
       (rkth_local_off ? idx == 0 : idx == rkth_cv) ? (
         gfx_set(0.30, 0.72, 0.92, 1); gfx_circle(rkth_ddx + 5*rkth_scale, (ry + rkth_rh * 0.5) | 0, 2*rkth_scale, 1, 1);
       );

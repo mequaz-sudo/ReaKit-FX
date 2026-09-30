@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.6.1
+// Version: 2.6.2
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -766,7 +766,7 @@ rk_link_init(15, 15, freemem);
 // We now share Swing's gmem (for the One-Rack theme band) — relocate the
 // link-group blocks WELL above Swing's reserved bands (its highest is ~26.17M)
 // so they never collide with the kit header / per-pad meta. Region = [base..base+1027].
-rk_link_set_base(27000000);
+rk_link_set_base(31360000);   // EON_RKFX_LINK (27000000 sat inside EON_PATCHBAY, 2026-09-30)
 rk_link_exclude(15);
 freemem += 64;
 
@@ -1521,6 +1521,7 @@ file_avail(0) != 0 ? ( file_var(0, zm_theme); );
 // Appearance LOCK (flag + the 45-value look snapshot), appended LAST. The blob
 // is positional: anything added after this must go BELOW it, never between.
 rkth_lock_serialize();
+rkth_self_serialize();   // the theme this instance painted itself (no bridge), appended last
 // Save-format marker, appended at the TAIL (below the lock blob, as required) so
 // every older blob still reads in full. Written as 1 since the meter moved to
 // rk_vu, 2 since the typed name. A blob that ends before it was saved on

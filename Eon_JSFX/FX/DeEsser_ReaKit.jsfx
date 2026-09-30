@@ -22,7 +22,7 @@
 //
 // EON Studios ReaKit — De-Esser: Liteon's de-esser (LR2 crossover + peak compressor), ported,
 // with a ReaKit GUI. It stays under the GPL, as Liteon released it (his header above).
-// Version: 1.0.3
+// Version: 1.0.4
 desc:EON: De-Esser
 
 slider1:-20<-60,0,0.1>-Threshold (dB)
@@ -45,7 +45,7 @@ out_pin:right output
 
 options:gfx_hz=60
 options:no_meter
-options:gmem=ReaKitDeEsser
+options:gmem=Swing_Media_Transfer
 
 import ../../ReaKit/utils_kbsg.jsfx-inc
 import ../../ReaKit/knobs_kbsg.jsfx-inc
@@ -148,6 +148,10 @@ ext_tail_size = -1;  // infinite tail — prevent REAPER cutting audio on transp
 
 rk_ps_init(200);
 rk_link_init(10, 10, freemem); freemem += 64;
+// The free ReaKit FX share Swing_Media_Transfer (2026-09-30): one theme pick reaches
+// all six, with or without Swing's bridge (rk_theme's standalone painter). The link
+// band moves to EON_RKFX_LINK, above EON_GKPLUS -- 27000000 sat inside EON_PATCHBAY.
+rk_link_set_base(31363300);
 rk_link_exclude(10);
 
 // ── LR2 coefficient calculation ─────────────────────────────────────────────
@@ -944,3 +948,4 @@ file_var(0, rk_ps_en_play);
 file_var(0, rk_ps_en_rec);
 file_var(0, rk_ps_en_stop);
 file_var(0, rk_ps_inited);
+rkth_self_serialize();   // the theme this instance painted itself (no bridge), appended last
