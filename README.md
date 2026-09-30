@@ -170,8 +170,8 @@ https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
 ```
 
 Then install **ReaKit FX** from the browser, and **GainKit Plus** for the scripts. The plugins appear in REAPER's FX list as
-`JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC` and
-`JS: EON: De-Esser`.
+`JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
+`JS: EON: De-Esser` and `JS: EON: Stereo Width`.
 
 These effects used to ship from the ReaKit repository as "ReaKit Free FX". If you installed them
 there, ReaPack now lists that package as obsolete: uninstall it and install this one.
