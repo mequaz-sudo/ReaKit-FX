@@ -521,6 +521,9 @@ is_embedded ? (
   gfx_setfont(1, "Arial", max(7, floor(bar_h * 0.32)), 'b');
   gfx_measurestr("GR", tw, th);
   gfx_x = bar_x + (bar_w - tw)/2; gfx_y = bar_y + (bar_h - th)/2; gfx_drawstr("GR");
+  // the badge is a live control: a click on it must not arm 0x200 (REAPER would open
+  // the window instead of cycling the group -- the user, 2026-09-30; GainKit's pattern)
+  (mx - (w - 9.5*ret)) * (mx - (w - 9.5*ret)) + (my - (h - 5.5*ret)) * (my - (h - 5.5*ret)) <= (4.5*ret + 2) * (4.5*ret + 2) ? emb_widget_active = 1;
   rk_link_draw_badge(w - 14*ret, h - 10*ret, 9*ret, 0.00, 0.70, 0.85, mx, my, lmb_down);
   rk_link_on_gfx_change();
 

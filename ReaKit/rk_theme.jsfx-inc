@@ -465,6 +465,12 @@ function rk_role_col(role, on, fr, fg, fb) (
 // library defaults — it reads on any background.
 function rk_theme_apply() local(pr, pg, pb, a1r, a1g, a1b, a2r, a2g, a2b, _on) (
   rkth_self_tick();
+  // The knob and slider libraries' double-click window. An EMBEDDED @gfx runs at
+  // ~22 fps and gets its mouse state late: two presses 260 ms apart reached the
+  // 3-Band EQ's strip 468 ms apart (measured with a real mouse, 2026-09-30), so
+  // the 0.3 s the window uses never fires there and double-click = reset was dead
+  // in every strip. Set per frame, here, because every host calls this first.
+  RK_DBLCLICK_T = (gfx_ext_flags & 1) ? 0.6 : 0.3;
   // First call: capture the libraries' native @init defaults so theme-off and
   // the per-instance NATIVE opt-out can RESTORE them (a themed write used to
   // stick forever once the bridge went idle).

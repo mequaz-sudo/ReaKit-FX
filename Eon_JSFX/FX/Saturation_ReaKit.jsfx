@@ -328,6 +328,9 @@ gfx_ext_flags & 1 ? (
   gfx_measurestr(#e1, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = mcp_val_cy; gfx_drawstr(#e1);
 
   // ── Link badge (top-right corner, right-click for menu) ──
+  // the badge is a live control: a click on it must not arm 0x200 (REAPER would open
+  // the window instead of cycling the group -- the user, 2026-09-30; GainKit's pattern)
+  (mx - (gfx_w - 10*ret)) * (mx - (gfx_w - 10*ret)) + (my - 8*ret) * (my - 8*ret) <= (6*ret + 2) * (6*ret + 2) ? emb_widget_active = 1;
   rk_link_draw_badge(gfx_w - 16 * ret, 2 * ret, 12 * ret, drv_lr, drv_lg, drv_lb, mx, my, lmb_down);
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
