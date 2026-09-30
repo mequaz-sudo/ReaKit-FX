@@ -1046,7 +1046,9 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
       rkth_cl_openat(3, 21, knx, kny + _ch + 2*rkth_scale, _rh); lmb_down = 0; rkth_consumed = 1;
     );
     !rkth_locked && frame_wheel != 0 && mx >= knx && mx < knx + knw && my >= kny && my < kny + _ch ? (
-      kid = gmem[GS_THEME_KNOB_P] | 0;
+      // count from the style already requested (still on its way while the
+      // painter waits a few frames), else quick wheel ticks collapse into one step
+      kid = gmem[GS_THEME_KNOB_REQ] > 0 ? (gmem[GS_THEME_KNOB_REQ] | 0) - 1 : gmem[GS_THEME_KNOB_P] | 0;
       kid = frame_wheel > 0
         ? (kid >= 20 ? 0 : kid + 1)
         : (kid <= 0 ? 20 : kid - 1);

@@ -18,7 +18,7 @@
 // change-detection, same model as 4BandEQ v1.3+), mark_dirty wrapper,
 // crossover freqs now re-applied when changed post-init (link-pull fix),
 // @gfx loop var privatized.
-// Version: 1.2.2
+// Version: 1.3.0
 desc:EON: 3-Band EQ
 //tags: equalizer
 //author: LOSER
@@ -193,7 +193,11 @@ spl1 = eq3_dry1 + (spl1 - eq3_dry1) * eq3_ps_mix;
 meter_process_sample(spl0, spl1);
 
 
-@gfx 460 900
+@gfx 460 1380
+// @gfx is the floating window's first size AND the mixer strip's shape: a strip
+// is its width x 1380/460 (3x), so the four rows get ~63 px each at a strip's
+// ~84 px (2026-09-28; was 460 900, ~41 px rows). EON Floatter's SIZES row for
+// this plugin carries the same gfx_h and sizes the float to its designed size.
 gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKit3BEQ; follow the theme's bg +
 // knob STYLE. Per-band cap colours stay semantic (low=blue/mid=green/high=red).
@@ -258,17 +262,37 @@ gfx_ext_flags & 1 ? (
   mcp_row_h = gfx_h / mcp_rows;
   mcp_cx = gfx_w * 0.5;
 
-  mcp_r = min(gfx_w * 0.30, mcp_row_h * 0.25);
-  mcp_r = max(mcp_r, 10*ret);
-
-  mcp_led_r = max(3*ret, min(mcp_r * 0.20, 6*ret));
-
   mcp_lbl_font = max(11*ret, floor(min(gfx_w * 0.13, mcp_row_h * 0.10)));
   mcp_val_font = max(10*ret, floor(min(gfx_w * 0.11, mcp_row_h * 0.08)));
 
-  mcp_knob_cy = mcp_row_h * 0.38;
-  mcp_lbl_cy = mcp_knob_cy + mcp_r + max(6*ret, mcp_row_h * 0.07);
-  mcp_val_cy = mcp_lbl_cy + mcp_lbl_font + 3*ret;
+  // Each row fits what it holds: the knob, the LED + name under it, then the
+  // value. The knob takes the height the two text lines leave, capped by the
+  // width, so a taller strip (the @gfx aspect) grows the knobs. The knob used to
+  // grow with the row while the text stacked under it at a fixed size, so every
+  // row below ~81 px ran its value into the next row's knob -- all of them at a
+  // mixer strip's ~84 x 164 (user, 2026-09-28: "looks squashed"). A strip the
+  // mixer pane keeps short drops the value line before the knob gets too small.
+  gfx_setfont(1, "Arial", mcp_lbl_font, 'b'); gfx_measurestr("HIGH", tw, mcp_lbl_h);
+  gfx_setfont(1, "Arial", mcp_val_font);      gfx_measurestr("+0.0 dB", tw, mcp_val_h);
+  // The knob styles draw their scale dots out to 1.25 r, so the knob's share of
+  // the block is 2.25 r: the dots over the top row's knob used to be cut off by
+  // the strip's edge.
+  mcp_pad = 2*ret; mcp_gap = 3*ret;
+  mcp_show_val = 1;
+  mcp_r = (mcp_row_h - 2*mcp_pad - mcp_gap - mcp_lbl_h - 2*ret - mcp_val_h) / 2.25;
+  mcp_r < 7*ret ? (
+    mcp_show_val = 0;
+    mcp_r = (mcp_row_h - 2*mcp_pad - mcp_gap - mcp_lbl_h) / 2.25;
+  );
+  mcp_r = max(6*ret, min(mcp_r, gfx_w * 0.30));
+
+  mcp_led_r = max(3*ret, min(mcp_r * 0.20, 6*ret));
+
+  // Knob + text as one block, centred in the row when the width caps the knob.
+  mcp_blk_h = 2.25*mcp_r + mcp_gap + mcp_lbl_h + (mcp_show_val ? 2*ret + mcp_val_h : 0);
+  mcp_knob_cy = max(mcp_pad, (mcp_row_h - mcp_blk_h) / 2) + 1.25*mcp_r;
+  mcp_lbl_cy = mcp_knob_cy + mcp_r + mcp_gap;       // the name's TOP
+  mcp_val_cy = mcp_lbl_cy + mcp_lbl_h + 2*ret;      // the value's TOP
 
   gfx_set(0.15, 0.18, 0.22, 0.5);
   // _gx_i: @gfx-private loop var — global `i` is audio/init-side scratch
@@ -298,9 +322,11 @@ gfx_ext_flags & 1 ? (
   slider9 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("HIGH");
 
-  sprintf(#e1, "%+.1f dB", slider5);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
-  gfx_measurestr(#e1, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e1);
+  mcp_show_val ? (
+    sprintf(#e1, "%+.1f dB", slider5);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+    gfx_measurestr(#e1, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e1);
+  );
 
 
   // ── Row 1: MID ───────────────────────────────────────────────────
@@ -324,9 +350,11 @@ gfx_ext_flags & 1 ? (
   slider8 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("MID");
 
-  sprintf(#e2, "%+.1f dB", slider3);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
-  gfx_measurestr(#e2, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e2);
+  mcp_show_val ? (
+    sprintf(#e2, "%+.1f dB", slider3);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+    gfx_measurestr(#e2, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e2);
+  );
 
 
   // ── Row 2: LOW ───────────────────────────────────────────────────
@@ -350,9 +378,11 @@ gfx_ext_flags & 1 ? (
   slider7 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("LOW");
 
-  sprintf(#e3, "%+.1f dB", slider1);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
-  gfx_measurestr(#e3, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e3);
+  mcp_show_val ? (
+    sprintf(#e3, "%+.1f dB", slider1);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+    gfx_measurestr(#e3, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e3);
+  );
 
 
   // ── Row 3: OUTPUT ────────────────────────────────────────────────
@@ -377,9 +407,11 @@ gfx_ext_flags & 1 ? (
   slider10 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("OUT");
 
-  sprintf(#e4, "%+.1f dB", slider6);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
-  gfx_measurestr(#e4, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e4);
+  mcp_show_val ? (
+    sprintf(#e4, "%+.1f dB", slider6);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+    gfx_measurestr(#e4, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = row_y + mcp_val_cy; gfx_drawstr(#e4);
+  );
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
@@ -398,7 +430,7 @@ gfx_ext_flags & 1 ? (
   // ONE scale for the whole standalone face. ret (reset from gfx_ext_retina
   // at the top of every @gfx pass) is the HiDPI factor; here it also takes
   // the window factor, and that factor is the KNOB RADIUS the body computes
-  // below relative to its 1x design radius (30.3px at the 460x900 design
+  // below relative to its 1x design radius (30.3px at the 460-wide design
   // size, estimated with the 1x header and meter), never below 1x, capped
   // at 3x. So the header, legend, meter and fonts grow exactly as the knobs
   // do. The embedded branch never reaches this line.
