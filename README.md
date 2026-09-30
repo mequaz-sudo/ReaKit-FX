@@ -5,12 +5,13 @@ Six free effects for REAPER with EON Studios interfaces, drawn by the
 LOSER, a De-Esser built on Liteon's, and EON's own GainKit and Stereo Width. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
-![The six free effects in every mixer strip](screenshots/session/free_strip.png)
+![The six free effects in every mixer strip, on the EON theme](screenshots/session/session_eon.png)
 
-*The six, embedded, on every channel of a session: GainKit on top (the track's name and colour
-from GainKit Plus), Saturation, the 3-Band EQ, DDC with its gain-reduction bar, and Stereo Width at
-the bottom; the De-Esser sits on the two vocal tracks. Click a strip's empty space to open a
-plugin's window, click the strip again to close it.*
+*The six, embedded, on every channel of a session, on a REAPER with nothing but this package
+installed: GainKit on top (the track's name and colour from GainKit Plus), Saturation, the 3-Band
+EQ, DDC with its gain-reduction bar, and Stereo Width at the bottom; the De-Esser sits on the two
+vocal tracks. This is the EON theme, the look a fresh install opens on. Click a strip's empty
+space to open a plugin's window, click the strip again to close it.*
 
 ![ReaKit FX](screenshots/session/cover_ssl.png)
 
@@ -150,17 +151,27 @@ WIDTH knob at the bottom of the channel.
   they light up when EON Swing is installed, whose bridge paints them and keeps the whole suite
   in step.
 
-  ![The six on the EON theme](screenshots/session/six_windows_eon.png)
+  ![The session on the Dark theme](screenshots/session/session_dark.png)
 
-  ![The six on the Dark theme](screenshots/session/six_windows_dark.png)
+  ![The session on the Light theme](screenshots/session/session_light.png)
 
-  ![The six on the Light theme](screenshots/session/six_windows_light.png)
+  *The same session on Dark and on Light (EON is at the top of this page), on a machine without
+  Swing.*
 
-  *The six windows on the three built-in themes, on a machine without Swing.* GainKit's panel also picks the VU's face, what the strip
-  shows, the name's row (ROW, BAND or OFF) and its FONT, the meter's colour (FACE or TRACK) and
-  when the VU alone prints the gain (TOUCH or ALWAYS), and has LOCK, which freezes that instance's
-  look while the rest follows the theme. DDC has no panel of its own; its colours and knobs follow
-  the suite's theme.
+  ![The six windows on the EON theme](screenshots/session/six_windows_eon.png)
+
+  ![The six windows on the Dark theme](screenshots/session/six_windows_dark.png)
+
+  ![The six windows on the Light theme](screenshots/session/six_windows_light.png)
+
+  *The six windows on the three built-in themes.*
+
+  GainKit's panel also picks the VU's face, what the strip shows, the name's row (ROW, BAND or
+  OFF) and its FONT, the meter's colour (FACE or TRACK) and when the VU alone prints the gain
+  (TOUCH or ALWAYS), and has LOCK, which freezes that instance's look while the rest follows the
+  theme. DDC has no panel of its own; its colours and knobs follow the theme.
+
+  **With EON Swing** — its bridge paints the other eleven themes and keeps the whole suite in step:
 
   ![GainKit's strips on four themes](screenshots/session/strips_four_themes.png)
 
