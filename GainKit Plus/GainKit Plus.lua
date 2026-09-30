@@ -18,8 +18,9 @@ local BASE, STRIDE, MAXT = 31195136, 320, 512
 local MASTER = 512
 local NAME_MAX, PATH_MAX = 24, 259
 
--- A toggle: run it again to stop. set_action_options(1) makes a relaunch a clean RESTART, not a
--- stop (wiki 6, measured), so the running instance stamps a heartbeat (EXT/alive) every tick, and
+-- A toggle: run it again to stop. set_action_options(1): a relaunch ends the running instance (its
+-- atexit runs first, no task-control dialog) and the new launch runs (wiki 6, measured; REAPER's
+-- flag 1 = terminate on relaunch, flag 2 = relaunch after), so the running instance stamps a heartbeat (EXT/alive) every tick, and
 -- a launch that finds a fresh one, newer than the last stop request (EXT/stop), is the user's
 -- second press: it writes the stop request and ends at once. The running instance sees the
 -- request at its next tick and quits WITHOUT stamping again (REAPER terminates it anyway), so a

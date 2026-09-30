@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.5.1
+// Version: 2.6.0
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -532,8 +532,21 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
 // when there is one, else the track's. Bytes outside printable ASCII are
 // dropped (the script folds names to ASCII first). Defined BEFORE its callers
 // (gk_name_strip, the @gfx body): EEL2 resolves calls at definition time.
-function gk_plus_read() local(t, b, g, n, i, c) (
-  t = get_host_placement();
+// REAPER 7.81+ hands @gfx the track's own name through get_host_placement's
+// third argument, UTF-8 and "Track 2" for an unnamed one, as GetTrackName (the
+// script's source) gives it, so GainKit names itself without the script; the
+// master gets "" there and keeps the script's project name. An older REAPER
+// compiles the call and leaves the string alone ("": the script's name). Probed
+// on 7.81 and 7.79: .dev_tests/rk_vu_audit/hostname_probe.lua (2026-09-30).
+function gk_plus_read() local(t, b, g, n, i, c, p, fl) (
+  strcpy(#gk_hname, "");
+  t = get_host_placement(p, fl, #gk_hname);
+  n = strlen(#gk_hname); i = 0; c = 0;          // at most GK_NAME_MAX letters, as the script sends
+  while (i < n && (c < GK_NAME_MAX || (str_getchar(#gk_hname, i, 'cu') & 0xC0) == 0x80)) (
+    (str_getchar(#gk_hname, i, 'cu') & 0xC0) != 0x80 ? c += 1;
+    i += 1;
+  );
+  i < n ? str_setlen(#gk_hname, i);
   t == -1 ? t = GK_PLUS_MASTER;   // the master reads its own slot: the project's name (the user, 2026-09-30)
   (t >= 0 && t <= GK_PLUS_MASTER) ? (
     b = GK_PLUS_BASE + t * GK_PLUS_STRIDE;
@@ -567,7 +580,8 @@ function gk_plus_read() local(t, b, g, n, i, c) (
   ) : (
     gk_pl_col = 0; strcpy(#gk_tname, ""); gk_icon_ok = 0;
   );
-  strlen(#gk_name) > 0 ? strcpy(#gk_dname, #gk_name) : strcpy(#gk_dname, #gk_tname);
+  strlen(#gk_name) > 0 ? strcpy(#gk_dname, #gk_name) :
+    strlen(#gk_hname) > 0 ? strcpy(#gk_dname, #gk_hname) : strcpy(#gk_dname, #gk_tname);
 );
 // The track colour as gfx_r/g/b: packed r*65536 + g*256 + b, plus 1 so black
 // is not "none" (arithmetic, not shifts: EEL2's are 32-bit).
@@ -594,7 +608,7 @@ function gk_row_ink() (
   );
 );
 // The name in a strip's name row (#gk_dname: the typed name, else the track's
-// from GainKit Plus), in the FONT row's face: the row's full width, as large as
+// from REAPER 7.81+ or GainKit Plus), in the FONT row's face: the row's full width, as large as
 // fits up to 16 px, down to 7, then cut with "..". Text only: the track icon
 // stays in the window's header (the user, 2026-09-28: "I don't want the track
 // icon next to the name"). The ink is gk_row_ink()'s.
@@ -610,7 +624,9 @@ function gk_name_strip(y0, y1) local(sc, bh, f, tw, th, n) (
     strcpy(#gk_nm_s, #gk_dname);
     n = strlen(#gk_dname);
     while (n > 1 && tw > gk_w - 6 * sc) (
-      n -= 1; strcpy_substr(#gk_nm_s, #gk_dname, 0, n); strcat(#gk_nm_s, "..");
+      n -= 1;
+      while (n > 1 && (str_getchar(#gk_dname, n, 'cu') & 0xC0) == 0x80) ( n -= 1; );   // never inside a UTF-8 letter
+      strcpy_substr(#gk_nm_s, #gk_dname, 0, n); strcat(#gk_nm_s, "..");
       gfx_measurestr(#gk_nm_s, tw, th);
     );
     gk_row_ink();

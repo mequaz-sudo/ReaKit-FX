@@ -17,7 +17,7 @@
 // EON Studios — ReaKit Suite. LOSER's Digital Drum Compressor with a ReaKit GUI (Quaz) and
 // additions around his detector and gain computer: knee, mix, sidechain HPF, stereo link,
 // lookahead, and 2x on the detector. His header above is kept as he wrote it.
-// v2.1.0
+// v2.1.1
 desc:EON: DDC
 options:gmem=Swing_Media_Transfer no_meter
 
@@ -84,11 +84,12 @@ freemem = 1100000;
 km  = freemem; freemem += 12 * KS;  // 12 knobs (was 7)
 bm  = freemem; freemem += 2 * BS;   // feed segment + auto pill
 
-// Lookahead ring buffers (max 5ms @ 192k = 960, use 1024). ⚠ slider16's range
+// Lookahead ring buffers: 5 ms holds to 409.6 kHz (2048 samples; 1024 capped
+// it at 2.7 ms at 384 kHz -- outside audit, 2026-09-30). ⚠ slider16's range
 // (0..5 ms) is what keeps this enough: widen the slider and grow BOTH these
 // and the dry line below.
-la_buf_L = freemem; freemem += 1024;
-la_buf_R = freemem; freemem += 1024;
+la_buf_L = freemem; freemem += 2048;
+la_buf_R = freemem; freemem += 2048;
 la_pos = 0;
 la_size = 0;
 // The dry signal for the Mix, delayed by the wet path's own latency (the
@@ -96,9 +97,10 @@ la_size = 0;
 // partial Mix blends two copies of the SAME moment. Before this the dry was taken before the
 // lookahead and mixed with the delayed wet: at 50 % Mix with 5 ms lookahead a
 // 100 Hz tone cancelled outright (outside audit, 2026-09-28, measured).
-// 2048 = a power of two above 1024 + 3, masked, never modulo.
-dry_buf_L = freemem; freemem += 2048;
-dry_buf_R = freemem; freemem += 2048;
+// 4096 = a power of two above the lookahead's 2048, masked, never modulo
+// (equal to it, the read of la_size back would land on the sample just written).
+dry_buf_L = freemem; freemem += 4096;
+dry_buf_R = freemem; freemem += 4096;
 dry_pos = 0;
 
 // SC HPF biquad state
@@ -201,12 +203,12 @@ function recalc_dsp() (
 
   // Lookahead
   la_ms = slider16;
-  la_size_new = min(floor(la_ms * 0.001 * srate + 0.5), 1024);
+  la_size_new = min(floor(la_ms * 0.001 * srate + 0.5), 2048);
   la_size_new != la_size ? (
     la_size = la_size_new;
     la_pos = 0;
-    memset(la_buf_L, 0, 1024);
-    memset(la_buf_R, 0, 1024);
+    memset(la_buf_L, 0, 2048);
+    memset(la_buf_R, 0, 2048);
   );
 
 
@@ -395,8 +397,8 @@ spl1 *= gR;
 // from its own ring (written every sample above).
 dry_buf_L[dry_pos] = dry0; dry_buf_R[dry_pos] = dry1;
 _dry_d = la_size;
-_dry_rd = (dry_pos - _dry_d + 2048) & 2047;
-dry_pos = (dry_pos + 1) & 2047;
+_dry_rd = (dry_pos - _dry_d + 4096) & 4095;
+dry_pos = (dry_pos + 1) & 4095;
 mix_pct < 1 ? (
   spl0 = dry_buf_L[_dry_rd] + (spl0 - dry_buf_L[_dry_rd]) * mix_pct;
   spl1 = dry_buf_R[_dry_rd] + (spl1 - dry_buf_R[_dry_rd]) * mix_pct;

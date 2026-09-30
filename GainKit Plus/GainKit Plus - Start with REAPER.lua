@@ -15,13 +15,31 @@ local OPEN  = "-- >>> GainKit Plus: start with REAPER (the action of the same na
 local CLOSE = "-- <<< GainKit Plus <<<"
 
 local function read(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
-local function write(p, s) local fh = io.open(p, "wb"); if not fh then return false end; fh:write(s); fh:close(); return true end
+-- The whole new text goes to a temporary file first, checked; only then does it take the
+-- original's place, so a full disk or a crash mid-write cannot leave __startup.lua blank
+-- (outside audit, 2026-09-30). os.rename cannot replace a file on Windows, so the original
+-- steps aside as .bak for the instant of the swap and comes back if the swap fails.
+local function write(p, s)
+  local tmp, bak = p .. ".tmp", p .. ".bak"
+  local fh = io.open(tmp, "wb")
+  if not fh then return false end
+  local okw = fh:write(s)
+  local okc = fh:close()
+  if not okw or not okc or read(tmp) ~= s then os.remove(tmp); return false end
+  os.remove(bak)
+  local had = os.rename(p, bak)
+  if os.rename(tmp, p) then os.remove(bak); return true end
+  if had then os.rename(bak, p) end
+  os.remove(tmp)
+  return false
+end
 
 local function block()
   return table.concat({
     OPEN,
     "do",
-    "  local plus, me = [[" .. PLUS .. "]], [[" .. own .. "]]",
+    -- %q: a path holding ]] would end a long-bracket string early (outside audit, 2026-09-30)
+    string.format("  local plus, me = %q, %q", PLUS, own),
     "  local fh = io.open(plus, \"r\")                      -- uninstalled since? then this block does nothing",
     "  if fh then",
     "    fh:close()",
