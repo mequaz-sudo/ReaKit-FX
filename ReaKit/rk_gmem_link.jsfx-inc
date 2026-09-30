@@ -202,6 +202,34 @@ function rk_link_set_base(gmem_base)
 );
 
 
+// ── SEED (internal): an EMPTY group takes this instance's values whole ──
+// A fresh REAPER holds zeros in gmem. A project restored with a group set
+// reaches @slider (push) and @gfx (pull) with prev == slider for every slider
+// still at its default, and pull then adopted the group's zeros -- HP 20 Hz
+// and LP 20 kHz came back as 0 (outside audit, 2026-09-30; measured,
+// .dev_tests/rk_vu_audit/linkseed_run.ps1). Push alone did not help: it
+// wrote only the changed sliders and still marked the group alive. So both
+// push and pull seed first: whoever wakes first fills the group with all its
+// values; later members, saved linked, hold the same values and pull nothing.
+function _rk_link_seed_if_empty(base)
+  local(i)
+(
+  gmem[base + 33] != 1 ? (
+    i = 1;
+    loop(rk_link_sync_max,
+      i != rk_link_group_slider && !rk_link_excl[i] ? (
+        gmem[base + rk_link_slot(i)] = slider(i);
+        rk_link_prev[i] = slider(i);
+      );
+      i += 1;
+    );
+    gmem[base + 34] = rk_ps_en_play; gmem[base + 35] = rk_ps_en_rec; gmem[base + 36] = rk_ps_en_stop;
+    gmem[base + 37] = 0; rk_link_last_ps_counter = 0;
+    gmem[base + 33] = 1;
+  );
+);
+
+
 // ── PUSH (internal): write locally-changed sliders to gmem ──
 // Old-value comparison: slider(i) != rk_link_prev[i] means we changed it.
 function _rk_link_push()
@@ -210,6 +238,7 @@ function _rk_link_push()
   g = slider(rk_link_group_slider) | 0;
   g >= 1 && g <= 16 ? (
     base = rk_link_base + (g - 1) * 64;
+    _rk_link_seed_if_empty(base);
     i = 1;
     loop(rk_link_sync_max,
       i != rk_link_group_slider && !rk_link_excl[i] ? (
@@ -255,6 +284,7 @@ function rk_link_pull()
 
   g >= 1 && g <= 16 ? (
     base = rk_link_base + (g - 1) * 64;
+    _rk_link_seed_if_empty(base);
     gmem[base + 33] = 1;  // keep alive flag set
     gmem[base + 63] = time_precise();  // member heartbeat (menu occupancy dots)
 

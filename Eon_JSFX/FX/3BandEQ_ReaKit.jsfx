@@ -18,7 +18,7 @@
 // change-detection, same model as 4BandEQ v1.3+), mark_dirty wrapper,
 // crossover freqs now re-applied when changed post-init (link-pull fix),
 // @gfx loop var privatized.
-// Version: 1.2.0
+// Version: 1.2.1
 desc:EON: 3-Band EQ
 //tags: equalizer
 //author: LOSER
@@ -116,6 +116,7 @@ function mark_dirty(mask) ( slider_automate(mask); );
 
 // ── Gain smoothing (5ms one-pole) ──
 snap_params = 1;
+eq3_ps_mix = 1;    // the Play/Rec/Stop fade starts wet: a fresh instance sounds as it always did from its first sample
 sm_coeff = 1 - exp(-1 / (srate * 0.005));
 sm_lVol = lVol;
 sm_mVol = mVol;
@@ -165,6 +166,10 @@ snap_params ? (
 );
 
 rk_ps_tick();
+// The Play/Rec/Stop toggles: the output fades between the EQ and the dry input
+// over 5 ms; the filters keep running so nothing restarts from zero when the
+// EQ comes back (outside audit, 2026-09-30: the toggles did nothing here).
+eq3_ps_mix += (rk_ps_active - eq3_ps_mix) * sm_coeff;
 
 // Per-sample gain smoothing
 sm_lVol   += (lVol   - sm_lVol)   * sm_coeff;
@@ -172,12 +177,15 @@ sm_mVol   += (mVol   - sm_mVol)   * sm_coeff;
 sm_hVol   += (hVol   - sm_hVol)   * sm_coeff;
 sm_outVol += (outVol - sm_outVol) * sm_coeff;
 
+eq3_dry0 = spl0; eq3_dry1 = spl1;
 sl0 = (tmplLP = a0LP*spl0 - b1LP*tmplLP + cDenorm);
 sl1 = (tmprLP = a0LP*spl1 - b1LP*tmprLP + cDenorm);
 sh0 = spl0 - (tmplHP = a0HP*spl0 - b1HP*tmplHP + cDenorm);
 sh1 = spl1 - (tmprHP = a0HP*spl1 - b1HP*tmprHP + cDenorm);
 spl0 = (sl0*sm_lVol + (spl0 - sl0 - sh0)*sm_mVol + sh0*sm_hVol)*sm_outVol;
 spl1 = (sl1*sm_lVol + (spl1 - sl1 - sh1)*sm_mVol + sh1*sm_hVol)*sm_outVol;
+spl0 = eq3_dry0 + (spl0 - eq3_dry0) * eq3_ps_mix;
+spl1 = eq3_dry1 + (spl1 - eq3_dry1) * eq3_ps_mix;
 meter_process_sample(spl0, spl1);
 
 

@@ -15,20 +15,32 @@ local OPEN  = "-- >>> GainKit Plus: start with REAPER (the action of the same na
 local CLOSE = "-- <<< GainKit Plus <<<"
 
 local function read(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
+-- Is there something at p? os.rename onto itself succeeds only for an existing path (a file or
+-- a folder), readable or not, without touching it.
+local function exists(p) return os.rename(p, p) and true or false end
+-- A name beside p that nothing else uses: the process's own, and only taken when it is free,
+-- so a user's own __startup.lua.tmp or .bak is never overwritten or removed (outside audit).
+local function spare(p, tag)
+  for i = 0, 99 do
+    local n = string.format("%s.gkplus-%s-%d-%d", p, tag, math.floor(os.time()), i)
+    if not exists(n) then return n end
+  end
+end
 -- The whole new text goes to a temporary file first, checked; only then does it take the
 -- original's place, so a full disk or a crash mid-write cannot leave __startup.lua blank
 -- (outside audit, 2026-09-30). os.rename cannot replace a file on Windows, so the original
--- steps aside as .bak for the instant of the swap and comes back if the swap fails.
+-- steps aside for the instant of the swap and comes back if the swap fails.
 local function write(p, s)
-  local tmp, bak = p .. ".tmp", p .. ".bak"
+  local tmp, bak = spare(p, "tmp"), spare(p, "bak")
+  if not tmp or not bak then return false end
   local fh = io.open(tmp, "wb")
   if not fh then return false end
   local okw = fh:write(s)
   local okc = fh:close()
   if not okw or not okc or read(tmp) ~= s then os.remove(tmp); return false end
-  os.remove(bak)
-  local had = os.rename(p, bak)
-  if os.rename(tmp, p) then os.remove(bak); return true end
+  local had = exists(p)
+  if had and not os.rename(p, bak) then os.remove(tmp); return false end
+  if os.rename(tmp, p) then if had then os.remove(bak) end; return true end
   if had then os.rename(bak, p) end
   os.remove(tmp)
   return false
@@ -65,7 +77,16 @@ local function plus_running(c)
   return hb > st and r.time_precise() - hb < 1.0
 end
 
-local s = read(STARTUP) or ""
+local s = read(STARTUP)
+if not s and exists(STARTUP) then
+  -- the file is there but could not be read (permissions, a lock): treating it as empty would
+  -- write a file holding only this block over it (outside audit, 2026-09-30). Nothing is touched.
+  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then
+    r.MB("Scripts/__startup.lua could not be read, so it was left alone.", "GainKit Plus", 0)
+  end
+  return
+end
+s = s or ""
 local a = s:find(OPEN, 1, true)
 local on, ok
 if a and not s:find(CLOSE, a, true) then
@@ -80,7 +101,7 @@ if a then
   local b = s:find(CLOSE, a, true)
   local e = s:find("\n", b, true) or #s                         -- through the end of the CLOSE line
   local out = s:sub(1, a - 1) .. s:sub(e + 1)
-  if out:match("^%s*$") then os.remove(STARTUP); ok = true else ok = write(STARTUP, out) end
+  if out:match("^%s*$") then ok = os.remove(STARTUP) and true or false else ok = write(STARTUP, out) end
   on = false
 else
   local out = s

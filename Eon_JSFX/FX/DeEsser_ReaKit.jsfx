@@ -22,7 +22,7 @@
 //
 // EON Studios ReaKit — De-Esser: Liteon's de-esser (LR2 crossover + peak compressor), ported,
 // with a ReaKit GUI. It stays under the GPL, as Liteon released it (his header above).
-// Version: 1.0.2
+// Version: 1.0.3
 desc:EON: De-Esser
 
 slider1:-20<-60,0,0.1>-Threshold (dB)
@@ -304,18 +304,20 @@ rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
 @sample
 rk_ps_tick();
+// ── Lookahead: write live, read delayed -- ALWAYS, active or not. pdc_delay
+// reports la_len whatever the Play/Rec/Stop toggles say, so the inactive path
+// must delay the dry by the same amount or the track slides early by the
+// lookahead while a toggle is off (Codex, 2026-09-30).
+la_buf_l[la_write] = spl0;
+la_buf_r[la_write] = spl1;
+la_read = (la_write - la_len + LA_MAX) & (LA_MAX - 1);
+dl = la_buf_l[la_read];
+dr = la_buf_r[la_read];
+la_write = (la_write + 1) & (LA_MAX - 1);
 rk_ps_active ? (
 
   // ── FFT ring buffer: capture INPUT before any DSP ─────────────────────────
   ring_buf_in[ring_wr] = (spl0 + spl1) * 0.5;
-
-  // ── Lookahead: write live, read delayed ───────────────────────────────────
-  la_buf_l[la_write] = spl0;
-  la_buf_r[la_write] = spl1;
-  la_read = (la_write - la_len + LA_MAX) & (LA_MAX - 1);
-  dl = la_buf_l[la_read];
-  dr = la_buf_r[la_read];
-  la_write = (la_write + 1) & (LA_MAX - 1);
 
   // ── Step coefficient interpolation ───────────────────────────────────────
   b1_s0 += d_b1_s0; b2_s0 += d_b2_s0;
@@ -437,7 +439,9 @@ rk_ps_active ? (
   ring_buf_out[ring_wr] = (spl0 + spl1) * 0.5;
   ring_wr = (ring_wr + 1) & (fft_size - 1);
 
-) : ( 0 );
+) : (
+  spl0 = dl; spl1 = dr;     // inactive: the dry, delayed by the reported latency
+);
 
 @gfx 540 520
 gfx_clear = 0x443D38;

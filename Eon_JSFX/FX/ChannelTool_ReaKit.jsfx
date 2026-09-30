@@ -13,7 +13,7 @@ desc:EON: GainKit
 //   same, and any of them set away from its default shows as a badge.
 //   Every switch (MONO, M/S, a filter on or off) crossfades over 5 ms, so a
 //   badge reset or a MONO press mid-play cannot tick.
-// Version: 2.6.0
+// Version: 2.6.1
 
 slider1:20<20,20000,1>-HP Freq (Hz)
 slider2:20000<20,20000,1>-LP Freq (Hz)
@@ -748,7 +748,7 @@ sm_alpha = 0;
 
 dsp_dirty = 0;
 snap_params = 1;
-ext_tail_size = -2;  // let REAPER auto-detect tail (IIR filters settle in ms)
+ext_tail_size = -1;  // REAPER's silence detection lets the state settle: the HP/LP filters and the smoothers have a tail (-2 = "no state", wrong here; outside audit, 2026-09-30)
 gfx_ext_retina = 1;
 // Render the embedded UI without REAPER's frame/title-bar decoration
 // (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.

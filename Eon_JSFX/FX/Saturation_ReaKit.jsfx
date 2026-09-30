@@ -12,7 +12,7 @@
 // ENTRUST SOMEBODY ELSE WITH DOING SO.
 //
 // GUI by EON Studios (ReaKit Libraries)
-// Version: 1.1.0
+// Version: 1.1.1
 desc:EON: Saturation
 //tags: processing amplitude gain saturation
 //author: LOSER
@@ -132,9 +132,11 @@ snap_params ? (
   snap_params = 0;
 );
 
-// Per-sample parameter smoothing (15ms one-pole)
+// Per-sample parameter smoothing (15ms one-pole). The Play/Rec/Stop toggles
+// (rk_ps_active) take the wet to 0 through the same smoother: no click, and the
+// options do what they say (outside audit, 2026-09-30: they gated the meter only).
 drive_s += (drive_t - drive_s) * (1 - sm_coeff);
-wet_s   += (wet_t   - wet_s)   * (1 - sm_coeff);
+wet_s   += ((rk_ps_active ? wet_t : 0) - wet_s) * (1 - sm_coeff);
 
 wet_s > 0.001 ? (
   // Compute waveshaper params from smoothed drive (single-source eliminates zipper)

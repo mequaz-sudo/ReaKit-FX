@@ -6,7 +6,8 @@
 // USAGE:
 //   @init:    rk_ps_init(tail_ms);
 //              — tail_ms: how long DSP continues after stop (0 = instant bypass)
-//              — use -1 for infinite tail (never auto-bypass)
+//              — -1: no tail; rk_ps_active follows the Play/Rec/Stop toggles at
+//                once (the caller fades, e.g. Saturation's wet smoother)
 //
 //   @block:   rk_ps_update_block();
 //              — call ONCE per @block: decodes play_state (a block-rate
@@ -54,7 +55,7 @@ function rk_ps_init(tail_ms)
   );
 
   // Tail: how many samples to keep processing after transport stops
-  // -1 = never auto-bypass (infinite tail effects like reverb)
+  // -1 = no tail: active follows the toggles at once (the caller fades)
   //  0 = bypass immediately on stop
   // >0 = fade out over N ms
   rk_ps_tail_ms     = tail_ms;
