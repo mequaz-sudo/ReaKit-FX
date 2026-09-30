@@ -156,6 +156,9 @@ function rkth_self_tick() local(_r, _k) (
     // project you open wears the theme it was saved with, over whatever the
     // previous project left in the band (the user, 2026-09-30). An empty band
     // takes it too; a bridge-painted band is never touched (the branch above).
+    // Nothing ever picked and nothing painted: EON is the default look, not each
+    // plugin's bare one (the user, 2026-09-30: a fresh install opened bare).
+    !rkth_self_applied && rkth_self_theme < 1 && gmem[GS_THEME_ID] <= 0 ? rkth_self_theme = 1;
     !rkth_self_applied && rkth_self_theme >= 1 && rkth_self_theme <= RKTH_SELF_N ? (
       rkth_self_applied = 1;
       (gmem[GS_THEME_ID] <= 0 || (gmem[GS_THEME_CUR] | 0) != rkth_self_theme
