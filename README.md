@@ -179,14 +179,15 @@ Extensions > ReaPack > Import repositories, paste:
 https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
 ```
 
-Then install **ReaKit FX** from the browser, and **GainKit Plus** for the scripts. The plugins appear in REAPER's FX list as
+Then install **ReaKit FX** from the browser, **GainKit Plus** for the scripts, and **EON Floatter**
+so every window opens at its designed size. The plugins appear in REAPER's FX list as
 `JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
 `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
 
-**Windows at their proper size:** install **EON Floatter** from the ReaKit library repository
-(`https://raw.githubusercontent.com/mequaz-sudo/ReaKit/main/index.xml`, imported the same way) and
-run it once from the action list. It stays on: every EON window opens at its designed size, any
-JSFX window can be captured at a size of your own, and one dial scales them all.
+**EON Floatter** ships here too (the same file as in the ReaKit library; having both is harmless,
+only one ever runs). Run it once from the action list and it stays on: every EON window opens at
+its designed size, any JSFX window can be captured at a size of your own, and one dial scales them
+all. It needs js_ReaScriptAPI, and its panel needs ReaImGui, both from ReaTeam Extensions.
 
 These effects used to ship from the ReaKit repository as "ReaKit Free FX". If you installed them
 there, ReaPack now lists that package as obsolete: uninstall it and install this one.

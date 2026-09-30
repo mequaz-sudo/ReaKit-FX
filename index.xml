@@ -361,4 +361,21 @@
       </version>
     </reapack>
   </category>
+  <category name="EON Floatter">
+    <reapack name="EON_Floatter.lua" type="script" desc="EON Floatter - JSFX floating windows open at the size you chose">
+      <metadata>
+        <description><![CDATA[EON Floatter opens every EON plugin's floating window at the size EON designed for it, and lets you keep your own size for any JSFX. Run it once: it switches on, starts with REAPER from then on, and shows its panel. Run it again to open the panel. Closing the panel never stops it.
+
+The panel: every plugin drawn to scale against its default, Capture to keep a size as yours, Reset to go back to EON's, a live handle that resizes the real window, one dial for all EON sizes (75 to 150 percent for small laptops and big screens), and "Apply EON sizes to this project".
+
+Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it the sizing still works. MIT licensed.]]></description>
+        <link rel="website">https://forum.cockos.com/showthread.php?p=2952442</link>
+        <link rel="repository">https://github.com/mequaz-sudo/ReaKit</link>
+      </metadata>
+      <version name="1.0.1" author="Quaz (EON Studios)" time="2026-09-30T16:47:09Z">
+        <changelog><![CDATA[Floatter now also ships from the ReaKit FX repository, so the one import gives the plugins, GainKit Plus and the windows at their designed size. The same 1.0.1 as in the ReaKit library; installing both is harmless, only one ever runs. Needs js_ReaScriptAPI; the panel needs ReaImGui (both from ReaTeam Extensions).]]></changelog>
+        <source main="main" file="EON_Floatter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/79383f72eb1094140c8a485c32182620d11ad54b/Floatter/EON_Floatter.lua</source>
+      </version>
+    </reapack>
+  </category>
 </index>
