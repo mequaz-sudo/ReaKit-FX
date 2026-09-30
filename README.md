@@ -141,7 +141,20 @@ WIDTH knob at the bottom of the channel.
   slot it is given.
 - **THEME panel** — GainKit, Saturation, 3-Band EQ, De-Esser and Stereo Width have a THEME toggle in the header:
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
-  which opts an instance out of theming. GainKit's panel also picks the VU's face, what the strip
+  which opts an instance out of theming. Three colour themes are built in and work on their own:
+  **EON**, **Dark** and **Light**. Pick one on any of the six and all six follow, and the choice
+  comes back with the project. The other eleven in the list (SSL, Neve, API, Tube, Ableton, FL
+  Studio, Pro Tools, PT Light, and the three that copy your REAPER theme) are marked "Swing":
+  they light up when EON Swing is installed, whose bridge paints them and keeps the whole suite
+  in step.
+
+  ![The six on the EON theme](screenshots/session/six_windows_eon.png)
+
+  ![The six on the Dark theme](screenshots/session/six_windows_dark.png)
+
+  ![The six on the Light theme](screenshots/session/six_windows_light.png)
+
+  *The six windows on the three built-in themes, on a machine without Swing.* GainKit's panel also picks the VU's face, what the strip
   shows, the name's row (ROW, BAND or OFF) and its FONT, the meter's colour (FACE or TRACK) and
   when the VU alone prints the gain (TOUCH or ALWAYS), and has LOCK, which freezes that instance's
   look while the rest follows the theme. DDC has no panel of its own; its colours and knobs follow
