@@ -46,7 +46,9 @@ in the Actions list as `Script: GainKit Plus…`):
   name's band (and under the window's header), and the track's icon in the window's header; the
   meter can take the colour too. The master's GainKit shows the project's name. A name typed on
   the meter still wins. Run it again to stop; put it on a toolbar and the button lights while it
-  runs.
+  runs. On REAPER 7.81 and later every GainKit reads its track's name from REAPER itself, so
+  the name needs no script there; the colour, the icon and the master's project name still come
+  from GainKit Plus, which serves the first 512 tracks.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
   none.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
