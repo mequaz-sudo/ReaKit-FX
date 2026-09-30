@@ -44,17 +44,26 @@ in the Actions list as `Script: GainKit Plus…`):
 - **GainKit Plus** — run it once and every GainKit in the project shows its track's name on top
   of the strip and as the meter's legend, the track's colour along the top of the strip or as the
   name's band (and under the window's header), and the track's icon in the window's header; the
-  meter can take the colour too. A name typed on the meter still wins. Run it again to stop; put
-  it on a toolbar and the button lights while it runs.
+  meter can take the colour too. The master's GainKit shows the project's name. A name typed on
+  the meter still wins. Run it again to stop; put it on a toolbar and the button lights while it
+  runs.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
   none.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
   chain, the master's too.
+- **GainKit first on selected tracks** — the same, for the selected tracks only.
+- **GainKit last on the master** — moves the master's GainKit to the end of its chain, or adds
+  one there, so the mix gets a final VU after everything else.
+- **Copy look to all** — the look of the selected track's GainKit (what the strip shows, the name
+  row and its font, the meter's colour, VALUE, NAME BAR, NATIVE) on every GainKit at once.
 - **Reset all gains** — every GainKit's GAIN back to 0 dB.
 - **All MONO** / **All STEREO** — every GainKit's key at once.
 - **Bypass all** — every GainKit off; run it again and they are all on.
+- **Remove all GainKits** — takes GainKit off every track after asking once; Undo puts them back.
 - **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
+
+The actions and the names reach a GainKit inside an FX container too.
 
 In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
 finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows
@@ -137,9 +146,10 @@ there, ReaPack now lists that package as obsolete: uninstall it and install this
 ## Licence
 
 Saturation, 3-Band EQ and DDC keep their DSP author's terms, Michael Gruhn (LOSER); the De-Esser's
-crossover and detector are Lubomir I. Ivanov's (Liteon). Each plugin file carries its original
-header. GainKit is EON Studios' own code, MIT. The `ReaKit/` includes are the ReaKit library, MIT.
-The full text is in [LICENSE.md](LICENSE.md).
+crossover and detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it. Each
+plugin file carries its author's original header, word for word. GainKit and the GainKit Plus
+scripts are EON Studios' own code, MIT, and so are the `ReaKit/` includes. The full text is in
+[LICENSE.md](LICENSE.md).
 
 ## Building on it
 
