@@ -74,8 +74,8 @@ la_buf_R = freemem; freemem += 1024;
 la_pos = 0;
 la_size = 0;
 // The dry signal for the Mix, delayed by the wet path's own latency (the
-// lookahead plus the oversampler's 3 samples) so a partial Mix blends two
-// copies of the SAME moment. Before this the dry was taken before the
+// lookahead; 2x adds none since it oversamples only the detector) so a
+// partial Mix blends two copies of the SAME moment. Before this the dry was taken before the
 // lookahead and mixed with the delayed wet: at 50 % Mix with 5 ms lookahead a
 // 100 Hz tone cancelled outright (outside audit, 2026-09-28, measured).
 // 2048 = a power of two above 1024 + 3, masked, never modulo.
@@ -120,13 +120,16 @@ function recalc_dsp() (
     gainR = seekgainR = 1;
   );
 
-  attack = exp( -treshdB/max( slider3*srate/1000 , 1) / c_ampdB  ) ;
-  hold = slider4/1000*srate;
+  // The detector's own rate: 2x runs it twice per sample (the audio is never
+  // oversampled), so its time constants count detector steps, not samples.
+  det_sr = slider15 ? srate * 2 : srate;
+  attack = exp( -treshdB/max( slider3*det_sr/1000 , 1) / c_ampdB  ) ;
+  hold = slider4/1000*det_sr;
   under_treshL = 0; under_treshR = 0;
-  release = exp( -treshdB/max( slider5*srate/1000 , 1) / c_ampdB ) ;
+  release = exp( -treshdB/max( slider5*det_sr/1000 , 1) / c_ampdB ) ;
 
   rms_size_1 = rms_size;
-  rms_size = min( max(slider6/1000*srate,1) , 1000000);
+  rms_size = min( max(slider6/1000*det_sr,1) , 1000000);
   rms_size_1 != rms_size ? (
       rms_sqr_sum = rms_bpos = 0;
       memset(0,0,rms_size);
@@ -192,6 +195,96 @@ function recalc_dsp() (
   gain_sR.smooth_init(10);
 );
 
+// ── Detector: stereo link, RMS, gain computer, attack/release ───────────────
+// One detector step on the detection signal (scL, scR). Called once per
+// sample, or twice when 2x is on (the upsampled signal); the time constants
+// count steps (det_sr). Updates gainL/gainR; the audio is not touched here.
+function ddc_detect(scL, scR) (
+  // ── Stereo link blending ──
+  lev_L = abs(scL); lev_R = abs(scR);
+  linked = max(lev_L, lev_R);
+  det_L = lev_L + (linked - lev_L) * link_pct;
+  det_R = lev_R + (linked - lev_R) * link_pct;
+
+  // ── RMS (L channel) ──
+  rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
+  (rms_bpos += 1) >= rms_size ? rms_bpos = 0;
+  rmsL = sqrt(rms_sqr_sum / rms_size);
+
+  // ── RMS (R channel) ──
+  rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
+  (rms_bpos_R += 1) >= rms_size ? rms_bpos_R = 0;
+  rmsR = sqrt(rms_sqr_sum_R / rms_size);
+
+  // ── Gain computation L channel ──
+  knee > 0 ? (
+    rms_dB = log(max(rmsL, 0.0000001)) * c_ampdB;
+    rms_dB < knee_lo ? (
+      (under_treshL += 1) > hold ? ( seekgainL = 1; );
+    ) : rms_dB < knee_hi ? (
+      _x = (rms_dB - knee_lo) / knee;
+      _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
+      _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
+      hold ? (
+        ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
+      ) : ( seekgainL = _sg; );
+      under_treshL = 0;
+    ) : (
+      _sg = (tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001);
+      hold ? (
+        ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
+      ) : ( seekgainL = _sg; );
+      under_treshL = 0;
+    );
+  ) : (
+    rmsL > tresh ? (
+      hold ? (
+        ratio > 1 ? ( seekgainL = min((tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001), seekgainL); )
+                  : ( seekgainL = max((tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001), seekgainL); );
+      ) : ( seekgainL = (tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001); );
+      under_treshL = 0;
+    ) : (
+      (under_treshL += 1) > hold ? ( seekgainL = 1; );
+    );
+  );
+
+  // ── Gain computation R channel ──
+  knee > 0 ? (
+    rms_dB = log(max(rmsR, 0.0000001)) * c_ampdB;
+    rms_dB < knee_lo ? (
+      (under_treshR += 1) > hold ? ( seekgainR = 1; );
+    ) : rms_dB < knee_hi ? (
+      _x = (rms_dB - knee_lo) / knee;
+      _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
+      _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
+      hold ? (
+        ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
+      ) : ( seekgainR = _sg; );
+      under_treshR = 0;
+    ) : (
+      _sg = (tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001);
+      hold ? (
+        ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
+      ) : ( seekgainR = _sg; );
+      under_treshR = 0;
+    );
+  ) : (
+    rmsR > tresh ? (
+      hold ? (
+        ratio > 1 ? ( seekgainR = min((tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001), seekgainR); )
+                  : ( seekgainR = max((tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001), seekgainR); );
+      ) : ( seekgainR = (tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001); );
+      under_treshR = 0;
+    ) : (
+      (under_treshR += 1) > hold ? ( seekgainR = 1; );
+    );
+  );
+
+  // ── Attack/release envelope (per-channel) ──
+  gainL > seekgainL ? gainL = max(gainL / attack, seekgainL) : gainL = min(gainL * release, seekgainL);
+  gainR > seekgainR ? gainR = max(gainR / attack, seekgainR) : gainR = min(gainR * release, seekgainR);
+);
+
 @slider
 recalc_dsp();
 
@@ -201,7 +294,7 @@ atomic_get(dsp_dirty) ? (
   atomic_set(dsp_dirty, 0);
 );
 // PDC is declared here, at block rate (house rule: never in @init/@slider).
-pdc_delay = (os_on ? 3 : 0) + la_size;
+pdc_delay = la_size;   // 2x oversamples only the detector: no latency of its own
 pdc_bot_ch = 0; pdc_top_ch = 2;
 
 // GR meter, once per block: the lowest gain the last block reached, both
@@ -246,89 +339,17 @@ sc_hpf_on ? (
   sc_hpf_y2R = sc_hpf_y1R; sc_hpf_y1R = sc_R;
 );
 
-// ── Stereo link blending ──
-lev_L = abs(sc_L); lev_R = abs(sc_R);
-linked = max(lev_L, lev_R);
-det_L = lev_L + (linked - lev_L) * link_pct;
-det_R = lev_R + (linked - lev_R) * link_pct;
-
-// ── RMS (L channel) ──
-rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
-(rms_bpos += 1) >= rms_size ? rms_bpos = 0;
-rmsL = sqrt(rms_sqr_sum / rms_size);
-
-// ── RMS (R channel) ──
-rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
-(rms_bpos_R += 1) >= rms_size ? rms_bpos_R = 0;
-rmsR = sqrt(rms_sqr_sum_R / rms_size);
-
-// ── Gain computation L channel ──
-knee > 0 ? (
-  rms_dB = log(max(rmsL, 0.0000001)) * c_ampdB;
-  rms_dB < knee_lo ? (
-    (under_treshL += 1) > hold ? ( seekgainL = 1; );
-  ) : rms_dB < knee_hi ? (
-    _x = (rms_dB - knee_lo) / knee;
-    _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
-    _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
-    hold ? (
-      ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
-    ) : ( seekgainL = _sg; );
-    under_treshL = 0;
-  ) : (
-    _sg = (tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001);
-    hold ? (
-      ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
-    ) : ( seekgainL = _sg; );
-    under_treshL = 0;
-  );
+// ── Detector ──
+// 2x oversamples only the detector: the detection signal goes through the
+// 7-tap upsampler and ddc_detect runs on both sub-samples (time constants in
+// det_sr). The audio is never resampled: no treble loss, no added latency.
+os_on ? (
+  os.os2_stereo_up(sc_L, sc_R);
+  ddc_detect(os.y1L, os.y1R);
+  ddc_detect(os.y0L, os.y0R);
 ) : (
-  rmsL > tresh ? (
-    hold ? (
-      ratio > 1 ? ( seekgainL = min((tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001), seekgainL); )
-                : ( seekgainL = max((tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001), seekgainL); );
-    ) : ( seekgainL = (tresh + (rmsL - tresh) / ratio) / max(rmsL, 0.000001); );
-    under_treshL = 0;
-  ) : (
-    (under_treshL += 1) > hold ? ( seekgainL = 1; );
-  );
+  ddc_detect(sc_L, sc_R);
 );
-
-// ── Gain computation R channel ──
-knee > 0 ? (
-  rms_dB = log(max(rmsR, 0.0000001)) * c_ampdB;
-  rms_dB < knee_lo ? (
-    (under_treshR += 1) > hold ? ( seekgainR = 1; );
-  ) : rms_dB < knee_hi ? (
-    _x = (rms_dB - knee_lo) / knee;
-    _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
-    _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
-    hold ? (
-      ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
-    ) : ( seekgainR = _sg; );
-    under_treshR = 0;
-  ) : (
-    _sg = (tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001);
-    hold ? (
-      ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
-    ) : ( seekgainR = _sg; );
-    under_treshR = 0;
-  );
-) : (
-  rmsR > tresh ? (
-    hold ? (
-      ratio > 1 ? ( seekgainR = min((tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001), seekgainR); )
-                : ( seekgainR = max((tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001), seekgainR); );
-    ) : ( seekgainR = (tresh + (rmsR - tresh) / ratio) / max(rmsR, 0.000001); );
-    under_treshR = 0;
-  ) : (
-    (under_treshR += 1) > hold ? ( seekgainR = 1; );
-  );
-);
-
-// ── Attack/release envelope (per-channel) ──
-gainL > seekgainL ? gainL = max(gainL / attack, seekgainL) : gainL = min(gainL * release, seekgainL);
-gainR > seekgainR ? gainR = max(gainR / attack, seekgainR) : gainR = min(gainR * release, seekgainR);
 
 // ── Smooth gain (eliminates zipper noise) ──
 gL = gain_sL.smooth(gainL) * volume;
@@ -346,24 +367,15 @@ la_size > 0 ? (
   spl1 = _la_out_R;
 );
 
-// ── Apply gain (with optional 2x oversampling) ──
-os_on ? (
-  os.os2_stereo_up(spl0, spl1);
-  os.y1L *= gL; os.y1R *= gR;
-  os.y0L *= gL; os.y0R *= gR;
-  os.os2_stereo_down();
-  spl0 = os.outL;
-  spl1 = os.outR;
-) : (
-  spl0 *= gL;
-  spl1 *= gR;
-);
+// ── Apply gain, always at the native rate ──
+spl0 *= gL;
+spl1 *= gR;
 
 // ── Mix (parallel compression), against the dry of the same moment: the wet
-// left the lookahead and the oversampler (la_size + 3) samples late, so the
-// dry is read that far back from its own ring (written every sample above).
+// left the lookahead la_size samples late, so the dry is read that far back
+// from its own ring (written every sample above).
 dry_buf_L[dry_pos] = dry0; dry_buf_R[dry_pos] = dry1;
-_dry_d = la_size + (os_on ? 3 : 0);
+_dry_d = la_size;
 _dry_rd = (dry_pos - _dry_d + 2048) & 2047;
 dry_pos = (dry_pos + 1) & 2047;
 mix_pct < 1 ? (
