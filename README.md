@@ -75,6 +75,8 @@ in the Actions list as `Script: GainKit Plus…`):
 - **Remove all GainKits** — takes GainKit off every track after asking once; Undo puts them back.
 - **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
+- **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
+  file, and EON Floatter started once so it registers itself. Run it again and nothing changes.
 
 The actions and the names reach a GainKit inside an FX container too.
 
@@ -143,7 +145,7 @@ WIDTH knob at the bottom of the channel.
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
   which opts an instance out of theming. Three colour themes are built in and work on their own:
   **EON**, **Dark** and **Light**. Pick one on any of the six and all six follow, and the choice
-  comes back with the project. The other eleven in the list (SSL, Neve, API, Tube, Ableton, FL
+  comes back with the project: opening a project wears the theme it was saved with. The other eleven in the list (SSL, Neve, API, Tube, Ableton, FL
   Studio, Pro Tools, PT Light, and the three that copy your REAPER theme) are marked "Swing":
   they light up when EON Swing is installed, whose bridge paints them and keeps the whole suite
   in step.
@@ -193,12 +195,13 @@ https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
 ```
 
 Then install **ReaKit FX** from the browser, **GainKit Plus** for the scripts, and **EON Floatter**
-so every window opens at its designed size. The plugins appear in REAPER's FX list as
+so every window opens at its designed size. Run the action **ReaKit FX - Start with REAPER** once
+and both scripts are on from every launch. The plugins appear in REAPER's FX list as
 `JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
 `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
 
 **EON Floatter** ships here too (the same file as in the ReaKit library; having both is harmless,
-only one ever runs). Run it once from the action list and it stays on: every EON window opens at
+only one ever runs). The action above starts it, or run it once yourself from the action list; it stays on: every EON window opens at
 its designed size, any JSFX window can be captured at a size of your own, and one dial scales them
 all. It needs js_ReaScriptAPI, and its panel needs ReaImGui, both from ReaTeam Extensions.
 
