@@ -436,6 +436,10 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
         <changelog><![CDATA[Floatter now also ships from the ReaKit FX repository, so the one import gives the plugins, GainKit Plus and the windows at their designed size. The same 1.0.1 as in the ReaKit library; installing both is harmless, only one ever runs. Needs js_ReaScriptAPI; the panel needs ReaImGui (both from ReaTeam Extensions).]]></changelog>
         <source main="main" file="EON_Floatter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/79383f72eb1094140c8a485c32182620d11ad54b/Floatter/EON_Floatter.lua</source>
       </version>
+      <version name="1.0.2" author="Quaz (EON Studios)" time="2026-09-30T18:15:27Z">
+        <changelog><![CDATA[A window you resize by hand keeps that size until REAPER closes, that window only; Floatter's own sizing (an apply, Capture, the dial) ends the keep. The 3-Band EQ's designed size follows its taller strip. The start-up file handling is hardened: a stranded original is put back before anything reads or writes, a block is removed in whole lines so a neighbour's line is never glued to the next, and a read-only file is left alone.]]></changelog>
+        <source main="main" file="EON_Floatter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/fe4f9570251bdd3fa373fa6bbafe2d7d6592f73a/Floatter/EON_Floatter.lua</source>
+      </version>
     </reapack>
   </category>
 </index>
