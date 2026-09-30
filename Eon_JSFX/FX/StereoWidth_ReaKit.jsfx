@@ -1,0 +1,523 @@
+// Stereo Width (ReaKit)
+// (C) 2026 EON Studios
+// Mid/side stereo width control with correlation meter
+// Version: 1.1.0
+//
+// GUI by EON Studios (ReaKit Libraries)
+desc:EON: Stereo Width
+//tags: stereo width mid side
+//author: EON Studios
+
+import ../../ReaKit/utils_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/buttons_kbsg.jsfx-inc
+import ../../ReaKit/meters_kbsg.jsfx-inc
+import ../../ReaKit/rk_playstate.jsfx-inc
+import ../../ReaKit/rk_gmem_link.jsfx-inc
+import ../../ReaKit/rk_theme.jsfx-inc
+
+slider1:100<0,200,1>-Width (%)
+slider2:1<0,1,1>-Enable
+slider3:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
+slider4:sw_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+options:gfx_hz=60 no_meter
+options:gmem=ReaKitStereoWidth
+
+@init
+ext_tail_size = -1;
+gfx_ext_retina = 1;
+// Render the embedded UI without REAPER's frame/title-bar decoration
+// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
+gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
+// 0x100 now follows the THEME panel's NAME BAR row (slider4), default
+// 0 = borderless, house rule 1 unchanged. REAPER documents 0x100 as an
+// @init decision, so it is applied HERE from the restored value; the
+// re-apply in the @gfx tail is what makes the row take effect without a
+// reload (measured both ways on 7.79 and 7.80).
+// ⚠️INVERTED SENSE: the row ON (bar SHOWN) means 0x100 CLEARED.
+sw_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+tau = 2 * $pi;
+
+// ── Memory allocation (freemem pattern) ──
+freemem = 0;
+KS = 16; BS = 8;
+km = freemem; freemem += KS * 1;   // 1 knob
+bm = freemem; freemem += BS * 1;   // 1 button (enable LED)
+memset(km, 0, KS * 1);
+memset(bm, 0, BS * 1);
+
+// Meter memory
+meter_init(freemem); freemem += 1380;
+
+// Play-state awareness
+rk_ps_init(-1);
+
+// Instance linking: group in slider3, sync sliders 1-2
+rk_link_init(3, 2, freemem); freemem += 64;
+
+// ── DSP state ──
+cDenorm = pow(10,-30);
+// DC blocker state (1-pole HPF at ~5 Hz)
+dc_x1l = 0; dc_y1l = 0;
+dc_x1r = 0; dc_y1r = 0;
+dc_coeff = 0;
+
+// Correlation meter smoothing
+corr_sum_lr = 0;
+corr_sum_ll = 0;
+corr_sum_rr = 0;
+corr_val = 0;         // smoothed correlation (-1..+1)
+corr_smooth = 0;      // GUI-side smoothed value
+
+function recalc_dsp() (
+  // Width factor: 0% = mono (side=0), 100% = normal, 200% = extra wide
+  width_factor = slider1 * 0.01;
+
+  // DC blocker coefficient: HPF at ~5 Hz
+  // coeff = 1 - (2*pi*fc/srate), precomputed here
+  srate > 0 ? (
+    dc_coeff = 1.0 - (2.0 * $pi * 5.0 / srate);
+    dc_coeff = max(dc_coeff, 0.9);  // safety clamp
+  );
+
+  // Correlation meter RMS window coefficient (~50ms)
+  srate > 0 ? (
+    corr_rms_coeff = 1.0 - (1.0 / (0.050 * srate));
+    corr_rms_coeff = max(corr_rms_coeff, 0.9);
+  );
+
+  sw_active = slider2;
+);
+
+recalc_dsp();
+dsp_dirty = 0;
+snap_params = 1;
+
+// ── Colors ──
+// Purple accent (width knob)
+wd_cr = 0.45; wd_cg = 0.18; wd_cb = 0.65;
+// LED accent
+wd_lr = 0.58; wd_lg = 0.28; wd_lb = 0.82;
+
+@serialize
+file_var(0, rk_ps_en_play);
+file_var(0, rk_ps_en_rec);
+file_var(0, rk_ps_en_stop);
+file_var(0, rk_ps_inited);
+
+@slider
+recalc_dsp();
+rk_link_on_slider();
+
+@block
+// Snap on first block (avoids ramp on load/reset)
+snap_params ? ( recalc_dsp(); snap_params = 0; );
+atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
+rk_link_pull() ? ( recalc_dsp(); );
+rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
+
+@sample
+rk_ps_tick();
+
+sw_active ? (
+  // ── Mid/Side encode ──
+  mid  = (spl0 + spl1) * 0.5;
+  side = (spl0 - spl1) * 0.5;
+
+  // ── Apply width ──
+  side *= width_factor;
+
+  // ── Mid/Side decode ──
+  outL = mid + side;
+  outR = mid - side;
+
+  // ── DC blocker (1-pole HPF) ──
+  dc_y1l = (outL + cDenorm) - dc_x1l + dc_coeff * dc_y1l;
+  dc_x1l = outL;
+  outL = dc_y1l;
+
+  dc_y1r = (outR + cDenorm) - dc_x1r + dc_coeff * dc_y1r;
+  dc_x1r = outR;
+  outR = dc_y1r;
+
+  spl0 = outL;
+  spl1 = outR;
+);
+
+// ── Correlation metering + meters (gated by play-state) ──
+rk_ps_active ? (
+  corr_sum_lr = corr_rms_coeff * corr_sum_lr + spl0 * spl1;
+  corr_sum_ll = corr_rms_coeff * corr_sum_ll + spl0 * spl0;
+  corr_sum_rr = corr_rms_coeff * corr_sum_rr + spl1 * spl1;
+  meter_process_sample(spl0, spl1);
+);
+
+
+@gfx 200 280
+gfx_clear = 0x443D38;
+// EON theme: bridge mirrors the band into ReaKitStereoWidth; follow when live.
+rk_theme_apply();
+sk_kp = (gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+gmem[GS_THEME_ID] > 0 ? (
+  wd_cr=gmem[GS_THEME_BASE+12]; wd_cg=gmem[GS_THEME_BASE+13]; wd_cb=gmem[GS_THEME_BASE+14]; // ACCENT
+  wd_lr=gmem[GS_THEME_BASE+15]; wd_lg=gmem[GS_THEME_BASE+16]; wd_lb=gmem[GS_THEME_BASE+17]; // ACCENT2
+  _th_bg_r=gmem[GS_THEME_BASE]; _th_bg_g=gmem[GS_THEME_BASE+1]; _th_bg_b=gmem[GS_THEME_BASE+2]; // BG
+  _th_tx_r=gmem[GS_THEME_BASE+6]; _th_tx_g=gmem[GS_THEME_BASE+7]; _th_tx_b=gmem[GS_THEME_BASE+8]; // TEXT
+  _th_td_r=gmem[GS_THEME_BASE+9]; _th_td_g=gmem[GS_THEME_BASE+10]; _th_td_b=gmem[GS_THEME_BASE+11]; // TEXT_DIM
+) : (
+  wd_cr=0.45; wd_cg=0.18; wd_cb=0.65; wd_lr=0.58; wd_lg=0.28; wd_lb=0.82;
+  _th_bg_r=0.27; _th_bg_g=0.24; _th_bg_b=0.22;
+  _th_tx_r=0.92; _th_tx_g=0.90; _th_tx_b=0.85;   // native title cream
+  _th_td_r=0.55; _th_td_g=0.55; _th_td_b=0.58;   // native dim grey
+);
+// 0x200 (embedded click-through) is now armed conditionally inside the
+// embedded branch — only over dead zones — see below.
+
+// ═══════════════════════════════════════════════════════════════════════
+// FRAME STATE
+// ═══════════════════════════════════════════════════════════════════════
+rk_link_key = gfx_getchar();
+mx = mouse_x; my = mouse_y;
+LMB = mouse_cap & 1; RMB = mouse_cap & 2;
+CTRL = mouse_cap & 4; SHIFT = mouse_cap & 8;
+lmb_down = LMB && !prev_LMB;
+rmb_down = RMB && !prev_RMB;
+frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
+timer = time_precise();
+
+dt = min(timer - frame_last_timer, 0.05);
+frame_last_timer = timer;
+hv_speed = 11;
+ret = max(1, gfx_ext_retina);
+rk_link_menu_gate();
+
+// ── Compute correlation value for display ──
+denom = sqrt(corr_sum_ll * corr_sum_rr);
+denom > 0.000000000001 ? (
+  corr_val = corr_sum_lr / denom;
+  corr_val = max(-1, min(1, corr_val));
+) : (
+  corr_val = 0;
+);
+// Smooth for GUI
+corr_gui_coeff = 0.85;
+corr_smooth = corr_gui_coeff * corr_smooth + (1.0 - corr_gui_coeff) * corr_val;
+
+// Background
+gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
+gfx_rect(0, 0, gfx_w, gfx_h);
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// SHARED: draw correlation meter bar (horizontal)
+// ═══════════════════════════════════════════════════════════════════════
+function draw_corr_meter(ox, oy, w, h, val) (
+  // Background
+  gfx_set(0.12, 0.15, 0.20, 1);
+  gfx_rect(ox, oy, w, h);
+
+  // Center line (correlation = 0)
+  cx = ox + w * 0.5;
+  gfx_set(0.35, 0.38, 0.42, 0.8);
+  gfx_rect(cx, oy, 1, h);
+
+  // Scale marks: -1, -0.5, 0, +0.5, +1
+  gfx_set(0.28, 0.30, 0.34, 0.5);
+  gfx_rect(ox, oy, 1, h);                    // -1
+  gfx_rect(ox + w * 0.25, oy, 1, h);         // -0.5
+  gfx_rect(ox + w * 0.75, oy, 1, h);         // +0.5
+  gfx_rect(ox + w - 1, oy, 1, h);            // +1
+
+  // Labels
+  lbl_font = max(7, floor(min(h * 0.55, 9) * ret));
+  gfx_setfont(1, "Arial", lbl_font);
+  gfx_set(0.45, 0.48, 0.52, 1);
+  gfx_measurestr("-1", tw, th);
+  gfx_x = ox + 2; gfx_y = oy + (h - th) * 0.5; gfx_drawstr("-1");
+  gfx_measurestr("+1", tw, th);
+  gfx_x = ox + w - tw - 2; gfx_y = oy + (h - th) * 0.5; gfx_drawstr("+1");
+  gfx_measurestr("0", tw, th);
+  gfx_x = cx + 3; gfx_y = oy + (h - th) * 0.5; gfx_drawstr("0");
+
+  // Indicator needle/bar
+  needle_x = ox + (val + 1.0) * 0.5 * w;
+  needle_w = max(3, w * 0.015);
+
+  // Color: green when >0 (correlated), orange when <0 (out of phase)
+  val >= 0 ? (
+    gfx_set(0.15, 0.85, 0.40, 0.95);
+  ) : (
+    gfx_set(0.90, 0.50, 0.10, 0.95);
+  );
+  gfx_rect(needle_x - needle_w * 0.5, oy + 2, needle_w, h - 4);
+
+  // Filled region from center to needle
+  val >= 0 ? (
+    fill_x = cx;
+    fill_w = needle_x - cx;
+    gfx_set(0.15, 0.85, 0.40, 0.25);
+  ) : (
+    fill_x = needle_x;
+    fill_w = cx - needle_x;
+    gfx_set(0.90, 0.50, 0.10, 0.25);
+  );
+  fill_w > 0 ? gfx_rect(fill_x, oy + 2, fill_w, h - 4);
+
+  // Border
+  gfx_set(0.28, 0.32, 0.38, 0.8);
+  gfx_rect(ox, oy, w, 1);
+  gfx_rect(ox, oy + h - 1, w, 1);
+  gfx_rect(ox, oy, 1, h);
+  gfx_rect(ox + w - 1, oy, 1, h);
+);
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODE: embedded (MCP/TCP) vs standalone
+// ═══════════════════════════════════════════════════════════════════════
+gfx_ext_flags & 1 ? (
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  EMBEDDED — vertical: WIDTH knob top, correlation bar bottom          ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  emb_widget_active = 0;
+
+  knob_zone_h = gfx_h * 0.60;
+  corr_zone_h = gfx_h - knob_zone_h;
+  mcp_cx = gfx_w * 0.5;
+
+  // ── Knob ──
+  mcp_r = min(gfx_w * 0.24, knob_zone_h * 0.22);
+  mcp_r = max(mcp_r, 10);
+  mcp_cy = knob_zone_h * 0.40;
+
+  mcp_led_r = max(3, min(mcp_r * 0.22, 6));
+  mcp_lbl_font = max(7, floor(min(gfx_w * 0.14, knob_zone_h * 0.10) * ret));
+  mcp_val_font = max(7, floor(min(gfx_w * 0.11, knob_zone_h * 0.08) * ret));
+
+  mcp_lbl_cy = mcp_cy + mcp_r + max(5, knob_zone_h * 0.05);
+  mcp_val_cy = mcp_lbl_cy + mcp_lbl_font + 2;
+
+  m = km; mb0 = bm;
+
+  nv = ssl_knob_interact(m, mcp_cx, mcp_cy, mcp_r, slider1, 0, 200, 100, 201);
+  emb_widget_active |= m[6];
+  nv = floor(nv + 0.5); nv = clamp(nv, 0, 200);
+  nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
+  rk_role_col(3, 1, wd_cr, wd_cg, wd_cb);  // WIDTH — shape/width role
+  rk_knob_draw(sk_kp,mcp_cx, mcp_cy, mcp_r, slider1, 0, 200, 1, m[0], sk_kbr, sk_kbg, sk_kbb, 11, _th_bg_r, _th_bg_g, _th_bg_b);
+
+  // Label + LED
+  gfx_setfont(1, "Arial", mcp_lbl_font, 'b');
+  gfx_measurestr("WIDTH", tw, th);
+  lbl_x = mcp_cx - tw/2; lbl_y = mcp_lbl_cy;
+  led_x = lbl_x - mcp_led_r - 5; led_y = lbl_y + th * 0.5;
+  nv = btn_led_interact(mb0, led_x, led_y, mcp_led_r, slider2);
+  emb_widget_active |= mb0[6];
+  nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
+  btn_led_draw(led_x, led_y, mcp_led_r, slider2, "", mb0[0], wd_lr, wd_lg, wd_lb, 0);
+  slider2 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+  gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("WIDTH");
+
+  // Value readout
+  sprintf(#e1, "%.0f%%", slider1);
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+  gfx_measurestr(#e1, tw, th); gfx_x = mcp_cx - tw/2; gfx_y = mcp_val_cy; gfx_drawstr(#e1);
+
+  // ── Link badge ──
+  rk_link_draw_badge(gfx_w - 16*ret, 2*ret, 12*ret, wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
+
+  // ── Divider ──
+  gfx_set(0.15, 0.18, 0.22, 0.5);
+  gfx_line(3, knob_zone_h, gfx_w - 3, knob_zone_h);
+
+  // ── Correlation meter ──
+  cm_pad = max(4, gfx_w * 0.06);
+  cm_w = gfx_w - cm_pad * 2;
+  cm_h = min(20, corr_zone_h * 0.35);
+  cm_h = max(cm_h, 12);
+  cm_ox = cm_pad;
+  cm_oy = knob_zone_h + (corr_zone_h - cm_h) * 0.5;
+  draw_corr_meter(cm_ox, cm_oy, cm_w, cm_h, corr_smooth);
+
+  !emb_widget_active ? gfx_ext_flags |= 0x200;
+
+
+) : (
+  // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
+  // clicks on the EMBED, which runs no @gfx pass while a window is open, so this
+  // is the only pass that can set it; a click on the strip then closes the window.
+  // An idle pass (& 2) leaves the flag alone.
+  !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  STANDALONE — header, knob, correlation meter, meters, legend         ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+  hdr_h = 34*ret;
+  legend_h = 20*ret;
+  mtr_w = 44*ret;
+  body_w = gfx_w - mtr_w;
+  body_h = gfx_h - hdr_h - legend_h;
+
+  // Split body: top = knob zone (60%), bottom = correlation meter zone (40%)
+  knob_zone_h = body_h * 0.62;
+  corr_zone_h = body_h - knob_zone_h;
+  body_cx = body_w * 0.5;
+
+  knob_r = min(body_w * 0.16, knob_zone_h * 0.26);
+  knob_r = max(knob_r, 18*ret);
+  knob_cy = hdr_h + knob_zone_h * 0.42;
+
+  lbl_font = max(8*ret, floor(knob_r * 0.32));
+  val_font = max(8*ret, floor(knob_r * 0.26));
+  lbl_gap = knob_r * 1.45;
+  lbl_val_gap = lbl_font + 4*ret;
+
+  // ── Title bar ──
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  gfx_setfont(1, "Arial", floor(max(11*ret, hdr_h * 0.48)), 'b');
+  gfx_x = 10*ret; gfx_y = (hdr_h - 14*ret) * 0.5 + 1;
+  gfx_drawstr("STEREO WIDTH");
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+  gfx_setfont(1, "Arial", floor(max(9*ret, hdr_h * 0.34)));
+  gfx_x += 8*ret; gfx_drawstr("EON Studios");
+
+  // Appearance cluster (THEME · KNOB) — collapsed to a "▸THEME" chip; the row
+  // wraps to a second line on this narrow window. Interaction runs inside, so
+  // an open panel swallows the click before the gear/knob see it.
+  // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
+  // chip tracks the slider even when it is changed from REAPER's own param
+  // list; the cluster never writes a host slider, it surfaces the pick.
+  rkth_namebar(sw_name_bar);
+  rkth_cluster_hdr(10*ret, hdr_h + 4*ret, 0, 0);
+  rkth_nb_pick >= 0 ? (
+    sw_name_bar = rkth_nb_pick; slider_automate(sw_name_bar); rkth_nb_pick = -1;
+  );
+
+  // ── Gear + Link badge ──
+  rk_gear_r = max(5*ret, hdr_h * 0.20);
+  rk_gear_x = body_w - rk_gear_r - 8*ret;
+  rk_gear_y = hdr_h / 2;
+  rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
+  rk_badge_sz = max(9*ret, hdr_h * 0.36);
+  rk_link_draw_badge(rk_gear_x - rk_badge_sz - 5*ret, rk_gear_y - rk_badge_sz / 2, rk_badge_sz, wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
+
+  gfx_set(0.15, 0.18, 0.22, 1);
+  gfx_line(0, hdr_h - 1, gfx_w, hdr_h - 1);
+
+  // ── Section header + LED ──
+  sh_y = hdr_h + 5*ret;
+  sh_font = max(9*ret, floor(min(body_w * 0.05, 13*ret)));
+  led_r_hdr = max(3*ret, sh_font * 0.35);
+  gfx_setfont(1, "Arial", sh_font, 'b');
+
+  mb0 = bm;
+  gfx_measurestr("WIDTH", tw, th); sh_cx = body_cx;
+  led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+  nv = btn_led_interact(mb0, led_cx, led_cy, led_r_hdr, slider2);
+  nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
+  btn_led_draw(led_cx, led_cy, led_r_hdr, slider2, "", mb0[0], wd_lr, wd_lg, wd_lb, 0);
+  slider2 ? gfx_set(wd_lr, wd_lg, wd_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
+  gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("WIDTH");
+
+  // Accent bar
+  gfx_setfont(1, "Arial", sh_font); gfx_measurestr("X", tw, th);
+  bar_y = sh_y + th + 3*ret;
+  slider2 ? gfx_set(wd_lr, wd_lg, wd_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
+  gfx_rect(body_cx - body_w * 0.25, bar_y, body_w * 0.50, 2*ret);
+
+  // Meter divider
+  gfx_set(0.18, 0.18, 0.20, 0.5);
+  gfx_line(body_w, hdr_h + 2*ret, body_w, gfx_h - legend_h - 2*ret);
+
+  // ── WIDTH knob ──
+  cx = body_cx; m = km;
+  nv = ssl_knob_interact(m, cx, knob_cy, knob_r, slider1, 0, 200, 100, 201);
+  nv = floor(nv + 0.5); nv = clamp(nv, 0, 200);
+  nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
+  rk_role_col(3, 1, wd_cr, wd_cg, wd_cb);  // WIDTH — shape/width role
+  rk_knob_draw(sk_kp,cx, knob_cy, knob_r, slider1, 0, 200, 1, m[0], sk_kbr, sk_kbg, sk_kbb, 11, _th_bg_r, _th_bg_g, _th_bg_b);
+
+  // Knob label
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
+  gfx_measurestr("WIDTH", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("WIDTH");
+
+  // Value readout
+  sprintf(#wv, "%.0f%%", slider1);
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
+  gfx_measurestr(#wv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#wv);
+
+  // Semantic labels above knob
+  sem_font = max(7*ret, floor(knob_r * 0.22));
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.7); gfx_setfont(1, "Arial", sem_font);
+  gfx_measurestr("MONO", tw, th);
+  gfx_x = cx - knob_r * 1.6; gfx_y = knob_cy - knob_r * 0.15; gfx_drawstr("MONO");
+  gfx_measurestr("WIDE", tw, th);
+  gfx_x = cx + knob_r * 1.6 - tw; gfx_y = knob_cy - knob_r * 0.15; gfx_drawstr("WIDE");
+
+  // ── Horizontal divider between knob and correlation ──
+  div_y = hdr_h + knob_zone_h;
+  gfx_set(0.18, 0.18, 0.20, 0.4);
+  gfx_line(6*ret, div_y, body_w - 6*ret, div_y);
+
+  // ── Correlation meter section ──
+  cm_section_label_font = max(8*ret, floor(min(body_w * 0.04, 11*ret)));
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+  gfx_setfont(1, "Arial", cm_section_label_font, 'b');
+  gfx_measurestr("CORRELATION", tw, th);
+  cm_label_y = div_y + 8*ret;
+  gfx_x = body_cx - tw / 2; gfx_y = cm_label_y; gfx_drawstr("CORRELATION");
+
+  cm_pad = 12*ret;
+  cm_w = body_w - cm_pad * 2;
+  cm_h = min(24*ret, corr_zone_h * 0.28);
+  cm_h = max(cm_h, 14*ret);
+  cm_ox = cm_pad;
+  cm_oy = cm_label_y + th + 8*ret;
+  draw_corr_meter(cm_ox, cm_oy, cm_w, cm_h, corr_smooth);
+
+  // Correlation value readout
+  sprintf(#cv, "%+.2f", corr_smooth);
+  corr_smooth >= 0 ? gfx_set(0.15, 0.85, 0.40, 0.8) : gfx_set(0.90, 0.50, 0.10, 0.8);
+  gfx_setfont(1, "Arial", max(8*ret, floor(min(body_w * 0.04, 11*ret))));
+  gfx_measurestr(#cv, tw, th);
+  gfx_x = body_cx - tw / 2; gfx_y = cm_oy + cm_h + 6*ret; gfx_drawstr(#cv);
+
+  // ── Meter ──
+  mtr_x = body_w + 5*ret; mtr_y = hdr_h + 8*ret;
+  mtr_h = gfx_h - hdr_h - legend_h - 16*ret;
+  mtr_bar_w = mtr_w - 18*ret;
+  mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── Legend ──
+  gfx_set(0.18, 0.18, 0.20, 1);
+  gfx_line(0, gfx_h - legend_h, gfx_w, gfx_h - legend_h);
+  gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.85);
+  gfx_setfont(1, "Arial", floor(max(8*ret, legend_h * 0.52)));
+  gfx_x = 8*ret; gfx_y = gfx_h - legend_h + 4*ret;
+  gfx_drawstr("Drag = value  |  Ctrl = fine  |  Scroll = adjust  |  Dbl-click = reset  |  LED = bypass");
+);
+
+// ── Options menu overlay ──
+rk_link_draw_menu(rk_gear_x - 165*ret, rk_gear_y + rk_gear_r + 4*ret, ret,
+                  wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
+
+rkth_cluster_overlay();   // open THEME/KNOB panels draw on top (floating only)
+
+// NAME BAR re-applied every VISIBLE pass — that, not the @init line, is what
+// makes the row take effect without a reload. An idle pass (& 2) leaves the
+// flag alone (house rule 4). ⚠️INVERTED SENSE: the row ON means 0x100 CLEARED.
+!(gfx_ext_flags & 2) ? (
+  sw_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+);
+rk_link_on_gfx_change();
+prev_LMB = LMB;
+prev_RMB = RMB;
