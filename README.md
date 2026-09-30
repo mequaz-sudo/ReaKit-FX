@@ -151,6 +151,11 @@ WIDTH knob at the bottom of the channel.
   ![Twenty themes](screenshots/session/twenty_themes.png)
 
   *Twenty of them at a glance.*
+
+  ![The free strip in the Dark Ableton knob style](screenshots/session/free_strip_dark_ableton.png)
+
+  *The same session with the knobs in the Dark Ableton style: the strip goes quiet and the
+  values stay readable.*
 - **Link groups** — the gear in the header of those five puts an instance in a group; instances
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
