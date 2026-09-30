@@ -41,7 +41,7 @@ local function write(p, s)
   local had = exists(p)
   if had and not os.rename(p, bak) then os.remove(tmp); return false end
   if os.rename(tmp, p) then if had then os.remove(bak) end; return true end
-  if had then os.rename(bak, p) end
+  if had and not os.rename(bak, p) then write_kept = bak end   -- the original is intact under this name
   os.remove(tmp)
   return false
 end
@@ -114,12 +114,13 @@ else
   end
 end
 
-if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, on and 1 or 0); r.RefreshToolbar2(sec, cmd) end
+-- the button shows the state that actually landed: an I/O failure leaves it as it was
+if ok and sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, on and 1 or 0); r.RefreshToolbar2(sec, cmd) end
 -- the one dialog this action shows; a probe sets EON_GainKitPlus/quiet and gets none (a modal box
 -- from an action run by Main_OnCommand blocks the caller)
 if r.GetExtState("EON_GainKitPlus", "quiet") == "1" then return end
 if not ok then
-  r.MB("Could not write " .. STARTUP, "GainKit Plus", 0)
+  r.MB("Could not write " .. STARTUP .. (write_kept and (string.char(10, 10) .. "Your original is intact as " .. write_kept .. " -- rename it back by hand.") or ""), "GainKit Plus", 0)
 elseif on then
   r.MB("GainKit Plus starts with REAPER from now on (and is running now). Run this action again to take it out of Scripts/__startup.lua.", "GainKit Plus", 0)
 else
