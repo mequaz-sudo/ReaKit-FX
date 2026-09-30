@@ -129,7 +129,8 @@ The display shows the band it is listening to.
   ![The embedded strips on eight REAPER themes](screenshots/session/strips_eight_themes.png)
 
   *The same session's strips on eight REAPER themes and knob styles: GainKit, the suite's 4-Band EQ
-  and Anvil in each track panel, drawn to fit whatever the theme gives them.*
+  and Stereo Width on every track, its compressors on the buses, drawn to fit whatever the theme
+  gives them.*
 
   ![Twenty themes](screenshots/session/twenty_themes.png)
 
