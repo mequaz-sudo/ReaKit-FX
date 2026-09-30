@@ -64,7 +64,7 @@ GS_THEME_VU_GEN = 2754;  // bridge -> JSFX: bump-on-publish generation counter
 // GS_THEME_ID is set to something else. 2755 is in the 2752..2759 hole above.
 RKTH_SELF_GEN  = 2755;   // the generation this library painted (0 = never)
 RKTH_SELF_N    = 3;      // themes 1..3 (EON, Dark, Light) paint without a bridge
-RKTH_SELF_WAIT = 20;     // frames a request may sit undrained before we paint it
+RKTH_SELF_WAIT = 4;      // frames a request may sit undrained before we paint it: a live bridge drains it within ~30 ms, so 4 frames (70..130 ms) is enough and a wheel-cycle feels instant (20 felt slow, the user 2026-09-30)
 RKTH_N   = 14;          // theme count (EON/Dark/Light/REAPER + REAPER Panel/Color/SSL/Neve/API/Tube/Ableton/FL/Pro Tools/PT Light)
 RKTH_VIS = 8;           // dropdown rows shown at once; the rest scroll (wheel over the open
                         // panel; scrollbar thumb shows). Hover-wheel on the chip cycles all.
