@@ -523,9 +523,14 @@ function rkth_input(x, y, w, h, mx, my, lmb, rmb, whl, rowh)
 local(hit, k, ry, consumed) (
   rkth_cv = rkth_cur();
   rkth_x = x; rkth_y = y; rkth_w = w; rkth_h = h;
-  rkth_ddx = x; rkth_ddw = max(w, 72*rkth_scale); rkth_ddy = y + h + 2*rkth_scale; rkth_rh = rowh; rkth_ddh = RKTH_VIS * rowh;
+  // The list holds NATIVE + the themes that can be set right now: all fourteen
+  // under a bridge, the built-in three without one (the rows Swing paints are
+  // not listed at all without it -- the user, 2026-09-30).
+  rkth_dd_items = rkth_n_avail() + 1;
+  rkth_dd_rows = min(RKTH_VIS, rkth_dd_items);
+  rkth_ddx = x; rkth_ddw = max(w, 72*rkth_scale); rkth_ddy = y + h + 2*rkth_scale; rkth_rh = rowh; rkth_ddh = rkth_dd_rows * rowh;
   rkth_mx = mx; rkth_my = my;
-  rkth_sc = max(0, min(rkth_sc, RKTH_N + 1 - RKTH_VIS));
+  rkth_sc = max(0, min(rkth_sc, rkth_dd_items - rkth_dd_rows));
   consumed = 0;
   hit = mx >= x && mx < x + w && my >= y && my < y + h;
   hit ? (
@@ -535,19 +540,18 @@ local(hit, k, ry, consumed) (
   );
   rkth_open && !consumed ? (
     (mx >= rkth_ddx && mx < rkth_ddx + rkth_ddw && my >= rkth_ddy && my < rkth_ddy + rkth_ddh && whl != 0) ? (
-      rkth_sc = max(0, min(rkth_sc - (whl > 0 ? 1 : -1), RKTH_N + 1 - RKTH_VIS)); consumed = 1;
+      rkth_sc = max(0, min(rkth_sc - (whl > 0 ? 1 : -1), rkth_dd_items - rkth_dd_rows)); consumed = 1;
     );
     lmb ? (
       k = 0;
-      loop(RKTH_VIS,
+      loop(rkth_dd_rows,
         ry = rkth_ddy + k * rowh;
         (mx >= rkth_ddx && mx < rkth_ddx + rkth_ddw && my >= ry && my < ry + rowh) ? (
           // Either choice ends a LOCK: NATIVE and "frozen on a theme" are
           // mutually exclusive modes, and picking a theme is by definition
           // asking to follow one again.
           (rkth_sc + k) == 0 ? ( rkth_local_off = 1; rkth_locked = 0; )
-                             : (rkth_sc + k) <= rkth_n_avail() ? ( rkth_local_off = 0; rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
-                             // a greyed row (needs Swing): the click just closes the list
+                             : ( rkth_local_off = 0; rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
         );
         k += 1;
       );
@@ -597,7 +601,7 @@ local(k, idx, ry) (
     // Item space: 0 = NATIVE (opt-out), 1..RKTH_N = themes. "Current" mark
     // follows the opt-out: NATIVE row when off, else the active theme row.
     k = 0;
-    loop(RKTH_VIS,
+    loop(rkth_dd_rows,
       idx = rkth_sc + k; ry = rkth_ddy + k * rkth_rh;
       (rkth_mx >= rkth_ddx && rkth_mx < rkth_ddx + rkth_ddw && rkth_my >= ry && rkth_my < ry + rkth_rh) ? (
         gfx_set(0.10, 0.30, 0.40, 1); gfx_rect(rkth_ddx + 1, ry, rkth_ddw - 2, rkth_rh);   // hover row
@@ -605,18 +609,16 @@ local(k, idx, ry) (
       ) : (
         (rkth_local_off ? idx == 0 : idx == rkth_cv) ? gfx_set(0.30, 0.72, 0.92, 1) : rkth_setcol(3, 0.72, 0.74, 0.78, 1);
       );
-      idx > rkth_n_avail() ? gfx_set(0.45, 0.47, 0.52, 1);   // greyed: this theme needs Swing's bridge
       gfx_x = rkth_ddx + 10*rkth_scale; gfx_y = ry + 3*rkth_scale;
       gfx_drawstr(idx == 0 ? "NATIVE" : rkth_name(idx - 1));
-      idx > rkth_n_avail() ? gfx_drawstr("  - Swing");
       (rkth_local_off ? idx == 0 : idx == rkth_cv) ? (
         gfx_set(0.30, 0.72, 0.92, 1); gfx_circle(rkth_ddx + 5*rkth_scale, (ry + rkth_rh * 0.5) | 0, 2*rkth_scale, 1, 1);
       );
       k += 1;
     );
-    RKTH_N + 1 > RKTH_VIS ? (   // scrollbar thumb (over RKTH_N+1 items incl. NATIVE)
+    rkth_dd_items > rkth_dd_rows ? (   // scrollbar thumb (over the listed items incl. NATIVE)
       gfx_set(0.45, 0.70, 0.90, 0.8);
-      gfx_rect(rkth_ddx + rkth_ddw - 3*rkth_scale, rkth_ddy + (rkth_ddh * rkth_sc / (RKTH_N + 1)) | 0, 2*rkth_scale, max(6*rkth_scale, (rkth_ddh * RKTH_VIS / (RKTH_N + 1)) | 0));
+      gfx_rect(rkth_ddx + rkth_ddw - 3*rkth_scale, rkth_ddy + (rkth_ddh * rkth_sc / rkth_dd_items) | 0, 2*rkth_scale, max(6*rkth_scale, (rkth_ddh * rkth_dd_rows / rkth_dd_items) | 0));
     );
     gfx_setfont(0);
   );

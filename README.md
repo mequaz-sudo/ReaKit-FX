@@ -146,10 +146,10 @@ WIDTH knob at the bottom of the channel.
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
   which opts an instance out of theming. Three colour themes are built in and work on their own:
   **EON**, **Dark** and **Light**. Pick one on any of the six and all six follow, and the choice
-  comes back with the project: opening a project wears the theme it was saved with. The other eleven in the list (SSL, Neve, API, Tube, Ableton, FL
-  Studio, Pro Tools, PT Light, and the three that copy your REAPER theme) are marked "Swing":
-  they light up when EON Swing is installed, whose bridge paints them and keeps the whole suite
-  in step.
+  comes back with the project: opening a project wears the theme it was saved with. Eleven more
+  (SSL, Neve, API, Tube, Ableton, FL Studio, Pro Tools, PT Light, and three that copy your REAPER
+  theme) appear in the list when EON Swing is installed, whose bridge paints them and keeps the
+  whole suite in step.
 
   ![The session on the Dark theme](screenshots/session/session_dark.png)
 
