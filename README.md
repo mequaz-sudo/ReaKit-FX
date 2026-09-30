@@ -1,8 +1,8 @@
 # ReaKit FX
 
-Five free effects for REAPER with EON Studios interfaces, drawn by the
+Six free effects for REAPER with EON Studios interfaces, drawn by the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) library: Saturation, 3-Band EQ and DDC by
-LOSER, a De-Esser built on Liteon's, and GainKit, EON's own gain-staging plugin. Every face is
+LOSER, a De-Esser built on Liteon's, and EON's own GainKit and Stereo Width. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI.
 
 ![ReaKit FX](screenshots/session/cover_ssl.png)
@@ -109,11 +109,20 @@ Built on Liteon's de-esser: threshold, frequency, bandwidth, ratio and lookahead
 setting, a band-pass target instead of the broadband one, and a switch to monitor the sidechain.
 The display shows the band it is listening to.
 
+### Stereo Width
+
+![Stereo Width](screenshots/session/stereowidth.png)
+
+One knob, 0 to 200 %: mono at the left end, the recorded width in the middle, wider to the right.
+It scales the side signal and leaves the middle alone, so the centre of the mix never moves. A
+correlation meter under the knob shows how the two channels agree. In a mixer strip it is the
+WIDTH knob at the bottom of the channel.
+
 ## Across the plugins
 
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
   slot it is given.
-- **THEME panel** — GainKit, Saturation, 3-Band EQ and De-Esser have a THEME toggle in the header:
+- **THEME panel** — GainKit, Saturation, 3-Band EQ, De-Esser and Stereo Width have a THEME toggle in the header:
   a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
   which opts an instance out of theming. GainKit's panel also picks the VU's face, what the strip
   shows, the name's row (ROW, BAND or OFF) and its FONT, the meter's colour (FACE or TRACK) and
@@ -135,7 +144,7 @@ The display shows the band it is listening to.
   ![Twenty themes](screenshots/session/twenty_themes.png)
 
   *Twenty of them at a glance.*
-- **Link groups** — the gear in the header of those four puts an instance in a group; instances
+- **Link groups** — the gear in the header of those five puts an instance in a group; instances
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.

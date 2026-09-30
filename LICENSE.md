@@ -1,8 +1,8 @@
 # ReaKit FX — licence
 
-Five effects. **GainKit** is EON Studios' own code, gain staging on a VU, and is
-released under the MIT licence (`LICENSE` at the root of this repository). So are
-the **GainKit Plus** scripts.
+Six effects. **GainKit** (gain staging on a VU) and **Stereo Width** (a mid/side width
+control) are EON Studios' own code, released under the MIT licence (`LICENSE` at the
+root of this repository). So are the **GainKit Plus** scripts.
 
 The other four, **Saturation**, **3-Band EQ**, **DDC** and **De-Esser**: their
 sound is other people's code, released free with REAPER, and each plugin file
