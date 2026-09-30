@@ -125,6 +125,15 @@ The display shows the band it is listening to.
 
   *GainKit's strips on the Light, SSL, Dark and EON themes: the colours and the knob follow the
   theme, the name bands keep the track's colour.*
+
+  ![The embedded strips on eight REAPER themes](screenshots/session/strips_eight_themes.png)
+
+  *The same session's strips on eight REAPER themes and knob styles: GainKit, the suite's 4-Band EQ
+  and Anvil in each track panel, drawn to fit whatever the theme gives them.*
+
+  ![Twenty themes](screenshots/session/twenty_themes.png)
+
+  *Twenty of them at a glance.*
 - **Link groups** — the gear in the header of those four puts an instance in a group; instances
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
