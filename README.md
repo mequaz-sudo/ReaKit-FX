@@ -78,6 +78,12 @@ in the Actions list as `Script: GainKit Plus…`):
 
 The actions and the names reach a GainKit inside an FX container too.
 
+![The same strips with GainKit Plus off, then on](screenshots/session/plus_off_on.png)
+
+*Plus off (top) and on (bottom), on REAPER 7.81: the names are there either way, from REAPER
+itself; Plus adds the track's colour on the name band and the meter, the icon in the window's
+header, and the project's name on the master.*
+
 In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
 finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows
 under the VU alone while you set it and a moment after. The rest of the strip still opens the
@@ -176,6 +182,11 @@ https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
 Then install **ReaKit FX** from the browser, and **GainKit Plus** for the scripts. The plugins appear in REAPER's FX list as
 `JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
 `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
+
+**Windows at their proper size:** install **EON Floatter** from the ReaKit library repository
+(`https://raw.githubusercontent.com/mequaz-sudo/ReaKit/main/index.xml`, imported the same way) and
+run it once from the action list. It stays on: every EON window opens at its designed size, any
+JSFX window can be captured at a size of your own, and one dial scales them all.
 
 These effects used to ship from the ReaKit repository as "ReaKit Free FX". If you installed them
 there, ReaPack now lists that package as obsolete: uninstall it and install this one.
