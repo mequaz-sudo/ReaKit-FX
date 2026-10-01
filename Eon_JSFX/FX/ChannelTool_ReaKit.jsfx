@@ -63,6 +63,7 @@ import ../../ReaKit/rk_theme.jsfx-inc
 @init
 // once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
 ext_noinit = 1;
+ct_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 tau = 2 * $pi;
 cDenorm = pow(10,-30);
 KS = 16; BS = 8;
@@ -855,6 +856,11 @@ rk_link_pull() ? atomic_set(dsp_dirty, 1);
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp() );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
+// NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
+// step and is saved in the mode the others are in
+rkth_native_tick();
+ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );
+
 @sample
 rk_ps_tick();
 // the Play/Rec/Stop gate fades over 5 ms too (it switched the processing in one sample)
@@ -982,6 +988,8 @@ gfx_clear = 0x443D38;
 // painter and the strip's double-click window are taken here: without them a GainKit-only
 // session never opened on EON or changed theme (gkonly_theme rig, 2026-10-01).
 rkth_self_tick();
+rkth_native_tick();
+ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // NATIVE persists from any draw, strip or window
 RK_DBLCLICK_T = (gfx_ext_flags & 1) ? 0.6 : 0.3;
 // 0x200 (embedded click-through) is armed conditionally inside the embedded
 // branch — only over dead space — see below.
@@ -1354,16 +1362,10 @@ is_embedded ? (
   gk_ink(2, 1, 0.85, 0.88, 0.90);
   gfx_measurestr("GAINKIT", tw, th);
   gfx_x = gk_hx; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("GAINKIT");
-  gk_hx += tw + 6 * ret;
-  gfx_setfont(1, "Arial", floor(10 * ret), 0);
-  gk_ink(3, 1, 0.38, 0.42, 0.47);
-  gfx_measurestr("ReaKit", tw, th);
-  gfx_x = gk_hx; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("ReaKit");
-  gk_hx += tw + 10 * ret;
+  gk_hx += tw + 10 * ret;   // no "ReaKit" label after it (the user, 2026-10-01)
   // Appearance cluster (THEME · KNOB · VU · SYNC) — interaction runs inside, so
   // an open panel swallows the click before the gear/badge see it. It sits
-  // after the MEASURED subtitle (2.1 put it at a fixed 100px, over "ReaKit")
-  // and scales with the face; rkth_scale is a shared global, set every frame
+  // after the MEASURED title and scales with the face; rkth_scale is a shared global, set every frame
   // immediately before the call.
   rkth_scale = ret;
   // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
@@ -1378,6 +1380,7 @@ is_embedded ? (
   rkth_namefont(ct_name_font);         // FONT row: the name's face (slider21)
   rkth_xrow(0, "VU COLOR", ct_vu_track, 2, "FACE", "TRACK", "");     // the meter on its face, or in the track's colour (slider23)
   rkth_xrow(1, "VALUE", ct_val_mode, 2, "TOUCH", "ALWAYS", "");      // the VU strip's gain number (slider24)
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
   rkth_cluster_hdr(gk_hx, (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) * 0.5, 1, zm_theme);
   rkth_nb_pick >= 0 ? (
     ct_name_bar = rkth_nb_pick; slider_automate(ct_name_bar); rkth_nb_pick = -1;
@@ -1396,7 +1399,7 @@ is_embedded ? (
   );
   (gk_xp = rkth_xpick(0)) >= 0 ? ( ct_vu_track = gk_xp; slider_automate(ct_vu_track); );
   (gk_xp = rkth_xpick(1)) >= 0 ? ( ct_val_mode = gk_xp; slider_automate(ct_val_mode); );
-  ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // NATIVE persists (@slider restores it)
+  ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // the panel's own pick, at once
   rkth_vu_pick >= 0 ? ( zm_theme = rkth_vu_pick; rkth_vu_pick = -1; );
   rk_gear_r = max(5 * ret, hdr_h * 0.20);
   rk_gear_x = WIN_W - rk_gear_r - 8 * ret;

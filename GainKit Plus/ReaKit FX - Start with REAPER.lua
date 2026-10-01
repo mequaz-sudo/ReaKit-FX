@@ -2,8 +2,9 @@
 -- Scripts/__startup.lua (the same as running "GainKit Plus - Start with REAPER") when it is not
 -- there yet, and starts EON Floatter once when it has not registered itself yet -- Floatter
 -- writes its own start-up block on its first run. Running this again changes nothing: each
--- part is skipped when it is already in place. Once, it also offers to raise REAPER's meter
--- refresh to 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
+-- part is skipped when it is already in place. Once, it sets the six to open embedded in the
+-- mixer strip (REAPER's own per-plugin default), and offers to raise REAPER's meter refresh to
+-- 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
 -- One message says what was done. MIT, EON Studios, 2026.
 local r = reaper
 local _, own = r.get_action_context()
@@ -20,6 +21,30 @@ local FLOATTERS = {                                   -- wherever ReaPack put it
 
 local function read(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
 local function exists(p) local fh = io.open(p, "r"); if fh then fh:close(); return true end; return false end
+-- REAPER's settings file: its text, "" when there is none yet, nil when it is there but could not be
+-- read (locked for a moment) -- then nothing is written, or every other plugin's line would go
+local function read_opt(p)
+  local fh, _, code = io.open(p, "rb")
+  if not fh then return code == 2 and "" or nil end   -- 2: no such file
+  local s = fh:read("*a"); fh:close()
+  return s
+end
+-- the new text in without ever leaving no file: written beside it, the old one moved aside, the new
+-- one moved in, the old one put back when that fails
+local function replace_file(p, text)
+  local tmp, bak = p .. ".reakitfx-tmp", p .. ".reakitfx-bak"
+  local fh = io.open(tmp, "wb")
+  if not fh then return false end
+  local ok = fh:write(text) and true or false
+  if not fh:close() then ok = false end
+  if not ok then os.remove(tmp); return false end
+  os.remove(bak)
+  local had = os.rename(p, bak)
+  if os.rename(tmp, p) then os.remove(bak); return true end
+  if had then os.rename(bak, p) end
+  os.remove(tmp)
+  return false
+end
 local startup = read(STARTUP) or ""
 local done = {}
 local need_plus = false
@@ -41,6 +66,66 @@ else
     or "GainKit Plus could not be added to Scripts/__startup.lua."
   need_plus = true   -- the setup starts Plus itself, but not when it is launched from a launched action: checked below
 end
+
+-- 1b. The six open embedded in the mixer strip, the way REAPER does it for any plugin: its FX
+-- browser's "Default settings for new instances > Show embedded UI in MCP" is bit 4 of the
+-- plugin's line in reaper-fxoptions.ini [defcfg], and REAPER reads that file at every insert
+-- (measured, 2026-10-01). Each install path REAPER lists for the six (reaper-jsfx.ini) gets the
+-- bit, the line's other bits kept. Once: a plugin the user later sets back stays as they set it.
+local FREE6 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
+                "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx" }
+local function embed_defaults()
+  if r.GetExtState("EON_ReaKitFX", "embed_defaults") == "1" then return nil end
+  local paths, have = {}, {}
+  for p in (read(res .. sep .. "reaper-jsfx.ini") or ""):gmatch('NAME%s+"?([^"\r\n]-%.jsfx)"?%s') do
+    for _, f in ipairs(FREE6) do
+      if (p == f or p:sub(-(#f + 1)) == "/" .. f) and not have[p] then have[p] = true; paths[#paths + 1] = p end
+    end
+  end
+  for _, f in ipairs(FREE6) do                         -- ReaPack's place, if not scanned yet
+    local p = "ReaKit FX/FX/Eon_JSFX/FX/" .. f
+    if not have[p] and exists(res .. sep .. "Effects" .. sep .. p:gsub("/", sep)) then have[p] = true; paths[#paths + 1] = p end
+  end
+  if #paths == 0 then return "The ReaKit FX were not found, so they were not set to open in the mixer strip." end
+  local opt = res .. sep .. "reaper-fxoptions.ini"
+  local txt = read_opt(opt)
+  if not txt then return "reaper-fxoptions.ini could not be read just now, so the ReaKit FX were not set to open in the mixer strip; run this again." end
+  local bom = txt:sub(1, 3) == "\239\187\191" and "\239\187\191" or ""   -- kept, not parsed as text
+  txt = txt:sub(#bom + 1)
+  local nl = txt:find("\r\n", 1, true) and "\r\n" or (txt == "" and "\r\n" or "\n")
+  local lines, sec_at, sec_end, first = {}, nil, nil, false
+  for line in ((txt == "" and "" or txt .. (txt:sub(-1) == "\n" and "" or "\n"))):gmatch("(.-)\r?\n") do
+    lines[#lines + 1] = line
+    local s = line:match("^%[(.-)%]%s*$")
+    if s then first = (s == "defcfg" and not sec_at); if first then sec_at = #lines end   -- REAPER reads the first [defcfg] only
+    elseif first and line:match("%S") then sec_end = #lines end
+  end
+  if not sec_at then lines[#lines + 1] = "[defcfg]"; sec_at = #lines end
+  sec_end = sec_end or sec_at
+  local changed = 0
+  for _, p in ipairs(paths) do
+    local found = false
+    for i = sec_at + 1, #lines do
+      if lines[i]:match("^%[") then break end
+      local k, v = lines[i]:match("^(.-)=(%-?%d+)%s*$")
+      if k == p then
+        found = true
+        local n = tonumber(v) or 0
+        -- MCP: bit 4 on and bit 2 (TCP) off -- with both REAPER uses TCP; the other bits kept
+        local n2 = n - (math.floor(n / 2) % 2) * 2 + (math.floor(n / 4) % 2 == 0 and 4 or 0)
+        if n2 ~= n then lines[i] = p .. "=" .. n2; changed = changed + 1 end
+      end
+    end
+    if not found then table.insert(lines, sec_end + 1, p .. "=4"); sec_end = sec_end + 1; changed = changed + 1 end
+  end
+  if changed > 0 and not replace_file(opt, bom .. table.concat(lines, nl) .. nl) then
+    return "reaper-fxoptions.ini could not be replaced, so the ReaKit FX were not set to open in the mixer strip; run this again."
+  end
+  r.SetExtState("EON_ReaKitFX", "embed_defaults", "1", true)
+  return "New copies of the six ReaKit FX open embedded in the mixer strip (REAPER's own setting per plugin: FX browser, right-click, Default settings for new instances)."
+end
+local emsg = embed_defaults()
+if emsg then done[#done + 1] = emsg end
 
 -- 2. EON Floatter: registers itself in the start-up file on its first run
 if startup:find("-- EON:EON_Floatter BEGIN", 1, true) then

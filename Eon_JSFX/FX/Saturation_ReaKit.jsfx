@@ -41,6 +41,7 @@ options:gmem=Swing_Media_Transfer
 @init
 // once, at load (REAPER would re-run it on play start and on enable); a rate change is caught in @block
 ext_noinit = 1.0;
+sat_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 ext_tail_size = -1;
 gfx_ext_retina = 1;
 HALFPI = $pi * 0.5;
@@ -111,6 +112,11 @@ atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
+// NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
+// step and is saved in the mode the others are in
+rkth_native_tick();
+sat_native != rkth_local_off ? ( sat_native = rkth_local_off; slider_automate(sat_native); );
+
 @sample
 rk_ps_tick();
 
@@ -155,6 +161,7 @@ rk_ps_active ? meter_process_sample(spl0, spl1);
 gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKitSaturation; follow when live.
 rk_theme_apply();
+sat_native != rkth_local_off ? ( sat_native = rkth_local_off; slider_automate(sat_native); );   // NATIVE persists from any draw, strip or window
 // rkth_active(), not a raw gmem[GS_THEME_ID] test: false when THIS instance
 // picked NATIVE on its THEME panel (the raw test left the background, the text
 // and the knob style themed under native knob colours, 2026-09-28).
@@ -324,14 +331,13 @@ gfx_ext_flags & 1 ? (
   !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
-// ║  STANDALONE — vertical: header, knob, curve, legend + meter strip    ║
+// ║  STANDALONE — vertical: header, knob, curve + meter strip            ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
   hdr_h = 34 * ret;
-  legend_h = 20 * ret;
   mtr_w = 44 * ret;
   body_w = gfx_w - mtr_w;
-  body_h = gfx_h - hdr_h - legend_h;
+  body_h = gfx_h - hdr_h;
 
   // Split body vertically: top = knob zone, bottom = curve zone
   knob_zone_h = body_h * 0.48;
@@ -352,28 +358,37 @@ gfx_ext_flags & 1 ? (
   gfx_setfont(1, "Arial", floor(max(11, floor(hdr_h * 0.48)) * ret), 'b');
   gfx_x = 10 * ret; gfx_y = (hdr_h - 14 * ret) * 0.5 + ret;
   gfx_drawstr("SATURATION");
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
-  gfx_setfont(1, "Arial", floor(max(9, floor(hdr_h * 0.34)) * ret));
-  gfx_x += 8 * ret; gfx_drawstr("LOSER / EON Studios");
-  // Appearance cluster (THEME · KNOB) — collapsed to a "▸THEME" chip; the row
-  // wraps to a second line on this narrow window. Interaction runs inside, so
-  // an open panel swallows the click before the gear/knob see it.
+  sat_tx = gfx_x;   // where the title ends
+  // ▸THEME sits in the header after the title, before the link badge, and under the header,
+  // as before, only in a window too narrow for it (the user, 2026-10-01; no credit line on
+  // the face: LOSER is credited in this file's header and its author tag). Its width is the
+  // cluster's own (rkth_cl_hdr_w; a close guess on the very first frame).
+  rk_gear_r = max(5 * ret, hdr_h * 0.20);
+  rk_gear_x = body_w - rk_gear_r - 8 * ret;
+  rk_gear_y = hdr_h / 2;
+  rk_badge_sz = max(9 * ret, hdr_h * 0.36);
+  sat_thw = rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56 * rkth_scale;
+  sat_thr = rk_gear_x - rk_badge_sz - 13 * ret;   // the badge's left edge, less a gap
+  sat_tx + 12 * ret + sat_thw <= sat_thr ? (
+    sat_thx = sat_tx + 12 * ret; sat_thy = (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) / 2;
+  ) : (
+    sat_thx = 10 * ret; sat_thy = hdr_h + 4 * ret;
+  );
+  // Appearance cluster (THEME · KNOB): interaction runs inside, so an open panel
+  // swallows the click before the gear/knob see it.
   // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
   // chip tracks the slider even when it is changed from REAPER's own param
   // list; the cluster never writes a host slider, it surfaces the pick.
   rkth_namebar(sat_name_bar);
-  rkth_cluster_hdr(10 * ret, hdr_h + 4 * ret, 0, 0);
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
+  rkth_cluster_hdr(sat_thx, sat_thy, 0, 0);
   rkth_nb_pick >= 0 ? (
     sat_name_bar = rkth_nb_pick; slider_automate(sat_name_bar); rkth_nb_pick = -1;
   );
   sat_native != rkth_local_off ? ( sat_native = rkth_local_off; slider_automate(sat_native); );   // NATIVE persists
 
-  // ── Gear + Link badge (header right) ──
-  rk_gear_r = max(5 * ret, hdr_h * 0.20);
-  rk_gear_x = body_w - rk_gear_r - 8 * ret;
-  rk_gear_y = hdr_h / 2;
+  // ── Gear + Link badge (header right; placed with the title, above) ──
   rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, drv_lr, drv_lg, drv_lb, mx, my, lmb_down);
-  rk_badge_sz = max(9 * ret, hdr_h * 0.36);
   rk_link_draw_badge(rk_gear_x - rk_badge_sz - 5 * ret, rk_gear_y - rk_badge_sz / 2, rk_badge_sz, drv_lr, drv_lg, drv_lb, mx, my, lmb_down);
 
   gfx_set(0.15, 0.18, 0.22, 1);
@@ -402,7 +417,7 @@ gfx_ext_flags & 1 ? (
 
   // Meter divider
   gfx_set(0.18, 0.18, 0.20, 0.5);
-  gfx_line(body_w, hdr_h + 2 * ret, body_w, gfx_h - legend_h - 2 * ret);
+  gfx_line(body_w, hdr_h + 2 * ret, body_w, gfx_h - 2 * ret);
 
   // ── DRIVE knob ─────────────────────────────────────────────────────
   cx = body_cx; m = km;
@@ -431,17 +446,9 @@ gfx_ext_flags & 1 ? (
 
   // ── Meter ──────────────────────────────────────────────────────────
   mtr_x = body_w + 5 * ret; mtr_y = hdr_h + 8 * ret;
-  mtr_h = gfx_h - hdr_h - legend_h - 16 * ret;
+  mtr_h = gfx_h - hdr_h - 16 * ret;
   mtr_bar_w = mtr_w - 18 * ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
-
-  // ── Legend ─────────────────────────────────────────────────────────
-  gfx_set(0.18, 0.18, 0.20, 1);
-  gfx_line(0, gfx_h - legend_h, gfx_w, gfx_h - legend_h);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.85);
-  gfx_setfont(1, "Arial", floor(max(8, floor(legend_h * 0.52)) * ret));
-  gfx_x = 8 * ret; gfx_y = gfx_h - legend_h + 4 * ret;
-  gfx_drawstr("Drag = value  |  Ctrl = fine  |  Scroll = adjust  |  Dbl-click = reset  |  LED = bypass");
 );
 
 // ── Options menu overlay ──

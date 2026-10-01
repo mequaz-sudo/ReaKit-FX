@@ -59,6 +59,7 @@ import ../../ReaKit/rk_theme.jsfx-inc
 // once, at load: REAPER would re-run it on play start and on enable, zeroing the lookahead and every
 // filter mid-signal (a pop); a rate change is caught in @block (de_prime)
 ext_noinit = 1.0;
+de_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
 // 0x100 follows the NAME BAR row (slider11), re-applied in the @gfx tail. ⚠️ row ON = 0x100 CLEARED.
@@ -266,6 +267,11 @@ ext_gr_meter = min(0, gr_db_out);
 gr_peak      = 1.0;
 rk_ps_update_block();
 
+// NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
+// step and is saved in the mode the others are in
+rkth_native_tick();
+de_native != rkth_local_off ? ( de_native = rkth_local_off; slider_automate(de_native); );
+
 @sample
 rk_ps_tick();
 // the lookahead runs always: pdc_delay reports it whatever the Play/Rec/Stop toggles say
@@ -395,6 +401,7 @@ gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKitDeEsser; follow the theme's bg +
 // knob STYLE. Per-function knob colours (green/gold/teal) stay semantic.
 rk_theme_apply();
+de_native != rkth_local_off ? ( de_native = rkth_local_off; slider_automate(de_native); );   // NATIVE persists from any draw, strip or window
 // rkth_active(), not a raw gmem[GS_THEME_ID] test: false when THIS instance
 // picked NATIVE on its THEME panel (the raw test left the background, the text
 // and the knob style themed under native knob colours, 2026-09-28).
@@ -491,8 +498,7 @@ is_embedded ? (
   gfx_set(0.15, 0.16, 0.19, 1); gfx_rect(0, hdr_h - 1, WIN_W, 1);
   gfx_setfont(1, "Arial", floor(13 * ret), 'b');
   gfx_set(0.85, 0.88, 0.90, 1); gfx_x = 10*ret; gfx_y = 7*ret; gfx_drawstr("DE-ESSER");
-  gfx_setfont(1, "Arial", floor(11 * ret), 0);
-  gfx_set(0.38, 0.42, 0.47, 1); gfx_x = 108*ret; gfx_y = 9*ret; gfx_drawstr("ReaKit");
+  de_tx = gfx_x;   // where the title ends: the THEME button follows it (no "ReaKit" label, the user 2026-10-01)
 
   // ▸EON appearance cluster (shared lib): THEME · KNOB chips, no VU/SYNC
   // (has_vu = 0). Interaction runs INSIDE rkth_cluster FIRST — an open
@@ -501,7 +507,8 @@ is_embedded ? (
   // chip tracks the slider even when it is changed from REAPER's own param
   // list; the cluster never writes a host slider, it surfaces the pick.
   rkth_namebar(de_name_bar);
-  rkth_cluster_hdr(170*ret, 10*ret, 0, 0);
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
+  rkth_cluster_hdr(de_tx + 12*ret, (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2, 0, 0);   // centred: at y 10 it sat on the header's edge
   rkth_nb_pick >= 0 ? (
     de_name_bar = rkth_nb_pick; slider_automate(de_name_bar); rkth_nb_pick = -1;
   );
@@ -713,7 +720,7 @@ is_embedded ? (
 
   // ── Knob/button area ──────────────────────────────────────────────────────
   knob_y = spec_y + spec_h + 4*ret;
-  knob_h = WIN_H - knob_y - 16*ret;
+  knob_h = WIN_H - knob_y - 8*ret;   // 16 held the tips line too
   row1_h  = floor(knob_h * 0.56);
   row2_h  = knob_h - row1_h;
   row1_cy = knob_y + floor(row1_h * 0.44);
@@ -866,14 +873,6 @@ is_embedded ? (
     gfx_measurestr(#gr_str, tw, th);
     gfx_x = strip_x + (strip_w - tw)/2; gfx_y = strip_y - th - 2*ret; gfx_drawstr(#gr_str);
   );
-
-  // Legend
-  gfx_set(0.14, 0.15, 0.18, 0.5);
-  gfx_line(main_x + 4*ret, WIN_H - 14*ret, main_x + main_w - 4*ret, WIN_H - 14*ret);
-  gfx_setfont(1, "Arial", floor(8 * ret), 0);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
-  gfx_x = main_x + 8*ret; gfx_y = WIN_H - 11*ret;
-  gfx_drawstr("Drag = value  |  Ctrl = fine  |  Scroll = step  |  Dbl-click = reset");
 
   rk_link_draw_menu(WIN_W - 220*ret, hdr_h + 4*ret, ret, 0.00, 0.70, 0.85, mx, my, lmb_down);
 

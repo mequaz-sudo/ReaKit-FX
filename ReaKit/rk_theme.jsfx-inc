@@ -64,6 +64,10 @@ GS_THEME_VU_GEN = 2754;  // bridge -> JSFX: bump-on-publish generation counter
 // GS_THEME_ID is set to something else. 2755 is in the 2752..2759 hole above.
 RKTH_SELF_GEN  = 2755;   // the generation this library painted (0 = never)
 RKTH_SELF_N    = 3;      // themes 1..3 (EON, Dark, Light) paint without a bridge
+// NATIVE is for all of them (the user, 2026-10-01): a pick of NATIVE or of a theme on any instance
+// sets the mode (RKTH_NAT_ALL, 0/1) and bumps RKTH_NAT_GEN; every instance follows on its next draw.
+RKTH_NAT_ALL   = 2756;
+RKTH_NAT_GEN   = 2757;
 RKTH_SELF_WAIT = 4;      // frames a request may sit undrained before we paint it: a live bridge drains it within ~30 ms, so 4 frames (70..130 ms) is enough and a wheel-cycle feels instant (20 felt slow, the user 2026-09-30)
 RKTH_N   = 14;          // theme count (EON/Dark/Light/REAPER + REAPER Panel/Color/SSL/Neve/API/Tube/Ableton/FL/Pro Tools/PT Light)
 RKTH_VIS = 8;           // dropdown rows shown at once; the rest scroll (wheel over the open
@@ -196,9 +200,49 @@ function rkth_self_tick() local(_r, _k) (
 // rkth_lock_serialize): the theme and knob this instance painted itself, so
 // the look comes back with the project on a machine without Swing.
 function rkth_self_serialize() (
+  file_avail(0) > 0 ? rkth_nat_restored = 1;   // reading SAVED data (a new instance has none)
   file_avail(0) != 0 ? (
     file_var(0, rkth_self_theme);
     file_var(0, rkth_self_knob);
+  );
+);
+// NATIVE, for a host with no NATIVE slider of its own (DDC, Stereo Width): its own hook, called
+// LAST in the host's @serialize, after every field the host has ever written (older projects end
+// before it). ⛔Never inside rkth_self_serialize: GainKit writes its format marker and its typed
+// name AFTER that hook, so a value added there shifted both (a 1.4.8 project lost its name; the
+// outside delta review, 2026-10-01). ⛔Its own variable: rkth_nat_saved is rk_theme_apply's "own
+// colours stored" flag, and sharing it drew a reopened or freshly inserted NATIVE plugin's
+// buttons black and kept a theme's colours as its own after any save (natreload_probe.lua).
+function rkth_nat_serialize() (
+  file_avail(0) < 0 ? rkth_nat_srz = rkth_local_off;
+  file_avail(0) != 0 ? (
+    file_var(0, rkth_nat_srz);
+    file_avail(0) >= 0 ? rkth_local_off = rkth_nat_srz > 0;
+  );
+);
+
+// NATIVE or a theme, for every instance: this one at once, the rest on their next draw
+function rkth_native_pick(on) (
+  rkth_local_off = on;
+  gmem[RKTH_NAT_ALL] = on;
+  gmem[RKTH_NAT_GEN] = (gmem[RKTH_NAT_GEN] | 0) + 1;
+  rkth_nat_seen = gmem[RKTH_NAT_GEN];
+);
+// Per draw and per audio block (an instance off screen keeps step, so whatever is saved agrees).
+// A NEW instance took the current mode in @init (below), before anything could save it; a SAVED one
+// keeps the mode it was saved in -- @serialize or its NATIVE slider restore it -- and sets the mode
+// later inserts start in. After that every pick on any instance is followed.
+function rkth_native_tick() (
+  rkth_nat_restored && !rkth_nat_claimed ? (
+    rkth_nat_claimed = 1;
+    // no bump: nobody else changes, a new one starts like this. Only while nobody has picked since
+    // this one loaded: a plugin left bypassed until after a pick must follow it, not undo it (the
+    // outside delta review, 2026-10-01); the generation check below then takes the pick.
+    gmem[RKTH_NAT_GEN] == rkth_nat_seen ? gmem[RKTH_NAT_ALL] = rkth_local_off;
+  );
+  gmem[RKTH_NAT_GEN] != rkth_nat_seen ? (
+    rkth_nat_seen = gmem[RKTH_NAT_GEN];
+    rkth_local_off = gmem[RKTH_NAT_ALL] == 1;
   );
 );
 // ── LOCK ("keep this instance's look while the suite's theme moves on") ────
@@ -400,6 +444,54 @@ function rkth_xpick(slot) local(p) (
   p;
 );
 
+// ── EMBED (opt-in, the free six) ─────────────────────────────────────────
+// Where this plugin shows in the track's strips, and where new copies of the
+// six open: MCP, TCP or OFF (REAPER cannot default a new copy to both; the
+// user, 2026-10-01). A JSFX cannot move its own embed, so the chip asks GainKit
+// Plus, which fires REAPER's own "Show last focused FX embedded UI in MCP /
+// TCP" for this plugin (each toggles: into its panel, or out of it when already
+// there -- measured, embedplace_probe.lua) and sets the six's new-instance
+// default in reaper-fxoptions.ini. The chip names the default Plus publishes,
+// or NEEDS PLUS while Plus is not running (its clicks do nothing then).
+// Click = next (MCP -> TCP -> OFF), right-click = previous. A host calls
+//   rkth_embedrow();
+// every frame before rkth_cluster/rkth_cluster_hdr. ⛔OPT-IN: a host that
+// never calls it has no row, and the panel is as before. No host slider: the
+// state lives in REAPER. Live while LOCKED: it is no part of the look.
+// Band EON_RKFX_EMBED, declared in .refs/gmem_regions_supplement.tsv:
+//   Plus -> JSFX  +0 heartbeat, Plus's clock in whole seconds (0 = stopped)
+//                 +1 the default (1 MCP, 2 TCP, 3 OFF; 0 = not read yet)
+//                 +2 the last request served
+//   JSFX -> Plus  +8 mode, +9 track (get_host_placement: 0-based, -1 master),
+//                 +10 chain position (the API's own index, a container address
+//                 inside one), +11 flags, +12 the request counter, bumped LAST
+RKTH_EM_BASE = 31365504;
+function rkth_embedrow() ( rkth_em_ok = 1; );
+// Plus stamps the wall clock every second; time() is the same clock in a JSFX.
+function rkth_em_alive() ( gmem[RKTH_EM_BASE] > 0 && abs(time() - gmem[RKTH_EM_BASE]) <= 3; );
+// The state the chip names: the one asked for until Plus has served it (3 s at
+// most), else the default Plus publishes.
+function rkth_em_shown() (
+  rkth_em_pend > 0 && gmem[RKTH_EM_BASE + 2] < rkth_em_pgen && time_precise() - rkth_em_pt < 3
+    ? rkth_em_pend : gmem[RKTH_EM_BASE + 1] | 0;
+);
+function rkth_em_label() local(_s) (
+  _s = rkth_em_shown();
+  !rkth_em_alive() ? "NEEDS PLUS" : _s == 1 ? "MCP" : _s == 2 ? "TCP" : _s == 3 ? "OFF" : "...";
+);
+// Ask Plus: where this instance sits, then the counter LAST.
+function rkth_em_request(mode) local(_t, _p, _f, _g) (
+  _p = 0; _f = 0;
+  _t = get_host_placement(_p, _f);
+  gmem[RKTH_EM_BASE + 8] = mode;
+  gmem[RKTH_EM_BASE + 9] = _t;
+  gmem[RKTH_EM_BASE + 10] = _p;
+  gmem[RKTH_EM_BASE + 11] = _f;
+  _g = (gmem[RKTH_EM_BASE + 12] | 0) + 1;
+  gmem[RKTH_EM_BASE + 12] = _g;
+  rkth_em_pend = mode; rkth_em_pgen = _g; rkth_em_pt = time_precise();
+);
+
 // Host hook, called from @serialize so a locked look survives a project
 // reload. ⚠️APPEND-GUARDED: an old project's blob simply ends before this, and
 // file_avail(0) == 0 leaves the instance unlocked, which is the right default.
@@ -500,6 +592,7 @@ function rk_embed_idle(extra) local(_h, _i, _in, _now, _act, _skip) (
 // library defaults — it reads on any background.
 function rk_theme_apply() local(pr, pg, pb, a1r, a1g, a1b, a2r, a2g, a2b, _on) (
   rkth_self_tick();
+  rkth_native_tick();
   // The knob and slider libraries' double-click window: wider in an EMBEDDED
   // strip, where the user's double-click never fired at 0.3 s (2026-09-30). The
   // first story -- "the embed gets its mouse late" -- was the test tool's timing:
@@ -579,16 +672,16 @@ local(hit, k, ry, consumed, _n) (
   consumed = 0;
   hit = mx >= x && mx < x + w && my >= y && my < y + h;
   hit ? (
-    lmb ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = (rkth_cvp % _n) + 1; rkth_open = 0; consumed = 1; );
+    lmb ? ( rkth_native_pick(0); gmem[GS_THEME_REQ] = (rkth_cvp % _n) + 1; rkth_open = 0; consumed = 1; );
     rmb ? ( rkth_open = 1 - rkth_open; rkth_sc = 0; consumed = 1; );
-    whl != 0 ? ( rkth_local_off = 0; gmem[GS_THEME_REQ] = ((rkth_cvp - 1 + (whl > 0 ? 1 : -1) + _n) % _n) + 1; consumed = 1; );
+    whl != 0 ? ( rkth_native_pick(0); gmem[GS_THEME_REQ] = ((rkth_cvp - 1 + (whl > 0 ? 1 : -1) + _n) % _n) + 1; consumed = 1; );
   );
   rkth_open && !consumed ? (
     // The wheel over the open list STEPS the theme, down = the next row, and
     // the list follows it (the user, 2026-10-01: "scroll the theme in the menu")
     (mx >= rkth_ddx && mx < rkth_ddx + rkth_ddw && my >= rkth_ddy && my < rkth_ddy + rkth_ddh && whl != 0) ? (
       k = ((rkth_cvp - 1 + (whl < 0 ? 1 : -1) + _n) % _n) + 1;
-      rkth_local_off = 0; gmem[GS_THEME_REQ] = k;
+      rkth_native_pick(0); gmem[GS_THEME_REQ] = k;
       k < rkth_sc ? rkth_sc = k;
       k > rkth_sc + rkth_dd_rows - 1 ? rkth_sc = k - rkth_dd_rows + 1;
       consumed = 1;
@@ -598,11 +691,9 @@ local(hit, k, ry, consumed, _n) (
       loop(rkth_dd_rows,
         ry = rkth_ddy + k * rowh;
         (mx >= rkth_ddx && mx < rkth_ddx + rkth_ddw && my >= ry && my < ry + rowh) ? (
-          // Either choice ends a LOCK: NATIVE and "frozen on a theme" are
-          // mutually exclusive modes, and picking a theme is by definition
-          // asking to follow one again.
-          (rkth_sc + k) == 0 ? ( rkth_local_off = 1; rkth_locked = 0; )
-                             : ( rkth_local_off = 0; rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
+          // Either choice ends this instance's LOCK; NATIVE or a theme goes to all of them.
+          (rkth_sc + k) == 0 ? ( rkth_native_pick(1); rkth_locked = 0; )
+                             : ( rkth_native_pick(0); rkth_locked = 0; gmem[GS_THEME_REQ] = rkth_sc + k; );
         );
         k += 1;
       );
@@ -857,7 +948,7 @@ function rkth_cl_chipdraw(cx, cy, cw, ch, lbl_str) local(_f) (
 function rkth_cluster(x, y, has_vu, cur_vu)
 local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid, _ch, _rh,
       _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw, _nfw, _nfi, _nsw, _xw, _xi, _xj, _xr,
-      _vp, _av) (
+      _vp, _av, _es) (
   // Chip height and dropdown row height, scaled once and reused by EVERY hit
   // test, dropdown anchor and draw below — a chip whose hit rect and drawn rect
   // disagree is the bug this function's comments keep warning about, and two
@@ -1014,6 +1105,8 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
       _xi += 1;
     );
     _xw > 0 ? _xw += 14*rkth_scale;
+    // EMBED: its chip holds "NEEDS PLUS" while Plus is not running
+    rkth_em_ok ? ( gfx_measurestr("NEEDS PLUS", _tw, _th); _xw = max(_xw, _tw + 14*rkth_scale); );
     // ── DROPPED PANEL geometry (user 2026-08-12: "make it drop down not
     // across"). The chips used to FLOW horizontally along the header, which put
     // them on a collision course with each host's right-hand chrome and forced
@@ -1032,6 +1125,7 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_nb_ok ? ( gfx_measurestr("NAME BAR", _tw, _th); _capw = max(_capw, _tw); );
     rkth_sv_ok ? ( gfx_measurestr("STRIP", _tw, _th); _capw = max(_capw, _tw); );
     rkth_nu_ok ? ( gfx_measurestr("NUMBERS", _tw, _th); _capw = max(_capw, _tw); );
+    rkth_em_ok ? ( gfx_measurestr("EMBED", _tw, _th); _capw = max(_capw, _tw); );
     _xi = 0;
     loop(RKTH_X_N,
       rkth_x_ok(_xi) ? ( gfx_measurestr(rkth_x_cap(_xi), _tw, _th); _capw = max(_capw, _tw); );
@@ -1065,6 +1159,8 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_x0row = rkth_x0_ok ? _xr : -1; rkth_x0_ok ? _xr += 1;
     rkth_clp_x1row = rkth_x1_ok ? _xr : -1; rkth_x1_ok ? _xr += 1;
     rkth_clp_x2row = rkth_x2_ok ? _xr : -1; rkth_x2_ok ? _xr += 1;
+    // EMBED last before LOCK: like LOCK it reaches past this panel (to REAPER, and to the six)
+    rkth_clp_emrow = rkth_em_ok ? _xr : -1; rkth_em_ok ? _xr += 1;
     rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
     rkth_clp_rows  = _xr + (rkth_lk_ok ? 1 : 0);
     // A panel taller than the window closes its top and bottom margins to 3 px,
@@ -1234,6 +1330,19 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
         lmb_down = 0; rmb_down = 0; rkth_consumed = 1;
       );
       _xi += 1;
+    );
+
+    // ── EMBED chip: click = next place, right-click = previous; nothing while
+    // Plus is not running (the chip says so). Live while LOCKED.
+    rkth_clp_emrow >= 0 && (lmb_down || rmb_down) &&
+      mx >= rkth_clp_cx && mx < rkth_clp_cx + rkth_clp_cw &&
+      my >= rkth_clp_r0 + rkth_clp_emrow*rkth_clp_pitch &&
+      my <  rkth_clp_r0 + rkth_clp_emrow*rkth_clp_pitch + _ch ? (
+      rkth_em_alive() ? (
+        _es = rkth_em_shown(); _es < 1 ? _es = 3;
+        rkth_em_request(lmb_down ? _es % 3 + 1 : (_es + 1) % 3 + 1);
+      );
+      lmb_down = 0; rmb_down = 0; rkth_consumed = 1;
     );
 
     // ── LOCK chip: freeze / unfreeze this instance's whole look. ──
@@ -1486,6 +1595,24 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
         );
         _xi += 1;
       );
+      // ── EMBED row: lit while it embeds (MCP or TCP); dim ink while Plus is
+      // not running. Absent unless the host called rkth_embedrow().
+      rkth_clp_emrow >= 0 ? (
+        _ry = rkth_clp_r0 + rkth_clp_emrow*rkth_clp_pitch;
+        gfx_setfont(1, "Arial", _f7, 'b');
+        rkth_setcol(3, 0.62, 0.65, 0.70, 1);
+        gfx_x = rkth_clp_capx; gfx_y = _ry + _cy; gfx_drawstr("EMBED");
+        _k = rkth_em_alive() && (rkth_em_shown() == 1 || rkth_em_shown() == 2);
+        _k ? ( rkth_setcol(4, 0.95, 0.65, 0.15, 0.9); )
+           : ( rkth_setcol(1, 0.16, 0.18, 0.22, 1); );
+        gfx_rect(rkth_clp_cx, _ry, rkth_clp_cw, rkth_clp_ch);
+        rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(rkth_clp_cx, _ry, rkth_clp_cw, rkth_clp_ch, 0);
+        gfx_setfont(1, "Arial", _f9, 'b');
+        _k ? gfx_set(0.10, 0.10, 0.12, 1)
+           : rkth_em_alive() ? rkth_setcol(2, 0.85, 0.87, 0.90, 1) : rkth_setcol(3, 0.62, 0.65, 0.70, 1);
+        gfx_x = rkth_clp_cx + 5*rkth_scale; gfx_y = _ry + (rkth_clp_ch - _f9) * 0.5;
+        gfx_drawstr(rkth_em_label());
+      );
       // ── LOCK row: same lit-chip language as >ALL, so "engaged" reads the
       // same way everywhere in the panel. Absent entirely when the host never
       // handed us a snapshot buffer (rkth_clp_lockrow < 0).
@@ -1549,6 +1676,11 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
 rkth_vu_pick = -1;
 rkth_dd_hrow = -1;
 rkth_self_applied = 0;   // the remembered theme is applied once per load (rkth_self_tick)
+// NATIVE: a new instance starts in the current mode (a saved one is restored over this by its
+// @serialize, and a host's NATIVE slider must be seeded from it in the host's @init)
+rkth_local_off = gmem[RKTH_NAT_ALL] == 1;
+rkth_nat_seen = gmem[RKTH_NAT_GEN];
+rkth_nat_restored = rkth_nat_claimed = 0;
 rkth_nb_pick = -1;      // NAME BAR pick, surfaced for the host to apply
 rkth_nb_ok   = 0;       // host asked for the row? re-established every frame
                         // by the host's rkth_namebar() call, so re-zeroing on
@@ -1567,6 +1699,9 @@ rkth_nf_wsc  = 0;       // the FONT chip's width is measured again at the first 
 rkth_x0_pick = -1; rkth_x1_pick = -1; rkth_x2_pick = -1;          // EXTRA rows: the same contract, by slot
 rkth_x0_ok = 0; rkth_x1_ok = 0; rkth_x2_ok = 0;                   // re-established every frame by rkth_xrow()
 rkth_clp_x0row = -1; rkth_clp_x1row = -1; rkth_clp_x2row = -1;    // no such rows until the layout counts them
+rkth_em_ok = 0;         // EMBED: re-established every frame by rkth_embedrow()
+rkth_clp_emrow = -1;    // no EMBED row until the layout counts one
+rkth_em_pend = 0;       // nothing asked of Plus yet
 rkth_vu_gen_seen = gmem[GS_THEME_VU_GEN];
 rkth_cl_open = 0;      // collapsible header starts closed (rkth_cluster_hdr)
 rkth_cl_paint = 0;     // per-frame "panel was requested"; set by rkth_cluster,

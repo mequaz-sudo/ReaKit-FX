@@ -83,6 +83,7 @@ file_var(0, rk_ps_en_rec);
 file_var(0, rk_ps_en_stop);
 file_var(0, rk_ps_inited);
 rkth_self_serialize();   // the theme this instance painted itself (no bridge), appended last
+rkth_nat_serialize();    // NATIVE (no slider of its own for it), LAST: anything new goes below
 @slider
 recalc_dsp();
 rk_link_on_slider();
@@ -92,6 +93,10 @@ srate != sw_sr_seen ? ( sw_sr_seen = srate; recalc_dsp(); );   // ext_noinit: th
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
+
+// NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
+// step and is saved in the mode the others are in
+rkth_native_tick();
 
 @sample
 rk_ps_tick();
@@ -113,8 +118,8 @@ rk_ps_active ? (
 gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into ReaKitStereoWidth; follow when live.
 rk_theme_apply();
-sk_kp = (gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
-gmem[GS_THEME_ID] > 0 ? (
+sk_kp = (rkth_active() && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+rkth_active() ? (   // NATIVE (for all six) leaves the plugin's own colours
   wd_cr=gmem[GS_THEME_BASE+12]; wd_cg=gmem[GS_THEME_BASE+13]; wd_cb=gmem[GS_THEME_BASE+14]; // ACCENT
   wd_lr=gmem[GS_THEME_BASE+15]; wd_lg=gmem[GS_THEME_BASE+16]; wd_lb=gmem[GS_THEME_BASE+17]; // ACCENT2
   _th_bg_r=gmem[GS_THEME_BASE]; _th_bg_g=gmem[GS_THEME_BASE+1]; _th_bg_b=gmem[GS_THEME_BASE+2]; // BG
@@ -317,14 +322,13 @@ gfx_ext_flags & 1 ? (
   !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
-// ║  STANDALONE — header, knob, correlation meter, meters, legend         ║
+// ║  STANDALONE — header, knob, correlation meter, meters                 ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
   hdr_h = 34*ret;
-  legend_h = 20*ret;
   mtr_w = 44*ret;
   body_w = gfx_w - mtr_w;
-  body_h = gfx_h - hdr_h - legend_h;
+  body_h = gfx_h - hdr_h;
 
   // Split body: top = knob zone (60%), bottom = correlation meter zone (40%)
   knob_zone_h = body_h * 0.62;
@@ -345,28 +349,37 @@ gfx_ext_flags & 1 ? (
   gfx_setfont(1, "Arial", floor(max(11*ret, hdr_h * 0.48)), 'b');
   gfx_x = 10*ret; gfx_y = (hdr_h - 14*ret) * 0.5 + 1;
   gfx_drawstr("STEREO WIDTH");
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
-  gfx_setfont(1, "Arial", floor(max(9*ret, hdr_h * 0.34)));
-  gfx_x += 8*ret; gfx_drawstr("EON Studios");
+  sw_tx = gfx_x;   // where the title ends
+  // ▸THEME sits in the header after the title, before the link badge, and under the header,
+  // as before, only in a window too narrow for it (the user, 2026-10-01; no credit line on
+  // the face). Its width is the cluster's own (rkth_cl_hdr_w; a close guess on the very
+  // first frame).
+  rk_gear_r = max(5*ret, hdr_h * 0.20);
+  rk_gear_x = body_w - rk_gear_r - 8*ret;
+  rk_gear_y = hdr_h / 2;
+  rk_badge_sz = max(9*ret, hdr_h * 0.36);
+  sw_thw = rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56*rkth_scale;
+  sw_thr = rk_gear_x - rk_badge_sz - 13*ret;   // the badge's left edge, less a gap
+  sw_tx + 12*ret + sw_thw <= sw_thr ? (
+    sw_thx = sw_tx + 12*ret; sw_thy = (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2;
+  ) : (
+    sw_thx = 10*ret; sw_thy = hdr_h + 4*ret;
+  );
 
-  // Appearance cluster (THEME · KNOB) — collapsed to a "▸THEME" chip; the row
-  // wraps to a second line on this narrow window. Interaction runs inside, so
-  // an open panel swallows the click before the gear/knob see it.
+  // Appearance cluster (THEME · KNOB): interaction runs inside, so an open panel
+  // swallows the click before the gear/knob see it.
   // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
   // chip tracks the slider even when it is changed from REAPER's own param
   // list; the cluster never writes a host slider, it surfaces the pick.
   rkth_namebar(sw_name_bar);
-  rkth_cluster_hdr(10*ret, hdr_h + 4*ret, 0, 0);
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
+  rkth_cluster_hdr(sw_thx, sw_thy, 0, 0);
   rkth_nb_pick >= 0 ? (
     sw_name_bar = rkth_nb_pick; slider_automate(sw_name_bar); rkth_nb_pick = -1;
   );
 
-  // ── Gear + Link badge ──
-  rk_gear_r = max(5*ret, hdr_h * 0.20);
-  rk_gear_x = body_w - rk_gear_r - 8*ret;
-  rk_gear_y = hdr_h / 2;
+  // ── Gear + Link badge (placed with the title, above) ──
   rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
-  rk_badge_sz = max(9*ret, hdr_h * 0.36);
   rk_link_draw_badge(rk_gear_x - rk_badge_sz - 5*ret, rk_gear_y - rk_badge_sz / 2, rk_badge_sz, wd_lr, wd_lg, wd_lb, mx, my, lmb_down);
 
   gfx_set(0.15, 0.18, 0.22, 1);
@@ -395,7 +408,7 @@ gfx_ext_flags & 1 ? (
 
   // Meter divider
   gfx_set(0.18, 0.18, 0.20, 0.5);
-  gfx_line(body_w, hdr_h + 2*ret, body_w, gfx_h - legend_h - 2*ret);
+  gfx_line(body_w, hdr_h + 2*ret, body_w, gfx_h - 2*ret);
 
   // ── WIDTH knob ──
   cx = body_cx; m = km;
@@ -452,17 +465,9 @@ gfx_ext_flags & 1 ? (
 
   // ── Meter ──
   mtr_x = body_w + 5*ret; mtr_y = hdr_h + 8*ret;
-  mtr_h = gfx_h - hdr_h - legend_h - 16*ret;
+  mtr_h = gfx_h - hdr_h - 16*ret;
   mtr_bar_w = mtr_w - 18*ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
-
-  // ── Legend ──
-  gfx_set(0.18, 0.18, 0.20, 1);
-  gfx_line(0, gfx_h - legend_h, gfx_w, gfx_h - legend_h);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.85);
-  gfx_setfont(1, "Arial", floor(max(8*ret, legend_h * 0.52)));
-  gfx_x = 8*ret; gfx_y = gfx_h - legend_h + 4*ret;
-  gfx_drawstr("Drag = value  |  Ctrl = fine  |  Scroll = adjust  |  Dbl-click = reset  |  LED = bypass");
 );
 
 // ── Options menu overlay ──

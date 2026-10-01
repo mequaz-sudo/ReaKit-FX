@@ -60,9 +60,10 @@ in the Actions list as `Script: GainKit Plus…`):
   the meter still wins. Run it again to stop; put it on a toolbar and the button lights while it
   runs. On REAPER 7.81 and later every GainKit reads its track's name from REAPER itself, so
   the name needs no script there; the colour, the icon and the master's project name still come
-  from GainKit Plus, which serves the first 512 tracks.
+  from GainKit Plus, which serves the first 512 tracks. It also carries out the THEME panel's EMBED
+  row: it moves the plugin and sets where new copies of the six open.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
-  none.
+  none, opened embedded in the mixer strip.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
   chain, the master's too.
 - **GainKit first on selected tracks** — the same, for the selected tracks only.
@@ -77,7 +78,9 @@ in the Actions list as `Script: GainKit Plus…`):
 - **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
-  file, and EON Floatter started once so it registers itself. The first time, it also offers to
+  file, and EON Floatter started once so it registers itself. Once, it sets the six to open
+  embedded in the mixer strip (REAPER's own default for new instances; other plugins' defaults are
+  left as they are). The first time, it also offers to
   raise REAPER's meter refresh to 120 a second so the mixer strips answer quicker (from the next
   start). Run it again and nothing changes.
 
@@ -143,12 +146,14 @@ WIDTH knob at the bottom of the channel.
 ## Across the plugins
 
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
-  slot it is given.
-- **THEME panel** — GainKit, Saturation, 3-Band EQ, De-Esser and Stereo Width have a THEME toggle in the header:
-  a colour theme, a knob style (21 of them), the name bar over the mixer-strip embed, and NATIVE,
-  which opts an instance out of theming. Three colour themes are built in and work on their own:
-  **EON**, **Dark** and **Light**. Pick one on any of the six and all six follow, and the choice
-  comes back with the project: opening a project wears the theme it was saved with. Eleven more
+  slot it is given. The THEME panel's EMBED row (MCP / TCP / OFF) moves a plugin between the mixer
+  strip, the track panel and neither, and sets where new copies of all six open; GainKit Plus does
+  the moving, and the row says NEEDS PLUS while it is not running.
+- **THEME panel** — all six have a THEME toggle in the header: a colour theme, a knob style (21 of
+  them), the name bar over the mixer-strip embed, EMBED, and NATIVE, each plugin in its own original
+  colours. Three colour themes are built in and work on their own: **EON**, **Dark** and **Light**.
+  Pick one, or NATIVE, on any of the six and all six follow, open or closed, and the choice comes
+  back with the project: opening a project wears the theme it was saved with. Eleven more
   (SSL, Neve, API, Tube, Ableton, FL Studio, Pro Tools, PT Light, and three that copy your REAPER
   theme) appear in the list when EON Swing is installed, whose bridge paints them and keeps the
   whole suite in step.

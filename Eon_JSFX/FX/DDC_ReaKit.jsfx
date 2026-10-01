@@ -294,6 +294,10 @@ function ddc_detect(scL, scR) (
   gainR > seekgainR ? gainR = max(gainR / attack, seekgainR) : gainR = min(gainR * release, seekgainR);
 );
 
+@serialize
+rkth_self_serialize();   // its theme, saved with the project (DDC kept nothing until 2026-10-01)
+rkth_nat_serialize();    // and NATIVE (no slider of its own for it), LAST: anything new goes below
+
 @slider
 recalc_dsp();
 
@@ -312,6 +316,10 @@ gr_worst < 1000000 ? (
   ext_gr_meter != slider10 ? sliderchange(slider10 = ext_gr_meter);
 );
 gr_worst = 1000000;
+
+// NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
+// step and is saved in the mode the others are in
+rkth_native_tick();
 
 @sample
 snap_params ? (
@@ -395,8 +403,8 @@ gfx_clear = 0x706E6B;
 // palette vars (BG/PANEL/TEXT/ACCENT). Green/white knobs stay semantic.
 rk_theme_apply();
 // Theme knob STYLE (shape) — follow the suite's published knob style, else SSL.
-sk_kp = (gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
-gmem[GS_THEME_ID] > 0 ? (
+sk_kp = (rkth_active() && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+rkth_active() ? (   // NATIVE (for all six) leaves the plugin's own colours
   bg_r =gmem[GS_THEME_BASE   ]; bg_g =gmem[GS_THEME_BASE+1 ]; bg_b =gmem[GS_THEME_BASE+2 ];  // BG
   hdr_r=gmem[GS_THEME_BASE+3 ]; hdr_g=gmem[GS_THEME_BASE+4 ]; hdr_b=gmem[GS_THEME_BASE+5 ];  // PANEL
   txt_r=gmem[GS_THEME_BASE+6 ]; txt_g=gmem[GS_THEME_BASE+7 ]; txt_b=gmem[GS_THEME_BASE+8 ];  // TEXT
@@ -419,6 +427,8 @@ gfx_getchar(); // enable keyboard/focus handling
 mx = mouse_x; my = mouse_y;
 prev_LMB = LMB; LMB = (mouse_cap & 1);
 lmb_down    = LMB && !prev_LMB;
+prev_RMB = RMB; RMB = (mouse_cap & 2);
+rmb_down    = RMB && !prev_RMB;   // the THEME panel's rows step back on it, the knobs reset
 CTRL        = (mouse_cap & 4) ? 1 : 0;
 SHIFT       = mouse_cap & 8;
 frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
@@ -525,12 +535,16 @@ is_embedded ? (
   gfx_set(ac_r, ac_g, ac_b, 1); gfx_setfont(1, "Arial", floor(14*ret), 'b');
   gfx_x = 12*ret; gfx_y = 7*ret; gfx_drawstr("DDC");
 
-  gfx_set(dm_r, dm_g, dm_b, 0.6); gfx_setfont(1, "Arial", floor(10*ret));
-  gfx_x = 52*ret; gfx_y = 10*ret; gfx_drawstr("ReaKit");
+  // ▸THEME, as the other five: after the title, centred in the header, BEFORE the body
+  // widgets so an open panel takes the click first. No NAME BAR row (no slider for it)
+  // and no LOCK (no snapshot buffer); NATIVE is saved by rkth_self_serialize.
+  rkth_scale = ret;
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
+  rkth_cluster_hdr(gfx_x + 12*ret, (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2, 0, 0);
 
   // ── Body layout ────────────────────────────────────────
   body_y = hdr_h;
-  body_h = H - hdr_h - 18*ret;
+  body_h = H - hdr_h - 10*ret;   // 18 held the name + tips line too
 
   // GR meter column (right side)
   gr_col_w = 56*ret;
@@ -817,14 +831,5 @@ is_embedded ? (
   gfx_x = gr_x; gfx_y = gr_bot + 2*ret;
   gfx_drawnumber(gr_disp, 1);
 
-  // ── Legend ─────────────────────────────────────────────
-  leg_y = H - 14*ret;
-  gfx_set(dm_r, dm_g, dm_b, 0.4);
-  gfx_setfont(1, "Arial", floor(8*ret));
-  gfx_x = 8*ret; gfx_y = leg_y;
-  gfx_drawstr("EON DDC");
-  gfx_set(dm_r, dm_g, dm_b, 0.25);
-  gfx_x = 80*ret;
-  gfx_drawstr("Ctrl+drag fine \xB7 Dbl-click reset");
-
+  rkth_cluster_overlay();   // the open THEME panel and its lists draw on top
 ); // end floating
