@@ -978,6 +978,11 @@ vu_ct.rk_vu_sample((spl0 + spl1) * 0.5);
 
 @gfx 450 540
 gfx_clear = 0x443D38;
+// GainKit maps the theme band itself and never calls rk_theme_apply, so the built-in themes'
+// painter and the strip's double-click window are taken here: without them a GainKit-only
+// session never opened on EON or changed theme (gkonly_theme rig, 2026-10-01).
+rkth_self_tick();
+RK_DBLCLICK_T = (gfx_ext_flags & 1) ? 0.6 : 0.3;
 // 0x200 (embedded click-through) is armed conditionally inside the embedded
 // branch — only over dead space — see below.
 
