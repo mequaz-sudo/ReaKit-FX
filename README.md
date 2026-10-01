@@ -196,6 +196,9 @@ WIDTH knob at the bottom of the channel.
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.
+- **Snappier strips** — REAPER redraws an embedded strip at its meter rate, about 22 times a second
+  out of the box. Set Preferences > Appearance > Track meter settings > Meter update frequency to
+  60 and the knobs in the mixer and the track panel answer twice as fast.
 
 ## Install (ReaPack)
 
