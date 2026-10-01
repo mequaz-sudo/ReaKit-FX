@@ -77,7 +77,9 @@ in the Actions list as `Script: GainKit Plus…`):
 - **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
-  file, and EON Floatter started once so it registers itself. Run it again and nothing changes.
+  file, and EON Floatter started once so it registers itself. The first time, it also offers to
+  raise REAPER's meter refresh to 120 a second so the mixer strips answer quicker (from the next
+  start). Run it again and nothing changes.
 
 The actions and the names reach a GainKit inside an FX container too.
 
@@ -196,9 +198,10 @@ WIDTH knob at the bottom of the channel.
   in the same group move together.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.
-- **Snappier strips** — REAPER redraws an embedded strip at its meter rate, about 22 times a second
-  out of the box. Set Preferences > Appearance > Track meter settings > Meter update frequency to
-  60 and the knobs in the mixer and the track panel answer twice as fast.
+- **Snappier strips** — REAPER redraws an embedded strip at its meter rate, 30 a second out of the
+  box. Set Preferences > Appearance > Track meter settings > Meter update frequency to 120 (the
+  Start with REAPER action offers this once) and the knobs in the mixer and the track panel answer
+  quicker. A strip nothing is changing on skips its redraw, so a big session stays quick.
 
 ## Install (ReaPack)
 
