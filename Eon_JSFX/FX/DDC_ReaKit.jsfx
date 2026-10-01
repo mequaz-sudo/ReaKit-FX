@@ -52,10 +52,12 @@ slider15:0<0,1,1{Off,2x}>-Oversample
 slider16:0<0,5,0.1>-Lookahead (ms)
 
 @init
+// @init runs once, at load: REAPER would re-run it on every play start, resetting the
+// envelope and emptying the lookahead -- a click (popcheck rig, 2026-10-01). A sample-rate
+// change is caught in @block instead.
+ext_noinit = 1;
 gfx_ext_retina = 1;
-// Render the embedded UI without REAPER's frame/title-bar decoration
-// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
-gfx_ext_flags |= 0x100 | 0x400; // +0x400: no MCP hover tooltip (7.79+; older ignores)
+gfx_ext_flags |= 0x100 | 0x400;   // borderless embed; no MCP hover tooltip (7.79+)
 ext_tail_size = -1;
 gain = seekgain = 1;
 gainL = seekgainL = 1;
@@ -67,38 +69,27 @@ cDenorm = pow(10,-30);
 dsp_dirty = 0;
 snap_params = 1;
 
-// The OUTPUT VOLUME's smoother (10 ms): the Output knob and auto make-up move the
-// volume in steps. The gain reduction itself is applied as computed, as LOSER's
-// original does: a 10 ms smoother on it made every attack under ~10 ms sound the
-// same (outside audit, 2026-09-30; the user: "Remove it").
+// 10 ms smoother on the output volume only; the gain reduction is applied as computed.
 vol_s.smooth_init(10);
 vol_s.smooth_set(1);
 
-// Oversampling: cleared here, then only when 2x is switched on (os_prev, recalc_dsp)
 os.os2_stereo_reset();
 os_prev = -1;
 
-// GUI memory — above DDC's max 1M RMS buffer
+// GUI memory, above the L channel's RMS ring (0..1000000)
 KS = 16; BS = 8;
 freemem = 1100000;
-km  = freemem; freemem += 12 * KS;  // 12 knobs (was 7)
-bm  = freemem; freemem += 2 * BS;   // feed segment + auto pill
+km  = freemem; freemem += 12 * KS;
+bm  = freemem; freemem += 2 * BS;
 
-// Lookahead ring buffers: 5 ms holds to 409.6 kHz (2048 samples; 1024 capped
-// it at 2.7 ms at 384 kHz -- outside audit, 2026-09-30). ⚠ slider16's range
-// (0..5 ms) is what keeps this enough: widen the slider and grow BOTH these
-// and the dry line below.
+// Lookahead rings: 2048 samples = 5 ms up to 409.6 kHz. ⚠ Widen slider16 past 5 ms and
+// grow these AND the dry ring below.
 la_buf_L = freemem; freemem += 2048;
 la_buf_R = freemem; freemem += 2048;
 la_pos = 0;
 la_size = 0;
-// The dry signal for the Mix, delayed by the wet path's own latency (the
-// lookahead; 2x adds none since it oversamples only the detector) so a
-// partial Mix blends two copies of the SAME moment. Before this the dry was taken before the
-// lookahead and mixed with the delayed wet: at 50 % Mix with 5 ms lookahead a
-// 100 Hz tone cancelled outright (outside audit, 2026-09-28, measured).
-// 4096 = a power of two above the lookahead's 2048, masked, never modulo
-// (equal to it, the read of la_size back would land on the sample just written).
+// The Mix's dry, delayed by the lookahead so both halves are the same moment. 4096: a power
+// of two ABOVE the lookahead's 2048 (equal, the read would land on the sample just written).
 dry_buf_L = freemem; freemem += 4096;
 dry_buf_R = freemem; freemem += 4096;
 dry_pos = 0;
@@ -149,7 +140,7 @@ function recalc_dsp() (
   release = exp( -treshdB/max( slider5*det_sr/1000 , 1) / c_ampdB ) ;
 
   rms_size_1 = rms_size;
-  rms_size = min( max(slider6/1000*det_sr,1) , 1000000);
+  rms_size = min(max(floor(slider6/1000*det_sr + 0.5), 1), 1000000);
   rms_size_1 != rms_size ? (
       rms_sqr_sum = rms_bpos = 0;
       memset(0,0,rms_size);
@@ -195,9 +186,7 @@ function recalc_dsp() (
   // Stereo link
   link_pct = slider14 / 100;
 
-  // Oversampling: the detector's upsampler is cleared when 2x is switched on, not
-  // on every recalc -- recalc_dsp runs on any control change, and clearing it
-  // mid-signal blipped the detector (outside audit, 2026-09-30).
+  // the upsampler is cleared only when 2x is switched on (clearing on every recalc blipped it)
   os_on = slider15;
   os_on != os_prev ? ( os_on ? os.os2_stereo_reset(); os_prev = os_on; );
 
@@ -210,9 +199,6 @@ function recalc_dsp() (
     memset(la_buf_L, 0, 2048);
     memset(la_buf_R, 0, 2048);
   );
-
-
-  // The output volume's smoother (handles srate changes)
   vol_s.smooth_init(10);
 );
 
@@ -227,15 +213,17 @@ function ddc_detect(scL, scR) (
   det_L = lev_L + (linked - lev_L) * link_pct;
   det_R = lev_R + (linked - lev_R) * link_pct;
 
-  // ── RMS (L channel) ──
-  rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
-  (rms_bpos += 1) >= rms_size ? rms_bpos = 0;
-  rmsL = sqrt(rms_sqr_sum / rms_size);
-
-  // ── RMS (R channel) ──
-  rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
-  (rms_bpos_R += 1) >= rms_size ? rms_bpos_R = 0;
-  rmsR = sqrt(rms_sqr_sum_R / rms_size);
+  // ── RMS over rms_size steps (1 = off: the level itself, no ring, no sqrt) ──
+  rms_size > 1 ? (
+    rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
+    (rms_bpos += 1) >= rms_size ? rms_bpos = 0;
+    rmsL = sqrt(rms_sqr_sum / rms_size);
+    rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
+    (rms_bpos_R += 1) >= rms_size ? rms_bpos_R = 0;
+    rmsR = sqrt(rms_sqr_sum_R / rms_size);
+  ) : (
+    rmsL = det_L; rmsR = det_R;
+  );
 
   // ── Gain computation L channel ──
   knee > 0 ? (
@@ -310,19 +298,15 @@ function ddc_detect(scL, scR) (
 recalc_dsp();
 
 @block
+srate != ddc_sr_seen ? ( ddc_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
 atomic_get(dsp_dirty) ? (
   recalc_dsp();
   atomic_set(dsp_dirty, 0);
 );
-// PDC is declared here, at block rate (house rule: never in @init/@slider).
-pdc_delay = la_size;   // 2x oversamples only the detector: no latency of its own
+pdc_delay = la_size;   // PDC at block rate (house rule); 2x adds no latency
 pdc_bot_ch = 0; pdc_top_ch = 2;
 
-// GR meter, once per block: the lowest gain the last block reached, both
-// channels, in dB for the GUI (slider10) and REAPER's own meter. It used to be
-// written, with a log() and a sliderchange(), on every sample (outside audit,
-// 2026-09-28); the other compressors in the suite all publish here. The host
-// hears about slider10 only when it moved, so an idle DDC stays quiet.
+// GR meter: the block's lowest gain, in dB, to slider10 and REAPER's meter -- only when it moved
 gr_worst < 1000000 ? (
   ext_gr_meter = log(gr_worst) * c_ampdB;
   ext_gr_meter != slider10 ? sliderchange(slider10 = ext_gr_meter);
@@ -330,7 +314,6 @@ gr_worst < 1000000 ? (
 gr_worst = 1000000;
 
 @sample
-// ── Snap the volume smoother on project load (no ramp up from 1) ──
 snap_params ? (
   vol_s.smooth_set(volume);
   snap_params = 0;
@@ -359,10 +342,7 @@ sc_hpf_on ? (
   sc_hpf_y2R = sc_hpf_y1R; sc_hpf_y1R = sc_R;
 );
 
-// ── Detector ──
-// 2x oversamples only the detector: the detection signal goes through the
-// 7-tap upsampler and ddc_detect runs on both sub-samples (time constants in
-// det_sr). The audio is never resampled: no treble loss, no added latency.
+// ── Detector: 2x runs it on both upsampled sub-steps; the audio is never resampled ──
 os_on ? (
   os.os2_stereo_up(sc_L, sc_R);
   ddc_detect(os.y1L, os.y1R);
@@ -376,9 +356,8 @@ vol_sm = vol_s.smooth(volume);
 gL = gainL * vol_sm;
 gR = gainR * vol_sm;
 
-// ── Lookahead: delay audio, detection stays current ──
+// ── Lookahead: delay the audio, the detector stays current ──
 la_size > 0 ? (
-  // Write current into buffer, read delayed
   _la_out_L = la_buf_L[la_pos];
   _la_out_R = la_buf_R[la_pos];
   la_buf_L[la_pos] = spl0;
@@ -392,9 +371,7 @@ la_size > 0 ? (
 spl0 *= gL;
 spl1 *= gR;
 
-// ── Mix (parallel compression), against the dry of the same moment: the wet
-// left the lookahead la_size samples late, so the dry is read that far back
-// from its own ring (written every sample above).
+// ── Mix, against the dry la_size samples back (the same moment as the wet) ──
 dry_buf_L[dry_pos] = dry0; dry_buf_R[dry_pos] = dry1;
 _dry_d = la_size;
 _dry_rd = (dry_pos - _dry_d + 4096) & 4095;
@@ -407,7 +384,6 @@ mix_pct < 1 ? (
 spl0_out = spl0;
 spl1_out = spl1;
 
-// ── GR meter (show worst channel): the block's lowest gain, published in @block ──
 _gr_gain = min(gainL, gainR);
 _gr_gain < gr_worst ? gr_worst = _gr_gain;
 
@@ -451,9 +427,11 @@ tau         = 2*$pi;
 hv_speed    = 11;
 ret         = max(1, gfx_ext_retina);
 
+ddc_skip = rk_embed_idle(0);   // the GR bar reads slider10, already in the hash
 is_embedded = (gfx_ext_flags & 1);
 
 is_embedded ? (
+  !ddc_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
 // ══════════════════════════════════════════════════════════
 // EMBEDDED MODE — GR Bar + 2 Knobs (THRESH + OUTPUT)
 // ══════════════════════════════════════════════════════════
@@ -525,6 +503,7 @@ is_embedded ? (
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
+  );   // !ddc_skip (rk_embed_idle)
 ) : (
   // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
   // clicks on the EMBED, which runs no @gfx pass while a window is open, so this

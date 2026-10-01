@@ -29,21 +29,15 @@ options:gfx_hz=60 no_meter
 options:gmem=Swing_Media_Transfer
 
 @init
+// once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
+ext_noinit = 1;
 ext_tail_size = -1;
 gfx_ext_retina = 1;
-// Render the embedded UI without REAPER's frame/title-bar decoration
-// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
-gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
-// 0x100 now follows the THEME panel's NAME BAR row (slider4), default
-// 0 = borderless, house rule 1 unchanged. REAPER documents 0x100 as an
-// @init decision, so it is applied HERE from the restored value; the
-// re-apply in the @gfx tail is what makes the row take effect without a
-// reload (measured both ways on 7.79 and 7.80).
-// ⚠️INVERTED SENSE: the row ON (bar SHOWN) means 0x100 CLEARED.
+gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
+// 0x100 follows the NAME BAR row (slider4), re-applied in the @gfx tail. ⚠️ row ON = 0x100 CLEARED.
 sw_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
 tau = 2 * $pi;
 
-// ── Memory allocation (freemem pattern) ──
 freemem = 0;
 KS = 16; BS = 8;
 km = freemem; freemem += KS * 1;   // 1 knob
@@ -51,56 +45,31 @@ bm = freemem; freemem += BS * 1;   // 1 button (enable LED)
 memset(km, 0, KS * 1);
 memset(bm, 0, BS * 1);
 
-// Meter memory
 meter_init(freemem); freemem += 1380;
-
-// Play-state awareness
 rk_ps_init(-1);
+rk_link_init(3, 2, freemem); freemem += 64;   // group in slider3, sliders 1-2 linked
+rk_link_set_base(31364400);   // EON_RKFX_LINK
 
-// Instance linking: group in slider3, sync sliders 1-2
-rk_link_init(3, 2, freemem); freemem += 64;
-// The free ReaKit FX share Swing_Media_Transfer (2026-09-30): one theme pick reaches
-// all six, with or without Swing's bridge (rk_theme's standalone painter). The link
-// band moves to EON_RKFX_LINK, above EON_GKPLUS -- 27000000 sat inside EON_PATCHBAY.
-rk_link_set_base(31364400);
-
-// ── DSP state ──
-cDenorm = pow(10,-30);
-// DC blocker state (1-pole HPF at ~5 Hz)
-dc_x1l = 0; dc_y1l = 0;
-dc_x1r = 0; dc_y1r = 0;
-dc_coeff = 0;
-
-// Correlation meter smoothing
-corr_sum_lr = 0;
-corr_sum_ll = 0;
-corr_sum_rr = 0;
-corr_val = 0;         // smoothed correlation (-1..+1)
-corr_smooth = 0;      // GUI-side smoothed value
+corr_sum_lr = corr_sum_ll = corr_sum_rr = 0;   // the correlation meter's ~50 ms sums
+corr_val = corr_smooth = 0;
 
 function recalc_dsp() (
-  // Width factor: 0% = mono (side=0), 100% = normal, 200% = extra wide
-  width_factor = slider1 * 0.01;
-
-  // DC blocker coefficient: HPF at ~5 Hz
-  // coeff = 1 - (2*pi*fc/srate), precomputed here
-  srate > 0 ? (
-    dc_coeff = 1.0 - (2.0 * $pi * 5.0 / srate);
-    dc_coeff = max(dc_coeff, 0.9);  // safety clamp
-  );
-
-  // Correlation meter RMS window coefficient (~50ms)
-  srate > 0 ? (
-    corr_rms_coeff = 1.0 - (1.0 / (0.050 * srate));
-    corr_rms_coeff = max(corr_rms_coeff, 0.9);
-  );
-
+  width_factor = slider1 * 0.01;   // 0 = mono, 1 = as recorded, 2 = twice the side
   sw_active = slider2;
+  srate > 0 ? (
+    corr_rms_coeff = max(1 - 1 / (0.050 * srate), 0.9);
+    sw_a = 1 - exp(-1 / (0.005 * srate));
+  );
 );
 
 recalc_dsp();
+sw_sr_seen = srate;
 dsp_dirty = 0;
-snap_params = 1;
+// The side's gain, smoothed (5 ms): it eases to the WIDTH knob, and to 1 -- where the plugin
+// passes its input untouched -- when it is off or the Play/Rec/Stop toggles bypass it. Starting
+// at 1, a new instance fades in. (The knob, Enable and the toggles used to switch in one sample,
+// and a 5 Hz DC blocker sat on the output: popcheck rig, 2026-10-01.)
+sw_w = 1;
 
 // ── Colors ──
 // Purple accent (width knob)
@@ -119,41 +88,19 @@ recalc_dsp();
 rk_link_on_slider();
 
 @block
-// Snap on first block (avoids ramp on load/reset)
-snap_params ? ( recalc_dsp(); snap_params = 0; );
+srate != sw_sr_seen ? ( sw_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
 @sample
 rk_ps_tick();
+sw_w += ((sw_active && rk_ps_active ? width_factor : 1) - sw_w) * sw_a;
+mid  = (spl0 + spl1) * 0.5;
+side = (spl0 - spl1) * 0.5 * sw_w;
+spl0 = mid + side;
+spl1 = mid - side;
 
-sw_active ? (
-  // ── Mid/Side encode ──
-  mid  = (spl0 + spl1) * 0.5;
-  side = (spl0 - spl1) * 0.5;
-
-  // ── Apply width ──
-  side *= width_factor;
-
-  // ── Mid/Side decode ──
-  outL = mid + side;
-  outR = mid - side;
-
-  // ── DC blocker (1-pole HPF) ──
-  dc_y1l = (outL + cDenorm) - dc_x1l + dc_coeff * dc_y1l;
-  dc_x1l = outL;
-  outL = dc_y1l;
-
-  dc_y1r = (outR + cDenorm) - dc_x1r + dc_coeff * dc_y1r;
-  dc_x1r = outR;
-  outR = dc_y1r;
-
-  spl0 = outL;
-  spl1 = outR;
-);
-
-// ── Correlation metering + meters (gated by play-state) ──
 rk_ps_active ? (
   corr_sum_lr = corr_rms_coeff * corr_sum_lr + spl0 * spl1;
   corr_sum_ll = corr_rms_coeff * corr_sum_ll + spl0 * spl0;
@@ -212,9 +159,12 @@ denom > 0.000000000001 ? (
 corr_gui_coeff = 0.85;
 corr_smooth = corr_gui_coeff * corr_smooth + (1.0 - corr_gui_coeff) * corr_val;
 
+sw_skip = rk_embed_idle(floor(corr_smooth * 40 + 0.5));   // the correlation bar
 // Background
-gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
-gfx_rect(0, 0, gfx_w, gfx_h);
+!sw_skip ? (
+  gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
+  gfx_rect(0, 0, gfx_w, gfx_h);
+);
 
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -285,6 +235,7 @@ function draw_corr_meter(ox, oy, w, h, val) (
 // MODE: embedded (MCP/TCP) vs standalone
 // ═══════════════════════════════════════════════════════════════════════
 gfx_ext_flags & 1 ? (
+  !sw_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
 // ║  EMBEDDED — vertical: WIDTH knob top, correlation bar bottom          ║
@@ -357,6 +308,7 @@ gfx_ext_flags & 1 ? (
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
 
+  );   // !sw_skip (rk_embed_idle)
 ) : (
   // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
   // clicks on the EMBED, which runs no @gfx pass while a window is open, so this

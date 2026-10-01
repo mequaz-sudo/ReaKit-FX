@@ -2,8 +2,9 @@
 -- Scripts/__startup.lua (the same as running "GainKit Plus - Start with REAPER") when it is not
 -- there yet, and starts EON Floatter once when it has not registered itself yet -- Floatter
 -- writes its own start-up block on its first run. Running this again changes nothing: each
--- part is skipped when it is already in place. One message says what was done. MIT, EON
--- Studios, 2026.
+-- part is skipped when it is already in place. Once, it also offers to raise REAPER's meter
+-- refresh to 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
+-- One message says what was done. MIT, EON Studios, 2026.
 local r = reaper
 local _, own = r.get_action_context()
 local sep = own:find("\\", 1, true) and "\\" or "/"
@@ -66,6 +67,41 @@ local function plus_alive()
   local st = tonumber(r.GetExtState("EON_GainKitPlus", "stop")) or 0
   return hb > st and r.time_precise() - hb < 1.0
 end
+-- 3. Faster mixer strips: REAPER redraws its meters and every plugin face in a strip at its meter
+-- rate (Preferences > Appearance > Track meter settings), 30 a second out of the box. Asked ONCE,
+-- only raised, never lowered: 120 took a 23-track mixer's strips from 27 to 55 redraws a second
+-- (2026-10-01). Written to reaper.ini; REAPER applies it at its next start. A probe answers
+-- through EON_ReaKitFX/test_rate ("yes"/"no") instead of the dialog.
+local RATE = 120
+local NL = string.char(10)
+local function meter_rate()
+  if not (r.get_config_var_string and r.set_config_var_string) then return end   -- older REAPER
+  if r.GetExtState("EON_ReaKitFX", "rate_asked") == "1" then return end
+  local ok, cur = r.get_config_var_string("vuupdfreq")
+  cur = ok and tonumber(cur) or 30
+  if cur >= RATE then r.SetExtState("EON_ReaKitFX", "rate_asked", "1", true); return end
+  local yes
+  if r.GetExtState("EON_GainKitPlus", "quiet") == "1" then
+    local t = r.GetExtState("EON_ReaKitFX", "test_rate")
+    if t == "" then return end   -- quiet and no test answer: ask next time instead
+    yes = (t == "yes")
+  else
+    yes = r.MB("Make the mixer strips redraw faster?" .. NL .. NL
+      .. "This raises REAPER's meter refresh from " .. math.floor(cur) .. " to " .. RATE
+      .. " times a second, so the plugin faces in the mixer and the track panel answer quicker."
+      .. " It takes effect the next time REAPER starts." .. NL .. NL
+      .. "You can change it any time in Preferences > Appearance > Track meter settings.",
+      "ReaKit FX", 4) == 6
+  end
+  r.SetExtState("EON_ReaKitFX", "rate_asked", "1", true)
+  if yes then
+    local res = r.set_config_var_string("vuupdfreq", tostring(RATE), 1)
+    done[#done + 1] = (res and res > 0)
+      and ("Mixer strips redraw " .. RATE .. " times a second from the next start of REAPER.")
+      or "REAPER did not take the faster meter refresh; set it in Preferences > Appearance > Track meter settings."
+  end
+end
+
 local t0, n = r.time_precise(), 0
 local function settle()
   n = n + 1
@@ -74,6 +110,7 @@ local function settle()
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, PLUS, true)
     if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
   end
-  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then r.MB(table.concat(done, string.char(10)), "ReaKit FX", 0) end
+  meter_rate()
+  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then r.MB(table.concat(done, NL), "ReaKit FX", 0) end
 end
 settle()

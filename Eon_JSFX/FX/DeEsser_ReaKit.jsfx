@@ -56,33 +56,18 @@ import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
 
 @init
-// ⭐ ext_noinit: @init runs once, at load. Without it REAPER re-runs @init when
-// playback starts and when the effect is bypassed or enabled (measured in the
-// sandbox, 2026-09-28: window open / close do NOT), and this @init zeroes the
-// lookahead buffer, every crossover state and the detector -- with sound
-// already flowing (input monitoring, the enable button during playback) that
-// is a millisecond of silence and the filters restarting from nothing: the
-// pop the user heard "every time it opens". A sample-rate change no longer
-// re-runs @init either, so everything rate-derived is re-taken from @block
-// (de_rate_check below).
+// once, at load: REAPER would re-run it on play start and on enable, zeroing the lookahead and every
+// filter mid-signal (a pop); a rate change is caught in @block (de_prime)
 ext_noinit = 1.0;
 gfx_ext_retina = 1;
-
-// Render the embedded UI without REAPER's frame/title-bar decoration
-// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
-gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
-// 0x100 now follows the THEME panel's NAME BAR row (slider11), default
-// 0 = borderless, house rule 1 unchanged. REAPER documents 0x100 as an
-// @init decision, so it is applied HERE from the restored value; the
-// re-apply in the @gfx tail is what makes the row take effect without a
-// reload (measured both ways on 7.79 and 7.80).
-// ⚠️INVERTED SENSE: the row ON (bar SHOWN) means 0x100 CLEARED.
+gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
+// 0x100 follows the NAME BAR row (slider11), re-applied in the @gfx tail. ⚠️ row ON = 0x100 CLEARED.
 de_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
 
 cDenorm = pow(10,-30);
 
 KS = 16; BS = 8;
-LA_MAX = 2048;  // ~46ms @ 44.1k, power-of-2 for fast masking
+LA_MAX = 2048;  // a power of two (masked); 5 ms fits up to 409.6 kHz
 
 // ── Memory layout ──────────────────────────────────────────────────────────
 freemem = 0;
@@ -104,7 +89,7 @@ spec_mag_out = freemem; freemem += fft_half + 1;   // 513 smoothed magnitude bin
 spec_mag_in  = freemem; freemem += fft_half + 1;   // 513 smoothed magnitude bins — input
 ring_wr = 0;
 
-// Precompute Blackman-Harris window (trig allowed in @init)
+// Blackman-Harris window
 i = 0;
 loop(fft_size,
   w = 2 * $pi * i / (fft_size - 1);
@@ -116,10 +101,7 @@ memset(spec_mag_in,  0, fft_half + 1);
 memset(ring_buf_out, 0, fft_size);
 memset(ring_buf_in,  0, fft_size);
 
-// Filter state: Direct Form II transposed, 2 delay vars per filter per channel
-// s0 = first crossover (always used)
-// s1 = second crossover (bandpass mode only)
-// "d" prefix = delayed signal path
+// LR2 crossover state (DF2T): s0 the first crossover, s1 the second (Bandpass only), d = the delayed path
 s0_lp_l_xm0 = s0_lp_l_xm1 = 0;
 s0_hp_l_xm0 = s0_hp_l_xm1 = 0;
 s0_lp_r_xm0 = s0_lp_r_xm1 = 0;
@@ -144,26 +126,21 @@ gr_db_out = 0;
 gr_disp = 0;         // display-smoothed GR value for @gfx (fast attack, slow release)
 dsp_dirty = 0;
 ext_gr_meter = 0;
-ext_tail_size = -1;  // infinite tail — prevent REAPER cutting audio on transport stop
+ext_tail_size = -1;
+// The Play/Rec/Stop gate's mix, faded over 5 ms (it switched between the processed and the dry
+// signal in one sample); from 0, so a new instance fades in (popcheck rig, 2026-10-01).
+de_psm = 0; de_ps_step = 1;
 
 rk_ps_init(200);
 rk_link_init(10, 10, freemem); freemem += 64;
-// The free ReaKit FX share Swing_Media_Transfer (2026-09-30): one theme pick reaches
-// all six, with or without Swing's bridge (rk_theme's standalone painter). The link
-// band moves to EON_RKFX_LINK, above EON_GKPLUS -- 27000000 sat inside EON_PATCHBAY.
-rk_link_set_base(31363300);
+rk_link_set_base(31363300);   // EON_RKFX_LINK
 rk_link_exclude(10);
 
-// ── LR2 coefficient calculation ─────────────────────────────────────────────
-// Sets lr2_b1, lr2_b2, lr2_a0lp/hp, lr2_a1lp/hp, lr2_a2lp/hp
+// ── LR2 coefficients into lr2_b1/b2, lr2_a0..a2 lp/hp ──
 function calc_lr2(fc)
   local(fpi, wc, wc2, wc22, k, k2, k22, wck2, tmpk)
 (
-  // Below Nyquist at any rate: at 32 kHz the 20 kHz cap on the band's top edge,
-  // and even the 16 kHz end of the Frequency knob, reached Nyquist, where tan()
-  // runs away (outside audit, 2026-09-30). 0.47 * srate is above every edge the
-  // knobs can reach at 44.1 kHz and up, so those projects are unchanged.
-  fc = min(fc, 0.47 * srate);
+  fc = min(fc, 0.47 * srate);   // below Nyquist, where tan() runs away (32 kHz projects)
   fpi   = $pi * fc;
   wc    = 2 * fpi;
   wc2   = wc * wc;
@@ -186,11 +163,7 @@ function calc_lr2(fc)
 function recalc_dsp()
   local(fh, fl, att_ms, rel_ms, sr_ratio)
 (
-  // The two switches as the audio side sees them, taken here so they change
-  // only between blocks: recalc_dsp runs in @init, @slider and @block, never
-  // in @gfx. @sample used to read slider6 and slider8 directly, and the GUI
-  // writes those the moment they are clicked, mid-block (outside audit,
-  // 2026-09-28). Kept global on purpose: @block and @sample read them.
+  // the switches as the audio sees them, taken here so they change only between blocks
   de_bp  = slider6 == 0;   // Target: 1 = Bandpass (two crossovers), 0 = Hipass
   de_mon = slider8 == 1;   // Monitor: 1 = output the detected band
 
@@ -201,25 +174,19 @@ function recalc_dsp()
 
   att = pow(10, -0.002 - 3.97772619 * (att_ms / 100));
   rel = pow(10, -3.11  - 1.8698     * (rel_ms / 100));
-  // Scale to sample rate (Liteon coefficients designed for 44.1kHz)
   sr_ratio = 44100 / srate;
   att = 1 - pow(1 - att, sr_ratio);
   rel = 1 - pow(1 - rel, sr_ratio);
   gs_alpha = 1 - pow(1 - 0.1, sr_ratio);
 
-  // Threshold and ratio
   thr = pow(10, 2 * (slider1 / 80 + 1) - 2);
+  thr_inv = 1 / thr;
   rat = (slider4 - 1) / 19;
-
-  // Output gain
   outgain = pow(10, slider9 / 20);
-
-  // Lookahead
+  de_ps_step = 1 / max(0.005 * srate, 1);
   la_len = min(floor(slider7 * 0.001 * srate + 0.5), LA_MAX - 1);
 
-  // Crossover coefficients
-  // Bandpass: two crossovers — fl (low edge of band), fh (high edge)
-  // Hipass:   one crossover at fc
+  // Bandpass: crossovers at the band's low (fl) and high (fh) edges; Hipass: one at the frequency
   de_bp ? (
     fh = min(slider2 + slider2 * slider3 / 2, 20000);
     calc_lr2(fh);
@@ -236,12 +203,9 @@ function recalc_dsp()
   tgt_a0s0hp = lr2_a0hp; tgt_a1s0hp = lr2_a1hp; tgt_a2s0hp = lr2_a2hp;
 );
 
-// ── Fix: clear lookahead buffer to prevent stale audio on project reload ──
-i = 0; loop(LA_MAX, la_buf_l[i] = 0; la_buf_r[i] = 0; i += 1; );
+memset(la_buf_l, 0, LA_MAX); memset(la_buf_r, 0, LA_MAX);
 
-// ── Prime: the rate-derived values, taken at once (no interpolation) so
-// @sample has valid coefficients before the first @block. Called here at load
-// and from @block when the sample rate moves (de_rate_check).
+// the rate-derived values, taken at once (no interpolation): at load and when the rate moves
 function de_prime() (
   recalc_dsp();
   src_b1_s0  = tgt_b1_s0;  src_b2_s0  = tgt_b2_s0;
@@ -268,17 +232,13 @@ rk_link_on_slider();
 rkth_local_off = de_native;   // NATIVE restored (rk_theme's hidden-slider pattern)
 
 @block
-// de_rate_check: with ext_noinit the sample rate can move under a running
-// instance; the time constants, the lookahead length and every crossover
-// coefficient are rate-derived, so take them again at once.
 srate != de_srate_seen ? de_prime();
 atomic_get(dsp_dirty) ? ( recalc_dsp(); atomic_set(dsp_dirty, 0); );
 rk_link_pull() ? ( recalc_dsp(); );
 
-// PDC only in @block
 pdc_delay = la_len; pdc_bot_ch = 0; pdc_top_ch = 2;
 
-// Interpolate all LR2 coefficients across block (Liteon pattern — no coeff math in @sample)
+// the LR2 coefficients glide across the block
 samplesblock > 0 ? (
   d_b1_s0 = (tgt_b1_s0 - src_b1_s0) / samplesblock; b1_s0 = src_b1_s0; src_b1_s0 = tgt_b1_s0;
   d_b2_s0 = (tgt_b2_s0 - src_b2_s0) / samplesblock; b2_s0 = src_b2_s0; src_b2_s0 = tgt_b2_s0;
@@ -300,30 +260,26 @@ samplesblock > 0 ? (
   );
 );
 
-// Capture gr_db_out from peak gain_smooth seen last block, then reset for next block
+// GR meter: the block's peak reduction
 gr_db_out    = -20 * log10(max(gr_peak, 0.000000001));
 ext_gr_meter = min(0, gr_db_out);
-gr_peak      = 1.0;  // reset — @sample will accumulate max(gain_smooth) into this
-rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
+gr_peak      = 1.0;
+rk_ps_update_block();
 
 @sample
 rk_ps_tick();
-// ── Lookahead: write live, read delayed -- ALWAYS, active or not. pdc_delay
-// reports la_len whatever the Play/Rec/Stop toggles say, so the inactive path
-// must delay the dry by the same amount or the track slides early by the
-// lookahead while a toggle is off (Codex, 2026-09-30).
+// the lookahead runs always: pdc_delay reports it whatever the Play/Rec/Stop toggles say
 la_buf_l[la_write] = spl0;
 la_buf_r[la_write] = spl1;
 la_read = (la_write - la_len + LA_MAX) & (LA_MAX - 1);
 dl = la_buf_l[la_read];
 dr = la_buf_r[la_read];
 la_write = (la_write + 1) & (LA_MAX - 1);
-rk_ps_active ? (
+de_psm = rk_ps_active ? min(de_psm + de_ps_step, 1) : max(de_psm - de_ps_step, 0);
+de_psm > 0 ? (
 
-  // ── FFT ring buffer: capture INPUT before any DSP ─────────────────────────
   ring_buf_in[ring_wr] = (spl0 + spl1) * 0.5;
 
-  // ── Step coefficient interpolation ───────────────────────────────────────
   b1_s0 += d_b1_s0; b2_s0 += d_b2_s0;
   a0s0lp += d_a0s0lp; a1s0lp += d_a1s0lp; a2s0lp += d_a2s0lp;
   a0s0hp += d_a0s0hp; a1s0hp += d_a1s0hp; a2s0hp += d_a2s0hp;
@@ -371,30 +327,20 @@ rk_ps_active ? (
     cband_r = s0_hp_r_out;
   );
 
-  // ── Peak detector: max of both channels ───────────────────────────────────
+  // ── peak detector (both channels), gain computer, 0.1-per-sample smoothing ──
   dtl = max(abs(cband_l), abs(cband_r));
   dtl > envl ? envl += att * (dtl - envl) : envl *= (1 - rel);
   envl < cDenorm ? envl = 0;
 
-  // ── Gain computer ─────────────────────────────────────────────────────────
-  envl > thr ? (
-    cgainl = 1 + rat * ((envl / thr) - 1);
-  ) : (
-    cgainl = 1;
-  );
-
-  // Smooth gain to prevent zipper noise
+  cgainl = envl > thr ? 1 + rat * (envl * thr_inv - 1) : 1;
   gain_smooth += (cgainl - gain_smooth) * gs_alpha;
-  // Track peak for GR meter (captured in @block, resets each block)
   gain_smooth > gr_peak ? gr_peak = gain_smooth;
 
-  // ── Apply to DELAYED signal ───────────────────────────────────────────────
+  // ── applied to the DELAYED signal; SC MONITOR outputs the detected band ──
   de_mon ? (
-    // SC MONITOR: output the detected band from live signal
     spl0 = max(-1, min(1, cband_l / gain_smooth * outgain));
     spl1 = max(-1, min(1, cband_r / gain_smooth * outgain));
   ) : (
-    // Normal output: run same crossover on delayed signal, recombine
     dinp_l = dl + cDenorm; dinp_r = dr + cDenorm;
     ds0_lp_l = a0s0lp * dinp_l + ds0_lp_l_xm0;
     ds0_lp_l_xm0 = a1s0lp * dinp_l - b1_s0 * ds0_lp_l + ds0_lp_l_xm1;
@@ -411,7 +357,6 @@ rk_ps_active ? (
     ds0_hp_r_xm1 = a2s0hp * dinp_r - b2_s0 * ds0_hp_r;
     ds0_hp_r *= -1;
     de_bp ? (
-      // Bandpass: low + compressed_band + high
       ds1_lp_l = a0s1lp * ds0_hp_l + ds1_lp_l_xm0;
       ds1_lp_l_xm0 = a1s1lp * ds0_hp_l - b1_s1 * ds1_lp_l + ds1_lp_l_xm1;
       ds1_lp_l_xm1 = a2s1lp * ds0_hp_l - b2_s1 * ds1_lp_l;
@@ -426,25 +371,23 @@ rk_ps_active ? (
       ds1_hp_r_xm0 = a1s1hp * ds0_hp_r - b1_s1 * ds1_hp_r + ds1_hp_r_xm1;
       ds1_hp_r_xm1 = a2s1hp * ds0_hp_r - b2_s1 * ds1_hp_r;
       ds1_hp_r *= -1;
-      // No clamp on the way out (2026-09-28): the old max(-1, min(1, ..)) was an
-      // undocumented 0 dBFS limiter in REAPER's floating-point chain, flattening
-      // a hot transient the de-esser was not even touching. The SC MONITOR path
-      // above keeps its clamp; it is a listening aid, not the signal.
       spl0 = (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain;
       spl1 = (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain;
     ) : (
-      // Hipass: low (unprocessed) + high (compressed)
       spl0 = (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain;
       spl1 = (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain;
     );
   );
 
-  // ── FFT ring buffer: capture OUTPUT after DSP ──────────────────────────
+  de_psm < 1 ? (
+    spl0 = dl + (spl0 - dl) * de_psm;
+    spl1 = dr + (spl1 - dr) * de_psm;
+  );
   ring_buf_out[ring_wr] = (spl0 + spl1) * 0.5;
   ring_wr = (ring_wr + 1) & (fft_size - 1);
 
 ) : (
-  spl0 = dl; spl1 = dr;     // inactive: the dry, delayed by the reported latency
+  spl0 = dl; spl1 = dr;     // bypassed: the dry, delayed by the reported latency
 );
 
 @gfx 540 520
@@ -493,9 +436,11 @@ rk_link_menu_gate();
 // GR display ballistic: fast attack (~1 frame), slow release (~300ms at 60fps)
 gr_db_out < gr_disp ? gr_disp = gr_db_out : gr_disp += (0 - gr_disp) * 0.04;
 
+de_skip = rk_embed_idle(floor(gr_disp * 4 + 0.5));   // the GR bar
 is_embedded = (gfx_ext_flags & 1);
 
 is_embedded ? (
+  !de_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
   gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
   emb_widget_active = 0;
   // ── EMBEDDED ──────────────────────────────────────────────────────────────
@@ -529,6 +474,7 @@ is_embedded ? (
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
+  );   // !de_skip (rk_embed_idle)
 ) : (
   // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
   // clicks on the EMBED, which runs no @gfx pass while a window is open, so this

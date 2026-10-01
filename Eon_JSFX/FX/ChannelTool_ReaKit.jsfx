@@ -61,7 +61,8 @@ import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
 
 @init
-
+// once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
+ext_noinit = 1;
 tau = 2 * $pi;
 cDenorm = pow(10,-30);
 KS = 16; BS = 8;
@@ -607,6 +608,15 @@ function gk_row_ink() (
     gk_row_dark == 2 ? gfx_set(0.96, 0.96, 0.97, 1) : gk_ink(2, 1, 0.85, 0.88, 0.90);
   );
 );
+// rk_embed_idle's `extra` for GainKit's strip: what can change it while no slider
+// moves -- the VU (a quarter dB; its peak hold), the name it prints and GainKit
+// Plus's colour and icon (2026-10-01).
+function gk_idle_extra() local(h, i) (
+  h = floor(max(20 * log10(max(vu_ct.pos, 0.0000001)), -60) * 4 + 0.5)
+    + floor(vu_ct.hold * 200 + 0.5) * 0.37 + gk_pl_col * 0.00000071 + gk_icon_ok * 0.53;
+  i = 0; loop(strlen(#gk_dname), h += str_getchar(#gk_dname, i) * (i + 1.3) * 0.0011; i += 1; );
+  h;
+);
 // The name in a strip's name row (#gk_dname: the typed name, else the track's
 // from REAPER 7.81+ or GainKit Plus), in the FONT row's face: the row's full width, as large as
 // fits up to 16 px, down to 7, then cut with "..". Text only: the track icon
@@ -747,26 +757,15 @@ sm_outgain = 1;
 sm_alpha = 0;
 
 dsp_dirty = 0;
-snap_params = 1;
-ext_tail_size = -1;  // REAPER's silence detection lets the state settle: the HP/LP filters and the smoothers have a tail (-2 = "no state", wrong here; outside audit, 2026-09-30)
+ext_tail_size = -1;   // the filters and smoothers have a tail
 gfx_ext_retina = 1;
-// Render the embedded UI without REAPER's frame/title-bar decoration
-// (REAPER 7.45+, gfx_ext_flags 0x100). Must be set in @init, not @gfx.
-gfx_ext_flags |= 0x400; // 0x400 = no MCP hover tooltip (7.79+; older ignores)
-// 0x100 now follows the THEME panel's NAME BAR row (slider17), default
-// 0 = borderless, house rule 1 unchanged. REAPER documents 0x100 as an
-// @init decision, so it is applied HERE from the restored value; the
-// re-apply in the @gfx tail is what makes the row take effect without a
-// reload (measured both ways on 7.79 and 7.80).
-// ⚠️INVERTED SENSE: the row ON (bar SHOWN) means 0x100 CLEARED.
+gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
+// 0x100 follows the NAME BAR row (slider17), re-applied in the @gfx tail. ⚠️ row ON = 0x100 CLEARED.
 ct_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
 
 rk_ps_init(200);
 rk_link_init(15, 15, freemem);
-// We now share Swing's gmem (for the One-Rack theme band) — relocate the
-// link-group blocks WELL above Swing's reserved bands (its highest is ~26.17M)
-// so they never collide with the kit header / per-pad meta. Region = [base..base+1027].
-rk_link_set_base(31360000);   // EON_RKFX_LINK (27000000 sat inside EON_PATCHBAY, 2026-09-30)
+rk_link_set_base(31360000);   // EON_RKFX_LINK
 rk_link_exclude(15);
 freemem += 64;
 
@@ -774,11 +773,8 @@ freemem += 64;
 function recalc_dsp()
   local(omega, c, s, alpha, a0, fc)
 (
-  // HP biquad coefficients — true 4th-order Butterworth (2 cascaded biquads)
-  // Butterworth pole Q values: Q1=0.5412 (outer pair), Q2=1.3066 (inner pair)
-  // On/off is a TARGET: @sample fades the filter in and out (hp_mix) and
-  // clears its state when it starts from fully off. Switched off, the
-  // coefficients keep their last values, so the fade-out is the same filter.
+  // HP: 4th-order Butterworth, two biquads (Q 0.5412, 1.3066). On/off is a target @sample fades
+  // (hp_mix); switched off, the coefficients stay, so the fade-out is the same filter.
   hp_tgt = slider1 > 21;
   hp_tgt ? (
     fc = min(slider1, srate * 0.45);
@@ -802,8 +798,8 @@ function recalc_dsp()
     hpa2_s2 = (1 - alpha)       / a0;
   );
 
-  // LP biquad coefficients — true 4th-order Butterworth (2 cascaded biquads)
-  lp_tgt = slider2 < 19999;   // a target, faded in @sample like hp_tgt
+  // LP: the same, faded like the HP
+  lp_tgt = slider2 < 19999;
   lp_tgt ? (
     fc = max(slider2, 20);
     fc = min(fc, srate * 0.45);
@@ -827,70 +823,49 @@ function recalc_dsp()
     lpa2_s2 = (1 - alpha)       / a0;
   );
 
-  // Gain targets (smoothed per-sample via one-pole)
   trim_l_tgt = pow(10, slider3 / 20);
   trim_r_tgt = pow(10, slider4 / 20);
   out_tgt    = pow(10, slider7 / 20);
 
-  // Smoothing coefficient (~5ms one-pole)
   srate > 0 ? sm_alpha = 1 - exp(-1 / (0.005 * srate));
 
-  // Format target, mapped exactly as the old switch read slider12 (a stray
-  // fraction lands where it always did), and the 5 ms linear step every
-  // switch fade uses: Format, HP and LP (see @sample). No sample rate yet: a
-  // step of 1, i.e. switch at once as before, never a step of 0 that would
-  // leave every switch unfinished.
+  // the Format target, and the 5 ms linear step of every fade (1 = at once while srate is 0)
   fmt_tgt = slider12 >= 2 ? (slider12 == 2 ? 2 : 3) : (slider12 == 1 ? 1 : 0);
   fade_step = srate > 0 ? 1 / (0.005 * srate) : 1;
 );
 
 recalc_dsp();
-// Snap smoothed values to targets on init (no ramp on load)
-sm_trim_l = trim_l_tgt; sm_trim_r = trim_r_tgt;
-sm_outgain = out_tgt;
-hp_mix = hp_tgt; lp_mix = lp_tgt; hp_run = lp_run = 0;
-fw0 = fmt_tgt == 0; fw1 = fmt_tgt == 1; fw2 = fmt_tgt == 2; fw3 = fmt_tgt == 3;
+// Everything starts neutral and eases to its setting over 5 ms: a GainKit inserted with its gain,
+// a filter or MONO already set used to switch in one sample -- a click (popcheck rig, 2026-10-01).
+hp_mix = lp_mix = 0; hp_run = lp_run = 0;
+fw0 = 1; fw1 = fw2 = fw3 = 0;
+gk_psm = 0;   // the play-state gate's mix (rk_ps_active), faded the same way
 
-// 2.1's embedded VIEW mode (0 Meter / 1 Filters / 2 Full). Retired in 2.2.0
-// (the STRIP row, slider18, is its successor); the value is still read and
-// written by @serialize because that blob is positional (slider16, its dirty
-// counter, stays declared for the same kind of reason: old automation points at it).
+// 2.1's retired VIEW mode: still in the positional @serialize blob
 gk_view_seen ? 0 : ( gk_view = 0; gk_view_seen = 1; );
 
 @slider
 recalc_dsp();
 rk_link_on_slider();
-// NATIVE (the THEME panel's first row) is per instance and lives on slider20,
-// rk_theme's hidden-slider pattern (its header; 1175 does the same): restored
-// here, written back after the cluster call in @gfx. Without it a NATIVE pick
-// did not survive a reload (outside audit, 2026-09-28).
-rkth_local_off = ct_native;
+rkth_local_off = ct_native;   // NATIVE, rk_theme's hidden-slider pattern
 
 @block
+srate != gk_sr_seen ? ( gk_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
 rk_link_pull() ? atomic_set(dsp_dirty, 1);
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp() );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
 @sample
-snap_params ? (
-  sm_trim_l = trim_l_tgt; sm_trim_r = trim_r_tgt;
-  sm_outgain = out_tgt;
-  hp_mix = hp_tgt; lp_mix = lp_tgt;
-  fw0 = fmt_tgt == 0; fw1 = fmt_tgt == 1; fw2 = fmt_tgt == 2; fw3 = fmt_tgt == 3;
-  snap_params = 0;
-);
-
 rk_ps_tick();
-rk_ps_active ? (
+// the Play/Rec/Stop gate fades over 5 ms too (it switched the processing in one sample)
+gk_psm = rk_ps_active ? min(gk_psm + fade_step, 1) : max(gk_psm - fade_step, 0);
+gk_psm > 0 ? (
+  gk_d0 = spl0; gk_d1 = spl1;
 
-  // ── HP Filter (2 cascaded biquad stages, true 4th-order Butterworth) ────
-  // On and off fade over 5 ms (2.2.0): an instant switch jumped by everything
-  // the filter was removing, which ticked when its badge reset it mid-play.
-  // Fully on it is the same filter as ever; fully off it is not run at all.
+  // ── HP: fades in and out over 5 ms; fully off it is not run ──
   hp_mix = hp_tgt ? min(hp_mix + fade_step, 1) : max(hp_mix - fade_step, 0);
   hp_mix > 0 ? (
-    !hp_run ? (
-      // Starting from fully off: clear the stale state, as enabling always did
+    !hp_run ? (   // starting from fully off: clear the stale state
       hp_x1l_s1 = hp_x2l_s1 = hp_y1l_s1 = hp_y2l_s1 = 0;
       hp_x1l_s2 = hp_x2l_s2 = hp_y1l_s2 = hp_y2l_s2 = 0;
       hp_x1r_s1 = hp_x2r_s1 = hp_y1r_s1 = hp_y2r_s1 = 0;
@@ -920,8 +895,7 @@ rk_ps_active ? (
     );
   ) : ( hp_run = 0; );
 
-  // ── 3. LP Filter (2 cascaded biquad stages, true 4th-order Butterworth) ─
-  // Faded on and off exactly like the HP above.
+  // ── LP: faded like the HP ──
   lp_mix = lp_tgt ? min(lp_mix + fade_step, 1) : max(lp_mix - fade_step, 0);
   lp_mix > 0 ? (
     !lp_run ? (
@@ -954,24 +928,16 @@ rk_ps_active ? (
     );
   ) : ( lp_run = 0; );
 
-  // ── Smooth gain/trim parameters (~5ms one-pole) ─────────────────────────
+  // ── trims and output gain, 5 ms one-pole ──
   sm_trim_l += (trim_l_tgt - sm_trim_l) * sm_alpha;
   sm_trim_r += (trim_r_tgt - sm_trim_r) * sm_alpha;
   sm_outgain += (out_tgt - sm_outgain) * sm_alpha;
 
-  // ── L/R Trim ────────────────────────────────────────────────────────────
   spl0 *= sm_trim_l;
   spl1 *= sm_trim_r;
 
-  // ── Format / MS Processing ──────────────────────────────────────────────
-  // Every change crossfades over 5 ms (2.2.0): an instant switch jumped each
-  // channel (by half the L-R difference into mono, by far more into or out of
-  // M/S), which ticked when MONO was pressed or the M/S badge reset mid-play.
-  // Each format has a weight that ramps toward 1 for the chosen one and 0 for
-  // the rest; mid-fade the output is their weighted mix, normalised, so a
-  // switch that changes its mind half way stays smooth. The weights never sum
-  // above 1, so the chosen one reaches 1 only once the others are 0: settled,
-  // the output is that format's own math, exactly as before.
+  // ── Format: each format's weight ramps over 5 ms; mid-fade the output is their normalised mix,
+  // settled it is that format's own math ──
   fw0 = fmt_tgt == 0 ? min(fw0 + fade_step, 1) : max(fw0 - fade_step, 0);
   fw1 = fmt_tgt == 1 ? min(fw1 + fade_step, 1) : max(fw1 - fade_step, 0);
   fw2 = fmt_tgt == 2 ? min(fw2 + fade_step, 1) : max(fw2 - fade_step, 0);
@@ -999,17 +965,15 @@ rk_ps_active ? (
     spl1 = (spl1 * fw0 + mono_out * fw1 + side_tmp * (fw2 + 2 * fw3)) / fws;
   );
 
-  // ── Output Gain ──────────────────────────────────────────────────────────
   spl0 *= sm_outgain;
   spl1 *= sm_outgain;
+  gk_psm < 1 ? (
+    spl0 = gk_d0 + (spl0 - gk_d0) * gk_psm;
+    spl1 = gk_d1 + (spl1 - gk_d1) * gk_psm;
+  );
 );
 
-// ── 12. Feed the meters ───────────────────────────────────────────────
-// The VU reads what LEAVES the plugin, processed or passed through. Fed only
-// while the play-state gate was open (until 2026-09-25), it froze mid-swing
-// when processing was switched off for a transport state, instead of falling
-// to rest or showing the dry audio that was actually playing.
-rk_ps_active ? meter_process_sample(spl0, spl1);
+// the VU reads what leaves the plugin, processed or passed through
 vu_ct.rk_vu_sample((spl0 + spl1) * 0.5);
 
 @gfx 450 540
@@ -1087,9 +1051,11 @@ gk_bg_lum = theme_on ? rkth_band(0) * 0.299 + rkth_band(1) * 0.587 + rkth_band(2
 // the reference (1 = 0 VU) ──
 vu_mono_db = 20 * log10(max(vu_ct.pos, 0.0000001));
 
+gk_skip = rk_embed_idle(gk_idle_extra());   // the VU, the name, GainKit Plus
 is_embedded = (gfx_ext_flags & 1);
 
 is_embedded ? (
+  !gk_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
   // ════════════════════════════════════════════════════════════════════════
   // EMBEDDED — the meter on top, the GAIN knob centred under it as the focus,
   // the Format key (STEREO / MONO) directly below the knob (the user,
@@ -1345,6 +1311,7 @@ is_embedded ? (
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
 
+  );   // !gk_skip (rk_embed_idle)
 ) : (
   // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes
   // clicks on the EMBED, which runs no @gfx pass while a window is open, so this
