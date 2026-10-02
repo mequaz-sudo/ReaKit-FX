@@ -3,7 +3,7 @@
   <category name="FX">
     <reapack name="ReaKit FX" type="effect" desc="ReaKit FX - GainKit, Saturation, 3-Band EQ, DDC, De-Esser and Stereo Width: free effects with EON Studios interfaces (the ReaKit library)">
       <metadata>
-        <description><![CDATA[Six free effects with EON Studios interfaces. Saturation, 3-Band EQ and DDC (Digital Drum Compressor) by Michael Gruhn (LOSER) and a De-Esser built on Lubomir I. Ivanov's (Liteon), free as their authors released them, with their original terms and credits (LICENSE.md); and EON's own GainKit (gain staging on a VU) and Stereo Width (MIT). The shared interface library that comes with them is ReaKit (MIT).]]></description>
+        <description><![CDATA[Six free effects with EON Studios interfaces. Saturation, 3-Band EQ and DDC (Digital Drum Compressor) by Michael Gruhn (LOSER) and a De-Esser built on Lubomir I. Ivanov's (Liteon), free as their authors released them, with their original terms and credits (LICENSE.md); and EON's own GainKit (gain staging on a VU, one meter or two) and Stereo Width (MIT). The shared interface library that comes with them is ReaKit (MIT).]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-09-21T20:05:26Z">
