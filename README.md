@@ -236,15 +236,15 @@ WIDTH knob at the bottom of the channel.
    https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
    ```
 
-3. **Extensions > ReaPack > Browse packages.** Type **ReaKit**, click **Select all**, then **Actions >
-   Install/update selection**. Do the same for **js_ReaScriptAPI**, and for **ReaImGui** (the one called
-   "ReaImGui: ReaScript binding for Dear ImGui"): EON Floatter needs both. Click **Apply**, then restart
-   REAPER.
-4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run**. GainKit Plus and
+3. **Extensions > ReaPack > Browse packages.** Type **ReaKit**, check that exactly three packages show, click **Select
+   all**, then **Actions > Install/update selection**. Then type **js_ReaScriptAPI**, click that one package
+   and install it the same way. Then type **ReaImGui**, click only the one called "ReaImGui: ReaScript
+   binding for Dear ImGui" and install it: EON Floatter needs both. Click **Apply**, then restart REAPER.
+4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run/close**. GainKit Plus and
    EON Floatter start with REAPER from then on, and new copies of the six open in the mixer strip. It asks
    once whether to make the mixer strips redraw faster: say yes. Floatter's panel opens too: click Later
    and close it.
-5. Add a track, click its **FX** button, type **GainKit** and add `JS: EON: GainKit`. Close the effects
+5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit`. Close the effects
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
    `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
