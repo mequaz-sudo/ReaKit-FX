@@ -6,10 +6,12 @@ local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
 -- "GainKit" in its name does not. A REAPER that cannot tell an FX's file finds none: these scripts
--- delete, bypass and move what they find, so they never guess from a name.
+-- delete, bypass and move what they find, so they never guess from a name. The file NAME must match
+-- exactly: a plugin called ChannelTool_ReaKit_v2.jsfx, or one in a folder named after GainKit's
+-- file, is another plugin (outside audit, 2026-10-02).
 local function is_gainkit(tr, f)
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
-  return ok and id:lower():find("channeltool_reakit", 1, true) ~= nil
+  return ok and (id:match("[^/\\]+$") or ""):lower() == "channeltool_reakit.jsfx"
 end
 
 r.Undo_BeginBlock()

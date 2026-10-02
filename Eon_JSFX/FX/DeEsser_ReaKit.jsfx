@@ -121,6 +121,7 @@ ds1_lp_r_xm0 = ds1_lp_r_xm1 = 0;
 ds1_hp_r_xm0 = ds1_hp_r_xm1 = 0;
 
 la_write = 0; la_len = 0;
+la_tap = la_tap0 = 0; la_xf = 1; la_xf_step = 1;   // the read point @sample uses, and its fade
 envl = 0; cgainl = 1; gain_smooth = 1.0;
 gr_peak = 1.0;       // per-block peak of gain_smooth (reset each @block)
 gr_db_out = 0;
@@ -186,6 +187,7 @@ function recalc_dsp()
   outgain = pow(10, slider9 / 20);
   de_ps_step = 1 / max(0.005 * srate, 1);
   la_len = min(floor(slider7 * 0.001 * srate + 0.5), LA_MAX - 1);
+  la_xf_step = 1 / max(0.01 * srate, 1);   // @sample fades to a new la_len over 10 ms
 
   // Bandpass: crossovers at the band's low (fl) and high (fh) edges; Hipass: one at the frequency
   de_bp ? (
@@ -223,6 +225,7 @@ function de_prime() (
   a0s1hp = src_a0s1hp; a1s1hp = src_a1s1hp; a2s1hp = src_a2s1hp;
   d_b1_s0=d_b2_s0=d_a0s0lp=d_a1s0lp=d_a2s0lp=d_a0s0hp=d_a1s0hp=d_a2s0hp=0;
   d_b1_s1=d_b2_s1=d_a0s1lp=d_a1s1lp=d_a2s1lp=d_a0s1hp=d_a1s1hp=d_a2s1hp=0;
+  de_la_snap = 1;   // the first sample takes the lookahead as it is then (the saved one at load), no fade
   de_srate_seen = srate;
 );
 de_prime();
@@ -274,12 +277,24 @@ de_native != rkth_local_off ? ( de_native = rkth_local_off; slider_automate(de_n
 
 @sample
 rk_ps_tick();
-// the lookahead runs always: pdc_delay reports it whatever the Play/Rec/Stop toggles say
+// the lookahead runs always: pdc_delay reports it whatever the Play/Rec/Stop toggles say. A change of
+// Lookahead fades from the old read point to the new over 10 ms, one change at a time, so a drag
+// follows in 10 ms steps (as DDC). It used to jump to the new read point: a click on every move
+// (0.74 on a 220 Hz tone at 0.5, outside audit 2026-10-02; rk_vu_audit/lookahead_run.ps1).
 la_buf_l[la_write] = spl0;
 la_buf_r[la_write] = spl1;
-la_read = (la_write - la_len + LA_MAX) & (LA_MAX - 1);
-dl = la_buf_l[la_read];
-dr = la_buf_r[la_read];
+de_la_snap ? ( la_tap = la_tap0 = la_len; la_xf = 1; de_la_snap = 0; );
+la_xf >= 1 && la_tap != la_len ? ( la_tap0 = la_tap; la_tap = la_len; la_xf = 0; );
+la_read = (la_write - la_tap + LA_MAX) & (LA_MAX - 1);
+la_xf < 1 ? (
+  la_read0 = (la_write - la_tap0 + LA_MAX) & (LA_MAX - 1);
+  dl = la_buf_l[la_read0] + (la_buf_l[la_read] - la_buf_l[la_read0]) * la_xf;
+  dr = la_buf_r[la_read0] + (la_buf_r[la_read] - la_buf_r[la_read0]) * la_xf;
+  la_xf = min(la_xf + la_xf_step, 1);
+) : (
+  dl = la_buf_l[la_read];
+  dr = la_buf_r[la_read];
+);
 la_write = (la_write + 1) & (LA_MAX - 1);
 de_psm = rk_ps_active ? min(de_psm + de_ps_step, 1) : max(de_psm - de_ps_step, 0);
 de_psm > 0 ? (
@@ -342,47 +357,50 @@ de_psm > 0 ? (
   gain_smooth += (cgainl - gain_smooth) * gs_alpha;
   gain_smooth > gr_peak ? gr_peak = gain_smooth;
 
-  // ── applied to the DELAYED signal; SC MONITOR outputs the detected band ──
+  // ── applied to the DELAYED signal; SC MONITOR plays the detected band from that same delayed path,
+  // so it is as late as pdc_delay says. It played the LIVE band, up to 5 ms ahead of the reported
+  // latency (outside audit 2026-10-02); and the delayed filters, idle while it was on, came back
+  // cold when it was turned off. They run in both now.
+  dinp_l = dl + cDenorm; dinp_r = dr + cDenorm;
+  ds0_lp_l = a0s0lp * dinp_l + ds0_lp_l_xm0;
+  ds0_lp_l_xm0 = a1s0lp * dinp_l - b1_s0 * ds0_lp_l + ds0_lp_l_xm1;
+  ds0_lp_l_xm1 = a2s0lp * dinp_l - b2_s0 * ds0_lp_l;
+  ds0_hp_l = a0s0hp * dinp_l + ds0_hp_l_xm0;
+  ds0_hp_l_xm0 = a1s0hp * dinp_l - b1_s0 * ds0_hp_l + ds0_hp_l_xm1;
+  ds0_hp_l_xm1 = a2s0hp * dinp_l - b2_s0 * ds0_hp_l;
+  ds0_hp_l *= -1;
+  ds0_lp_r = a0s0lp * dinp_r + ds0_lp_r_xm0;
+  ds0_lp_r_xm0 = a1s0lp * dinp_r - b1_s0 * ds0_lp_r + ds0_lp_r_xm1;
+  ds0_lp_r_xm1 = a2s0lp * dinp_r - b2_s0 * ds0_lp_r;
+  ds0_hp_r = a0s0hp * dinp_r + ds0_hp_r_xm0;
+  ds0_hp_r_xm0 = a1s0hp * dinp_r - b1_s0 * ds0_hp_r + ds0_hp_r_xm1;
+  ds0_hp_r_xm1 = a2s0hp * dinp_r - b2_s0 * ds0_hp_r;
+  ds0_hp_r *= -1;
+  de_bp ? (
+    ds1_lp_l = a0s1lp * ds0_hp_l + ds1_lp_l_xm0;
+    ds1_lp_l_xm0 = a1s1lp * ds0_hp_l - b1_s1 * ds1_lp_l + ds1_lp_l_xm1;
+    ds1_lp_l_xm1 = a2s1lp * ds0_hp_l - b2_s1 * ds1_lp_l;
+    ds1_hp_l = a0s1hp * ds0_hp_l + ds1_hp_l_xm0;
+    ds1_hp_l_xm0 = a1s1hp * ds0_hp_l - b1_s1 * ds1_hp_l + ds1_hp_l_xm1;
+    ds1_hp_l_xm1 = a2s1hp * ds0_hp_l - b2_s1 * ds1_hp_l;
+    ds1_hp_l *= -1;
+    ds1_lp_r = a0s1lp * ds0_hp_r + ds1_lp_r_xm0;
+    ds1_lp_r_xm0 = a1s1lp * ds0_hp_r - b1_s1 * ds1_lp_r + ds1_lp_r_xm1;
+    ds1_lp_r_xm1 = a2s1lp * ds0_hp_r - b2_s1 * ds1_lp_r;
+    ds1_hp_r = a0s1hp * ds0_hp_r + ds1_hp_r_xm0;
+    ds1_hp_r_xm0 = a1s1hp * ds0_hp_r - b1_s1 * ds1_hp_r + ds1_hp_r_xm1;
+    ds1_hp_r_xm1 = a2s1hp * ds0_hp_r - b2_s1 * ds1_hp_r;
+    ds1_hp_r *= -1;
+  );
   de_mon ? (
-    spl0 = max(-1, min(1, cband_l / gain_smooth * outgain));
-    spl1 = max(-1, min(1, cband_r / gain_smooth * outgain));
+    spl0 = max(-1, min(1, (de_bp ? ds1_lp_l : ds0_hp_l) / gain_smooth * outgain));
+    spl1 = max(-1, min(1, (de_bp ? ds1_lp_r : ds0_hp_r) / gain_smooth * outgain));
+  ) : de_bp ? (
+    spl0 = (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain;
+    spl1 = (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain;
   ) : (
-    dinp_l = dl + cDenorm; dinp_r = dr + cDenorm;
-    ds0_lp_l = a0s0lp * dinp_l + ds0_lp_l_xm0;
-    ds0_lp_l_xm0 = a1s0lp * dinp_l - b1_s0 * ds0_lp_l + ds0_lp_l_xm1;
-    ds0_lp_l_xm1 = a2s0lp * dinp_l - b2_s0 * ds0_lp_l;
-    ds0_hp_l = a0s0hp * dinp_l + ds0_hp_l_xm0;
-    ds0_hp_l_xm0 = a1s0hp * dinp_l - b1_s0 * ds0_hp_l + ds0_hp_l_xm1;
-    ds0_hp_l_xm1 = a2s0hp * dinp_l - b2_s0 * ds0_hp_l;
-    ds0_hp_l *= -1;
-    ds0_lp_r = a0s0lp * dinp_r + ds0_lp_r_xm0;
-    ds0_lp_r_xm0 = a1s0lp * dinp_r - b1_s0 * ds0_lp_r + ds0_lp_r_xm1;
-    ds0_lp_r_xm1 = a2s0lp * dinp_r - b2_s0 * ds0_lp_r;
-    ds0_hp_r = a0s0hp * dinp_r + ds0_hp_r_xm0;
-    ds0_hp_r_xm0 = a1s0hp * dinp_r - b1_s0 * ds0_hp_r + ds0_hp_r_xm1;
-    ds0_hp_r_xm1 = a2s0hp * dinp_r - b2_s0 * ds0_hp_r;
-    ds0_hp_r *= -1;
-    de_bp ? (
-      ds1_lp_l = a0s1lp * ds0_hp_l + ds1_lp_l_xm0;
-      ds1_lp_l_xm0 = a1s1lp * ds0_hp_l - b1_s1 * ds1_lp_l + ds1_lp_l_xm1;
-      ds1_lp_l_xm1 = a2s1lp * ds0_hp_l - b2_s1 * ds1_lp_l;
-      ds1_hp_l = a0s1hp * ds0_hp_l + ds1_hp_l_xm0;
-      ds1_hp_l_xm0 = a1s1hp * ds0_hp_l - b1_s1 * ds1_hp_l + ds1_hp_l_xm1;
-      ds1_hp_l_xm1 = a2s1hp * ds0_hp_l - b2_s1 * ds1_hp_l;
-      ds1_hp_l *= -1;
-      ds1_lp_r = a0s1lp * ds0_hp_r + ds1_lp_r_xm0;
-      ds1_lp_r_xm0 = a1s1lp * ds0_hp_r - b1_s1 * ds1_lp_r + ds1_lp_r_xm1;
-      ds1_lp_r_xm1 = a2s1lp * ds0_hp_r - b2_s1 * ds1_lp_r;
-      ds1_hp_r = a0s1hp * ds0_hp_r + ds1_hp_r_xm0;
-      ds1_hp_r_xm0 = a1s1hp * ds0_hp_r - b1_s1 * ds1_hp_r + ds1_hp_r_xm1;
-      ds1_hp_r_xm1 = a2s1hp * ds0_hp_r - b2_s1 * ds1_hp_r;
-      ds1_hp_r *= -1;
-      spl0 = (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain;
-      spl1 = (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain;
-    ) : (
-      spl0 = (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain;
-      spl1 = (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain;
-    );
+    spl0 = (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain;
+    spl1 = (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain;
   );
 
   de_psm < 1 ? (

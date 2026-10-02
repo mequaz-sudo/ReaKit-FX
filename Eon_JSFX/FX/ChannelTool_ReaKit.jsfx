@@ -542,8 +542,11 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
 // Cheap when nothing changed: one gmem read (GEN) per pass. On a change the
 // name, the colour and the icon path are taken; the icon is (re)loaded only
 // when its path changed. #gk_dname is what the face prints: the typed name
-// when there is one, else the track's. Bytes outside printable ASCII are
-// dropped (the script folds names to ASCII first). Defined BEFORE its callers
+// when there is one, else the track's. The name and the icon path arrive as
+// UTF-8 bytes; control bytes are dropped. They were cut to printable ASCII on
+// both sides, so an accented letter vanished from a name and an icon in a
+// folder with one never loaded, REAPER's own icons included when the Windows
+// user folder has one (outside audit, 2026-10-02). Defined BEFORE its callers
 // (gk_name_strip, the @gfx body): EEL2 resolves calls at definition time.
 // REAPER 7.81+ hands @gfx the track's own name through get_host_placement's
 // third argument, UTF-8 and "Track 2" for an unnamed one, as GetTrackName (the
@@ -551,10 +554,10 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
 // master gets "" there and keeps the script's project name. An older REAPER
 // compiles the call and leaves the string alone ("": the script's name). Probed
 // on 7.81 and 7.79: .dev_tests/rk_vu_audit/hostname_probe.lua (2026-09-30).
-function gk_plus_read() local(t, b, g, n, i, c, p, fl) (
+function gk_plus_read() local(t, b, g, n, i, j, c, p, fl) (
   strcpy(#gk_hname, "");
   t = get_host_placement(p, fl, #gk_hname);
-  n = strlen(#gk_hname); i = 0; c = 0;          // at most GK_NAME_MAX letters, as the script sends
+  n = strlen(#gk_hname); i = 0; c = 0;          // at most GK_NAME_MAX letters (the script's name: GK_NAME_MAX BYTES, the slot's cells, never cut inside a letter)
   while (i < n && (c < GK_NAME_MAX || (str_getchar(#gk_hname, i, 'cu') & 0xC0) == 0x80)) (
     (str_getchar(#gk_hname, i, 'cu') & 0xC0) != 0x80 ? c += 1;
     i += 1;
@@ -569,19 +572,21 @@ function gk_plus_read() local(t, b, g, n, i, c, p, fl) (
       g > 0 ? (
         gk_pl_col = gmem[b + GK_PLUS_COLOR] | 0;
         n = min(gmem[b + GK_PLUS_NAMELEN] | 0, GK_NAME_MAX);
-        strcpy(#gk_tname, ""); i = 0;
+        strcpy(#gk_tname, ""); i = 0; j = 0;
         loop(n,
           c = gmem[b + GK_PLUS_NAME + i] | 0;
-          (c >= 32 && c < 127) ? ( sprintf(#gk_ne_ch, "%c", c); strcat(#gk_tname, #gk_ne_ch); );
+          (c >= 32 && c != 127 && c <= 255) ? ( str_setchar(#gk_tname, j, c, 'cu'); j += 1; );
           i += 1;
         );
+        str_setlen(#gk_tname, j);
         n = min(gmem[b + GK_PLUS_ICONLEN] | 0, 259);
-        strcpy(#gk_ipath_new, ""); i = 0;
+        strcpy(#gk_ipath_new, ""); i = 0; j = 0;
         loop(n,
           c = gmem[b + GK_PLUS_ICON + i] | 0;
-          (c >= 32 && c < 127) ? ( sprintf(#gk_ne_ch, "%c", c); strcat(#gk_ipath_new, #gk_ne_ch); );
+          (c >= 32 && c != 127 && c <= 255) ? ( str_setchar(#gk_ipath_new, j, c, 'cu'); j += 1; );
           i += 1;
         );
+        str_setlen(#gk_ipath_new, j);
         strcmp(#gk_ipath_new, #gk_ipath) != 0 ? (
           strcpy(#gk_ipath, #gk_ipath_new);
           gk_icon_ok = strlen(#gk_ipath) > 0 ? (gfx_loadimg(GK_IMG_ICON, #gk_ipath) >= 0) : 0;

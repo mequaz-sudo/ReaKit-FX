@@ -11,8 +11,8 @@
 --
 -- Protocol: the EON_GKPLUS band in the Swing_Media_Transfer shared-memory segment (declared in
 -- .refs/gmem_regions_supplement.tsv): one 320-cell slot per track index, +0 GEN written LAST,
--- +1 colour (r*65536 + g*256 + b + 1; 0 = none), +2 name length, +3.. name (24 chars),
--- +27 icon path length, +28.. icon path (absolute, <= 259 chars). GainKit reads its own slot by
+-- +1 colour (r*65536 + g*256 + b + 1; 0 = none), +2 name length, +3.. name (24 bytes, UTF-8),
+-- +27 icon path length, +28.. icon path (absolute, <= 259 bytes). GainKit reads its own slot by
 -- the track index REAPER gives it (get_host_placement()); the master, whose index is -1, reads
 -- slot 512, after the tracks'. MIT, EON Studios, 2026.
 local r = reaper
@@ -45,15 +45,19 @@ r.gmem_attach("Swing_Media_Transfer")
 
 local last, gen = {}, {}
 
--- the JSFX prints 7-bit ASCII only; anything else (accents, symbols) is dropped, not mangled
-local function fold(s) return (tostring(s or ""):gsub("[^\32-\126]", "")) end
+-- names and icon paths go as UTF-8 bytes, control bytes dropped. They were folded to printable ASCII,
+-- so accents vanished from names and an icon in a folder with one never loaded, REAPER's own icons
+-- included when the Windows user folder has one (outside audit, 2026-10-02).
+local function clean(s) return (tostring(s or ""):gsub("[\0-\31\127]", "")) end   -- fixed bytes, not %c (locale-dependent)
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
 -- "GainKit" in its name does not. A REAPER that cannot tell an FX's file finds none: these scripts
--- delete, bypass and move what they find, so they never guess from a name.
+-- delete, bypass and move what they find, so they never guess from a name. The file NAME must match
+-- exactly: a plugin called ChannelTool_ReaKit_v2.jsfx, or one in a folder named after GainKit's
+-- file, is another plugin (outside audit, 2026-10-02).
 local function is_gainkit(tr, f)
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
-  return ok and id:lower():find("channeltool_reakit", 1, true) ~= nil
+  return ok and (id:match("[^/\\]+$") or ""):lower() == "channeltool_reakit.jsfx"
 end
 
 -- A GainKit anywhere on the track, FX containers included: REAPER 7 reaches a container's items
@@ -86,7 +90,7 @@ end
 -- the icon as REAPER keeps it: a full path for a file you chose, a bare name for one of its own
 local function icon_path(tr)
   local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
-  icon = fold(icon)
+  icon = clean(icon)
   if icon == "" then return "" end
   if icon:match("^%a:[\\/]") or icon:match("^[\\/]") then return icon end
   local res = r.GetResourcePath()
@@ -94,8 +98,10 @@ local function icon_path(tr)
   return res .. "/Data/track_icons/" .. icon
 end
 
+-- at most cap bytes, never ending inside a UTF-8 letter (a continuation byte is 10xxxxxx)
 local function write_str(base, lenidx, chidx, s, cap)
   local n = math.min(#s, cap)
+  while n > 0 and n < #s and s:byte(n + 1) >= 0x80 and s:byte(n + 1) < 0xC0 do n = n - 1 end
   r.gmem_write(base + lenidx, n)
   for i = 1, n do r.gmem_write(base + chidx + i - 1, s:byte(i)) end
 end
@@ -103,7 +109,7 @@ end
 local function publish(idx, tr, name)
   local base = BASE + idx * STRIDE
   if not name then name = select(2, r.GetTrackName(tr)) end
-  name = fold(name)
+  name = clean(name)
   local col, packed = r.GetTrackColor(tr), 0
   if col ~= 0 then
     local rr, gg, bb = r.ColorFromNative(col)
@@ -257,8 +263,8 @@ end
 local function is_six(tr, f)
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
   if not ok or id == "" then return false end
-  id = id:lower()
-  for _, s in ipairs(SIX) do if id:find(s:lower(), 1, true) then return true end end
+  local name = (id:match("[^/\\]+$") or ""):lower()   -- the file name, exactly (as is_gainkit)
+  for _, s in ipairs(SIX) do if name == s:lower() then return true end end
   return false
 end
 

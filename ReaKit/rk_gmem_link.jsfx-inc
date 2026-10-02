@@ -6,8 +6,8 @@
 //
 // Sync model (v3): Tukan-style old-value comparison (ref: tk_lib.jsfx-inc
 // by Tukan / demian d). No counter or snapshot array for slider sync.
-// Each instance compares slider(i) against rk_link_prev[i] every @gfx
-// frame to decide whether to push or pull. Play-state still uses a
+// Each instance compares slider(i) against rk_link_prev[i] every @block
+// to decide whether to push or pull. Play-state still uses a
 // counter since it is UI-driven and not a REAPER slider.
 //
 // GMem layout (per-group, base = (g-1)*64, g = 1..16):
@@ -35,12 +35,13 @@
 // their leftover values (outside audits; measured, .dev_tests/rk_vu_audit/
 // linkstale_run.ps1). So an instance ENTERING a group (loaded with one saved, or
 // joined from the menu, automation or the API) trusts nothing in the block until
-// it has watched the heartbeat for rk_link_watch_s: if it moved, a member is
-// running and the instance adopts the group's values; if not, the instance seeds
-// the group with its own. A member that finds the seed count changed under it (a
-// project in another tab seeded the same group while its own did not run) watches
-// again, so each tab keeps its own values. Two tabs that run at the same time
-// share their groups (gmem is per process, wiki 5.7).
+// it has watched the heartbeat for rk_link_watch_s (of real time, or of audio it
+// processed, whichever comes first, so an offline render does not outrun it): if
+// it moved, a member is running and the instance adopts the group's values; if
+// not, the instance seeds the group with its own. A member that finds the seed
+// count changed under it (a project in another tab seeded the same group while
+// its own did not run) watches again, so each tab keeps its own values. Two tabs
+// that run at the same time share their groups (gmem is per process, wiki 5.7).
 // Quick-link scratch (global, outside group blocks):
 //   [1024]               — slider index
 //   [1025]               — value
@@ -67,11 +68,13 @@
 //   @slider:
 //     rk_link_on_slider();
 //
+//   @block:
+//     rk_link_pull() ? ( recalc_dsp(); );   // here only, once per block (see SYNC)
+//
 //   @gfx:
 //     rk_link_key = gfx_getchar();  // feeds Esc-to-close (replaces bare call)
 //     // ... mouse globals: mx,my,LMB,lmb_down[,rmb_down] ...
 //     rk_link_menu_gate();       // AFTER edge computation, BEFORE widgets
-//     rk_link_pull() ? ( recalc_dsp(); );
 //     // ... knob interact, slider changes ...
 //     rk_link_on_gfx_change();   // call after any GUI-driven slider change
 //     rk_link_draw_gear(x, y, r, ar, ag, ab, mx, my, lmb_down);
@@ -319,13 +322,14 @@ function rk_link_on_gfx_change()
 
 
 // ── SYNC: push local changes and pull remote changes ──
-// Call from @block (every plugin does; ExpressBus also from @gfx). Returns 1 if
-// any slider was updated from gmem (use as signal to call recalc_dsp).
+// Call from @block, once per block, and from nowhere else: the watch counts the
+// audio of each call (a call from @gfx would count a block that never ran).
+// Returns 1 if any slider was updated from gmem (use as signal to call recalc_dsp).
 //
 // Entering a group, it WATCHES first (see LIVENESS): no push, no pull, the
 // instance's own values stay the agreed state, until the heartbeat moves (a
-// member runs: adopt) or rk_link_watch_s has passed with at least 4 pulls and
-// it has not (nobody: seed).
+// member runs: adopt) or rk_link_watch_s of real time or of processed audio has
+// passed with at least 4 pulls and it has not (nobody: seed).
 //
 // Tukan old-value logic per slider i, once in the group:
 //   rk_link_prev[i] == slider(i) → we haven't touched it → pull if gmem differs
@@ -351,19 +355,31 @@ function rk_link_pull()
     // FX 1.4.10 pre-release audit: a short visit to a tab, or a pick and a quick return, resumed an
     // old snapshot and took a stopped tab's or a deleted member's values). The break: half a second,
     // or four blocks on a very large buffer.
+    // The watch ends after rk_link_watch_s of real time OR of audio this instance has processed in it
+    // (rk_link_watch_a), whichever comes first: an offline render runs many seconds of audio in a
+    // fraction of one, and a render started straight from a project load went by with every linked
+    // instance still watching, a linked parameter's automation driving nobody (FX 1.4.11). A render
+    // slower than real time still ends it on the clock (unless one block takes over half a second: the
+    // break rule above restarts it, as before). The audio clock ends it only once the heartbeat is over
+    // a quarter second old: a member running at its own pace (another tab, while this one renders)
+    // stamps between its blocks, which a fast render can outrun; the wall clock then still sees the next
+    // stamp (the 1.4.11 delta audit). Counted per call, so call this from @block only.
     now = time_precise();
     rk_link_watch_g != g || now - rk_link_watch_last > max(0.5, 4 * samplesblock / max(srate, 1)) ? (
       rk_link_watch_g = g;
       rk_link_watch_t = now;
       rk_link_watch_hb = gmem[base + 63];
       rk_link_watch_n = 0;
+      rk_link_watch_a = 0;
     ) : gmem[base + 63] != rk_link_watch_hb ? (
       updated = _rk_link_adopt(g, base);   // a member is running: take the group's values
     ) : (
       rk_link_watch_n += 1;
-      rk_link_watch_n >= 4 && time_precise() - rk_link_watch_t >= rk_link_watch_s ?
+      rk_link_watch_n >= 4 && ((time_precise() - rk_link_watch_t >= rk_link_watch_s) ||
+                               (rk_link_watch_a >= rk_link_watch_s && now - gmem[base + 63] > 0.25)) ?
         _rk_link_seed(g, base);            // nobody: the group starts from ours
     );
+    rk_link_watch_a += samplesblock / max(srate, 1);
     rk_link_watch_last = now;
     g != rk_link_in ? (
       i = 1;
