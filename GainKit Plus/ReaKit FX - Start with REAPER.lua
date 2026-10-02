@@ -139,6 +139,7 @@ local emsg = embed_defaults()
 if emsg then done[#done + 1] = emsg end
 
 -- 2. EON Floatter: registers itself in the start-up file on its first run
+local need_floatter = false
 if startup:find("-- EON:EON_Floatter BEGIN", 1, true) then
   done[#done + 1] = "EON Floatter already starts with REAPER."
 else
@@ -148,8 +149,15 @@ else
     done[#done + 1] = "EON Floatter is not installed (ReaPack: EON Floatter, from the ReaKit FX repository)."
   else
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, fl, true)
-    if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
-    done[#done + 1] = "EON Floatter is running and starts with REAPER from now on."
+    if ok and c and c > 0 then
+      -- launch_src "setup": Floatter 1.0.3+ opens its panel and closes it by itself after a few
+      -- seconds (an older Floatter reads it as a quiet launch: no panel)
+      r.SetExtState("EON_Floatter", "launch_src", "setup:" .. r.time_precise(), false)
+      r.Main_OnCommand(c, 0)
+      need_floatter = true   -- what to say waits for its heartbeat (settle, below)
+    else
+      done[#done + 1] = "EON Floatter could not be started; run EON Floatter from the action list."
+    end
   end
 end
 
@@ -198,14 +206,30 @@ local function meter_rate()
   end
 end
 
+-- Floatter launched? Its heartbeat (EON_Floatter/alive_t, every tick) says it runs; its block in
+-- the start-up file says it starts with REAPER. It stops at once without js_ReaScriptAPI (and says
+-- so in its own box), and a user who switched "starts with REAPER" off keeps it off: the summary
+-- says what is true (outside review, 2026-10-02: it used to say "running" in every case).
+local function floatter_says()
+  local hb = tonumber(r.GetExtState("EON_Floatter", "alive_t")) or 0
+  if r.time_precise() - hb > 1.0 then
+    return "EON Floatter did not start. It needs the js_ReaScriptAPI extension (ReaPack: js_ReaScriptAPI); install it, restart REAPER and run this again."
+  end
+  if (read(STARTUP) or ""):find("-- EON:EON_Floatter BEGIN", 1, true) then
+    return "EON Floatter is running and starts with REAPER from now on."
+  end
+  return "EON Floatter is running, but it is not set to start with REAPER: run EON Floatter from the action list and turn on \"starts with REAPER\" in its panel."
+end
+
 local t0, n = r.time_precise(), 0
 local function settle()
   n = n + 1
-  if need_plus and r.time_precise() - t0 < 1.0 then return r.defer(settle) end
+  if (need_plus or need_floatter) and r.time_precise() - t0 < 1.0 then return r.defer(settle) end
   if need_plus and not plus_alive() and exists(PLUS) then
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, PLUS, true)
     if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
   end
+  if need_floatter then done[#done + 1] = floatter_says() end
   meter_rate()
   if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then r.MB(table.concat(done, NL), "ReaKit FX", 0) end
 end
