@@ -57,6 +57,34 @@ local function replace_file(p, text)
   os.remove(tmp)
   return false
 end
+-- 0. Extensions installed but not loaded yet. ReaPack puts js_ReaScriptAPI and ReaImGui in
+-- UserPlugins and REAPER loads them only at its next start; its report says so, but it is easy to
+-- miss. Run before that restart, Floatter cannot start and the summary is the plain box, so this
+-- asks for the restart first and changes nothing (the user, 2026-10-02: "can it say restart
+-- reaper?"). Not installed at all is a different message, further down.
+local function on_disk(prefix)
+  local dir = res .. sep .. "UserPlugins"
+  r.EnumerateFiles(dir, -1)                           -- REAPER caches a folder's listing: read it fresh
+  local i = 0
+  while true do
+    local f = r.EnumerateFiles(dir, i)
+    if not f then return false end
+    if f:lower():find("^" .. prefix) then return true end
+    i = i + 1
+  end
+end
+local waiting = {}
+if not r.JS_Window_SetPosition and on_disk("reaper_js_reascriptapi") then waiting[#waiting + 1] = "js_ReaScriptAPI" end
+if not r.ImGui_GetBuiltinPath and on_disk("reaper_imgui") then waiting[#waiting + 1] = "ReaImGui" end
+if #waiting > 0 then
+  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then
+    r.MB("Restart REAPER first, then run this again." .. string.char(10, 10) .. table.concat(waiting, " and ")
+      .. (#waiting == 1 and " is installed, but REAPER only loads it when it starts."
+                         or " are installed, but REAPER only loads them when it starts."), "ReaKit FX", 0)
+  end
+  return
+end
+
 local startup = read(STARTUP) or ""
 -- what the summary says, one line each: ok = a check mark, not ok = something for the user to do
 local done = {}
