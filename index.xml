@@ -508,6 +508,26 @@
         <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8c56cf80d03285e7e5cff2b4e684aab7597b0c86/ReaKit/smooth_kbsg.jsfx-inc</source>
         <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8c56cf80d03285e7e5cff2b4e684aab7597b0c86/ReaKit/utils_kbsg.jsfx-inc</source>
       </version>
+      <version name="1.4.13" author="Quaz (EON Studios)" time="2026-10-02T23:53:05Z">
+        <changelog><![CDATA[De-Esser: the Output knob, the Target switch (Bandpass / Hipass) and Monitor now glide over a few milliseconds instead of jumping, so moving or automating them no longer clicks. DDC: the Mix knob glides the same way. GainKit: in a project with more than 512 tracks, the 513th track no longer shows the master's colour and icon. The sound with the controls left alone is unchanged.]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/ReaKit/utils_kbsg.jsfx-inc</source>
+      </version>
     </reapack>
   </category>
   <category name="GainKit Plus">
@@ -716,20 +736,20 @@
         <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8c56cf80d03285e7e5cff2b4e684aab7597b0c86/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
       </version>
       <version name="1.0.14" author="Quaz (EON Studios)" time="2026-10-02T22:07:57Z">
-        <changelog><![CDATA[ReaKit FX - Start with REAPER: the summary is one small window in the ReaKit look, with a check mark for each thing that was set up and a plain note for anything you still need to do. EON Floatter now turns on without opening its panel, and the EON plugins already in your project are set to their designed sizes right away. The faster mixer strips offer is a switch in the same window, and it tells you to restart REAPER to get it. Run before the restart that new extensions need, it asks you to restart REAPER first.]]></changelog>
-        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
-        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
-        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
-        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
-        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
-        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
-        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
-        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
-        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
-        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
-        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
-        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/GainKit%20Plus.lua</source>
-        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/0a3b90e72084ec22fae1263856fcc3cc5acb728a/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+        <changelog><![CDATA[ReaKit FX - Start with REAPER: the summary is one small window in the ReaKit look, with a check mark for each thing that was set up and a plain note for anything you still need to do. EON Floatter now turns on without opening its panel, and the EON plugins already in your project are set to their designed sizes right away. The faster mixer strips offer is a switch in the same window, and it tells you to restart REAPER to get it. Run before the restart that new extensions need, it asks you to restart REAPER first. GainKit Plus: stopped and started again, it no longer leaves a GainKit showing an old colour or icon.]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/160c822c1a2d1091bf864140d65aeb73fa159723/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
       </version>
     </reapack>
   </category>
