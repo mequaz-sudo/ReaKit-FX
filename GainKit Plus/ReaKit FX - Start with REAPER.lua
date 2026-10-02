@@ -22,9 +22,20 @@ local FLOATTERS = {                                   -- wherever ReaPack put it
 local function read(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
 local function exists(p) local fh = io.open(p, "r"); if fh then fh:close(); return true end; return false end
 -- REAPER's settings file: its text, "" when there is none yet, nil when it is there but could not be
--- read (locked for a moment) -- then nothing is written, or every other plugin's line would go
+-- read (locked for a moment) -- then nothing is written, or every other plugin's line would go. A run
+-- cut off between replace_file's two renames left the old file only as the spare: it goes back
+-- first (read as missing, it was rebuilt from nothing and the spare removed); if it cannot, nil.
 local function read_opt(p)
   local fh, _, code = io.open(p, "rb")
+  if not fh and code == 2 then
+    local bak = p .. ".reakitfx-bak"
+    local spare = io.open(bak, "rb")
+    if spare then
+      spare:close()
+      if not os.rename(bak, p) then return nil end
+      fh, _, code = io.open(p, "rb")
+    end
+  end
   if not fh then return code == 2 and "" or nil end   -- 2: no such file
   local s = fh:read("*a"); fh:close()
   return s

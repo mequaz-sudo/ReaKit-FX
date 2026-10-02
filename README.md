@@ -19,7 +19,7 @@ space to open a plugin's window, click the strip again to close it.*
 GainKit: the track's name on a band in the track's colour, the VU over the GAIN knob, and the
 STEREO / MONO key. 4-Band EQ from the EON suite sits under it; the master runs GainKit and 3-Band
 EQ, its name typed. Click a strip's empty space to open the window, click the strip again to close
-it; drag the meter to set the gain.*
+it; with VU DRAG on, drag the meter to set the gain.*
 
 ## The plugins
 
@@ -39,11 +39,13 @@ alone: the STEREO / MONO key under the name and, on two of them, the gain under 
 shows the VU over the knob. Under GainKit: 4-Band EQ from the EON suite.*
 
 Gain staging on a VU. An analog VU meter (the ReaKit meter: 300 ms to 99 %, 1.2 % overshoot, 20
-faces), one GAIN knob and a STEREO / MONO key. In the mixer strip it shows the VU over the knob,
-the VU alone, or the knob alone, with numerals or ticks only, and the VU grows flatter as you drag
-the strip wider. The VU alone keeps its own STEREO / MONO key under the name, shows the gain as a
-tint of the meter's face (up from the middle for a boost, down for a cut), and prints the value
-under the meter while you set it, or all the time. Click the middle of the window's meter face and
+faces), one GAIN knob and a STEREO / MONO key. The needle reads the louder side, so a sound panned
+hard to one side reads at its real level; METERS = TWO shows a meter for each side instead, in the
+window (with a trim knob for each side) and in the strip. In the mixer strip it shows the VU over
+the knob, the VU alone, or the knob alone, with numerals or ticks only, and the VU grows flatter as
+you drag the strip wider. The VU alone keeps its own STEREO / MONO key under the name (ST/MONO
+hides it; MONO then shows as a small cyan dot) and prints the value under the meter while you set
+it, or all the time. Click the middle of the window's meter face and
 type, and the name is printed on the meter like a legend and on top of the strip, in every view:
 as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
 M/S modes it used to show are still there as parameters, so old projects sound the same.
@@ -70,7 +72,8 @@ in the Actions list as `Script: GainKit Plus…`):
 - **GainKit last on the master** — moves the master's GainKit to the end of its chain, or adds
   one there, so the mix gets a final VU after everything else.
 - **Copy look to all** — the look of the selected track's GainKit (what the strip shows, the name
-  row and its font, the meter's colour, VALUE, NAME BAR, NATIVE) on every GainKit at once.
+  row and its font, the meter's colour, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR, NATIVE) on every
+  GainKit at once.
 - **Reset all gains** — every GainKit's GAIN back to 0 dB.
 - **All MONO** / **All STEREO** — every GainKit's key at once.
 - **Bypass all** — every GainKit off; run it again and they are all on.
@@ -92,10 +95,11 @@ The actions and the names reach a GainKit inside an FX container too.
 itself; Plus adds the track's colour on the name band and the meter, the icon in the window's
 header, and the project's name on the master.*
 
-In the mixer strip the meter itself is the gain control: drag it up or down (Ctrl fine, Shift
-finer), the wheel steps it, double-click or right-click returns it to 0 dB, and the value shows
-under the VU alone while you set it and a moment after. The rest of the strip still opens the
-window with a click. The THEME panel's FONT row picks the face the name is printed in, on the
+With the THEME panel's VU DRAG on, the meter in the mixer strip is the gain control: drag it up or
+down (Ctrl fine, Shift finer), the wheel steps it, double-click returns it to 0 dB, the VU alone
+shows the gain as a tint of the meter's face (up from the middle for a boost, down for a cut), and
+the value shows under it while you set it and a moment after. VU DRAG is off by default: the meter
+then only reads, and a click on it opens the window like the rest of the strip. The THEME panel's FONT row picks the face the name is printed in, on the
 window's meter and on top of the strip.
 
 ![The same session on the EON theme, GainKit Plus running](screenshots/session/session_eon.png)
@@ -174,9 +178,12 @@ WIDTH knob at the bottom of the channel.
   *The six windows on the three built-in themes.*
 
   GainKit's panel also picks the VU's face, what the strip shows, the name's row (ROW, BAND or
-  OFF) and its FONT, the meter's colour (FACE or TRACK) and when the VU alone prints the gain
-  (TOUCH or ALWAYS), and has LOCK, which freezes that instance's look while the rest follows the
-  theme. DDC has no panel of its own; its colours and knobs follow the theme.
+  OFF) and its FONT, the meter's colour (FACE or TRACK), when the VU alone prints the gain (TOUCH
+  or ALWAYS), one needle or two meters (METERS), whether the strip's meter sets the gain (VU DRAG)
+  and whether the strip shows its STEREO / MONO key (ST/MONO), and has LOCK, which freezes that
+  instance's look while the rest follows the theme. It has two pages: LOOK (the theme, the knob,
+  the VU's face and colour, METERS, LOCK) and STRIP (everything about the mixer strip), and a line
+  at the bottom says what the row under the mouse does.
 
   **With EON Swing** — its bridge paints the other eleven themes and keeps the whole suite in step:
 
@@ -200,7 +207,8 @@ WIDTH knob at the bottom of the channel.
   *The same session with the knobs in the Dark Ableton style: the strip goes quiet and the
   values stay readable.*
 - **Link groups** — the gear in the header of those five puts an instance in a group; instances
-  in the same group move together.
+  in the same group move together. A plugin joining a group takes its settings only from members
+  still running, so a group whose plugins are gone starts from the newcomer's own.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.
 - **Snappier strips** — REAPER redraws an embedded strip at its meter rate, 30 a second out of the

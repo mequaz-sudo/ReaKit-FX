@@ -49,12 +49,11 @@ local last, gen = {}, {}
 local function fold(s) return (tostring(s or ""):gsub("[^\32-\126]", "")) end
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
--- "GainKit" in its name does not. The display name is the fallback on a REAPER without fx_ident.
+-- "GainKit" in its name does not. A REAPER that cannot tell an FX's file finds none: these scripts
+-- delete, bypass and move what they find, so they never guess from a name.
 local function is_gainkit(tr, f)
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
-  if ok and id ~= "" then return id:lower():find("channeltool_reakit", 1, true) ~= nil end
-  local _, nm = r.TrackFX_GetFXName(tr, f, "")
-  return nm:find("GainKit", 1, true) ~= nil
+  return ok and id:lower():find("channeltool_reakit", 1, true) ~= nil
 end
 
 -- A GainKit anywhere on the track, FX containers included: REAPER 7 reaches a container's items
@@ -145,9 +144,20 @@ local RES = r.GetResourcePath()
 local OPT = RES .. "/reaper-fxoptions.ini"
 local function slurp(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
 -- REAPER's settings file: its text, "" when there is none yet, nil when it is there but could not be
--- read (locked for a moment) -- then nothing is written, or every other plugin's line would go
+-- read (locked for a moment) -- then nothing is written, or every other plugin's line would go. A run
+-- cut off between replace_file's two renames left the old file only as the spare: it goes back
+-- first (read as missing, it was rebuilt from nothing and the spare removed); if it cannot, nil.
 local function read_opt(p)
   local fh, _, code = io.open(p, "rb")
+  if not fh and code == 2 then
+    local bak = p .. ".reakitfx-bak"
+    local spare = io.open(bak, "rb")
+    if spare then
+      spare:close()
+      if not os.rename(bak, p) then return nil end
+      fh, _, code = io.open(p, "rb")
+    end
+  end
   if not fh then return code == 2 and "" or nil end   -- 2: no such file
   local s = fh:read("*a"); fh:close()
   return s
@@ -265,7 +275,8 @@ local function set_wak2(tr, guid, want)
   local ok, ch = r.GetTrackStateChunk(tr, "", false)
   if not ok or not ch then return end
   local out, hit, done = {}, false, false
-  for line in (ch .. "\n"):gmatch("(.-)\n") do
+  for ln in (ch .. "\n"):gmatch("(.-)\n") do
+    local line = ln   -- a copy: Lua 5.5 will not let a loop assign its own variable
     if not done then
       if line:match("^%s*FXID%s") then hit = line:find(guid, 1, true) ~= nil
       elseif hit then

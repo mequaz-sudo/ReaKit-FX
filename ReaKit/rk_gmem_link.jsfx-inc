@@ -12,7 +12,9 @@
 //
 // GMem layout (per-group, base = (g-1)*64, g = 1..16):
 //   [base+1 .. base+32]  — slider values 1..32 (slot = slider index)
-//   [base+33]            — alive flag  (1 = group has at least one member)
+//   [base+33]            — used flag (1 = a member has written here since this
+//                          gmem was created; never cleared, so it does NOT mean
+//                          a member is still running -- see LIVENESS)
 //   [base+34]            — en_play
 //   [base+35]            — en_rec
 //   [base+36]            — en_stop
@@ -20,10 +22,25 @@
 //   [base+38 ..]         — slider values 33+ (slot = index + 5, see
 //                          rk_link_slot; metadata above predates >31-slider
 //                          sync and stays put so old/new builds interoperate)
-//   [base+63]            — member heartbeat: time_precise() stamped each
-//                          @gfx frame by members (menu occupancy dots;
-//                          old builds don't stamp — dot simply absent;
-//                          join logic still keys off +33)
+//   [base+62]            — seed count: +1 each time an instance seeds the
+//                          group with its own values (see LIVENESS)
+//   [base+63]            — member heartbeat: time_precise() stamped by every
+//                          member's rk_link_pull (the plugins call it from
+//                          @block, so while audio runs); the menu's occupancy
+//                          dots and a joining instance's watch read it
+//
+// LIVENESS (2026-10-01): gmem lives as long as anything uses it (GainKit Plus
+// holds Swing_Media_Transfer open all session), so a group's block outlives its
+// members: plugins deleted, a project closed. A later instance in that group took
+// their leftover values (outside audits; measured, .dev_tests/rk_vu_audit/
+// linkstale_run.ps1). So an instance ENTERING a group (loaded with one saved, or
+// joined from the menu, automation or the API) trusts nothing in the block until
+// it has watched the heartbeat for rk_link_watch_s: if it moved, a member is
+// running and the instance adopts the group's values; if not, the instance seeds
+// the group with its own. A member that finds the seed count changed under it (a
+// project in another tab seeded the same group while its own did not run) watches
+// again, so each tab keeps its own values. Two tabs that run at the same time
+// share their groups (gmem is per process, wiki 5.7).
 // Quick-link scratch (global, outside group blocks):
 //   [1024]               — slider index
 //   [1025]               — value
@@ -86,6 +103,11 @@ function rk_link_init(group_slider_, num_sliders_, mem_base)
 
   rk_link_last_ps_counter = 0;
   rk_link_last_ql_counter = 0;
+  // the join watch (s), the menu's occupancy-dot window. rk_link_in (the group this instance
+  // is in, 0 = none or still watching) is NOT reset here: zero on load, and a plugin whose
+  // @init re-runs on play start keeps its place instead of watching again.
+  rk_link_watch_s = 1.5;
+  rk_link_watch_last = 0;
 
   // Baseline snapshot: current sliders become the "agreed" state
   i = 1;
@@ -202,54 +224,82 @@ function rk_link_set_base(gmem_base)
 );
 
 
-// ── SEED (internal): an EMPTY group takes this instance's values whole ──
-// A fresh REAPER holds zeros in gmem. A project restored with a group set
-// reaches @slider (push) and @gfx (pull) with prev == slider for every slider
-// still at its default, and pull then adopted the group's zeros -- HP 20 Hz
-// and LP 20 kHz came back as 0 (outside audit, 2026-09-30; measured,
-// .dev_tests/rk_vu_audit/linkseed_run.ps1). Push alone did not help: it
-// wrote only the changed sliders and still marked the group alive. So both
-// push and pull seed first: whoever wakes first fills the group with all its
-// values; later members, saved linked, hold the same values and pull nothing.
-function _rk_link_seed_if_empty(base)
+// ── SEED / ADOPT (internal): how an instance enters group g (see LIVENESS) ──
+// SEED: nobody runs the group, so it takes this instance's values whole. This is
+// also the 09-30 fix: a fresh REAPER holds zeros in gmem, and a project restored
+// with a group set pulled them -- HP 20 Hz and LP 20 kHz came back as 0 (outside
+// audit; measured, .dev_tests/rk_vu_audit/linkseed_run.ps1). A fresh gmem has no
+// heartbeat, so the watch seeds it.
+function _rk_link_seed(g, base)
   local(i)
 (
-  gmem[base + 33] != 1 ? (
-    i = 1;
-    loop(rk_link_sync_max,
-      i != rk_link_group_slider && !rk_link_excl[i] ? (
-        gmem[base + rk_link_slot(i)] = slider(i);
-        rk_link_prev[i] = slider(i);
-      );
-      i += 1;
+  i = 1;
+  loop(rk_link_sync_max,
+    i != rk_link_group_slider && !rk_link_excl[i] ? (
+      gmem[base + rk_link_slot(i)] = slider(i);
+      rk_link_prev[i] = slider(i);
     );
-    gmem[base + 34] = rk_ps_en_play; gmem[base + 35] = rk_ps_en_rec; gmem[base + 36] = rk_ps_en_stop;
-    gmem[base + 37] = 0; rk_link_last_ps_counter = 0;
-    gmem[base + 33] = 1;
+    i += 1;
   );
+  gmem[base + 34] = rk_ps_en_play; gmem[base + 35] = rk_ps_en_rec; gmem[base + 36] = rk_ps_en_stop;
+  gmem[base + 37] = 0; rk_link_last_ps_counter = 0;
+  gmem[base + 62] += 1; rk_link_seeds = gmem[base + 62];
+  gmem[base + 33] = 1;
+  gmem[base + 63] = time_precise();   // a member now: the next joiner's watch sees it at once
+  rk_link_last_ql_counter = gmem[rk_link_base + 1027];   // an older quick reset is not ours
+  rk_link_in = g; rk_link_watch_g = 0;
+);
+
+// ADOPT: a member is running, so this instance takes the group's values and
+// play-state. Returns 1 when a slider moved (the caller recalcs).
+function _rk_link_adopt(g, base)
+  local(i, changed)
+(
+  changed = 0;
+  i = 1;
+  loop(rk_link_sync_max,
+    i != rk_link_group_slider && !rk_link_excl[i] ? (
+      slider(i) != gmem[base + rk_link_slot(i)] ? (
+        slider(i) = gmem[base + rk_link_slot(i)];
+        slider_automate(slider(i));
+        changed = 1;
+      );
+      rk_link_prev[i] = slider(i);
+    );
+    i += 1;
+  );
+  rk_ps_en_play = gmem[base + 34]; rk_ps_en_rec = gmem[base + 35]; rk_ps_en_stop = gmem[base + 36];
+  rk_link_last_ps_counter = gmem[base + 37];
+  rk_link_seeds = gmem[base + 62];
+  rk_link_last_ql_counter = gmem[rk_link_base + 1027];
+  rk_link_in = g; rk_link_watch_g = 0;
+  changed;
 );
 
 
 // ── PUSH (internal): write locally-changed sliders to gmem ──
-// Old-value comparison: slider(i) != rk_link_prev[i] means we changed it.
+// Old-value comparison: slider(i) != rk_link_prev[i] means we changed it. Only
+// once this instance is in the group (watched, then seeded or adopted) and only
+// while nobody else has re-seeded it: until then the group is not ours to write.
 function _rk_link_push()
   local(g, base, i)
 (
   g = slider(rk_link_group_slider) | 0;
-  g >= 1 && g <= 16 ? (
+  g >= 1 && g <= 16 && g == rk_link_in ? (
     base = rk_link_base + (g - 1) * 64;
-    _rk_link_seed_if_empty(base);
-    i = 1;
-    loop(rk_link_sync_max,
-      i != rk_link_group_slider && !rk_link_excl[i] ? (
-        slider(i) != rk_link_prev[i] ? (
-          gmem[base + rk_link_slot(i)] = slider(i);
-          rk_link_prev[i] = slider(i);
+    gmem[base + 62] == rk_link_seeds ? (
+      i = 1;
+      loop(rk_link_sync_max,
+        i != rk_link_group_slider && !rk_link_excl[i] ? (
+          slider(i) != rk_link_prev[i] ? (
+            gmem[base + rk_link_slot(i)] = slider(i);
+            rk_link_prev[i] = slider(i);
+          );
         );
+        i += 1;
       );
-      i += 1;
+      gmem[base + 33] = 1;  // used (old builds read it)
     );
-    gmem[base + 33] = 1;  // mark group alive
   );
 );
 
@@ -269,14 +319,19 @@ function rk_link_on_gfx_change()
 
 
 // ── SYNC: push local changes and pull remote changes ──
-// Call from @gfx every frame. Returns 1 if any slider was updated from
-// gmem (use as signal to call recalc_dsp).
+// Call from @block (every plugin does; ExpressBus also from @gfx). Returns 1 if
+// any slider was updated from gmem (use as signal to call recalc_dsp).
 //
-// Tukan old-value logic per slider i:
+// Entering a group, it WATCHES first (see LIVENESS): no push, no pull, the
+// instance's own values stay the agreed state, until the heartbeat moves (a
+// member runs: adopt) or rk_link_watch_s has passed with at least 4 pulls and
+// it has not (nobody: seed).
+//
+// Tukan old-value logic per slider i, once in the group:
 //   rk_link_prev[i] == slider(i) → we haven't touched it → pull if gmem differs
 //   rk_link_prev[i] != slider(i) → we changed it         → push to gmem
 function rk_link_pull()
-  local(g, base, i, updated, ps_counter, ql_counter)
+  local(g, base, i, updated, ps_counter, ql_counter, now)
 (
   g = slider(rk_link_group_slider) | 0;
   rk_link_group = g;
@@ -284,9 +339,43 @@ function rk_link_pull()
 
   g >= 1 && g <= 16 ? (
     base = rk_link_base + (g - 1) * 64;
-    _rk_link_seed_if_empty(base);
-    gmem[base + 33] = 1;  // keep alive flag set
-    gmem[base + 63] = time_precise();  // member heartbeat (menu occupancy dots)
+    // in g, but another instance has seeded it since (a project in another tab,
+    // while ours did not run): watch it again before trusting it
+    g == rk_link_in && gmem[base + 62] != rk_link_seeds ? rk_link_in = 0;
+  );
+
+  g >= 1 && g <= 16 && g != rk_link_in ? (
+    // ── WATCH ── heartbeat movement counts only while the watch runs without a break: a watch this
+    // instance left (its project tab went to the background, it was bypassed, it went back to its own
+    // group) starts again, so a member that has stopped since can never pass for a running one (the
+    // FX 1.4.10 pre-release audit: a short visit to a tab, or a pick and a quick return, resumed an
+    // old snapshot and took a stopped tab's or a deleted member's values). The break: half a second,
+    // or four blocks on a very large buffer.
+    now = time_precise();
+    rk_link_watch_g != g || now - rk_link_watch_last > max(0.5, 4 * samplesblock / max(srate, 1)) ? (
+      rk_link_watch_g = g;
+      rk_link_watch_t = now;
+      rk_link_watch_hb = gmem[base + 63];
+      rk_link_watch_n = 0;
+    ) : gmem[base + 63] != rk_link_watch_hb ? (
+      updated = _rk_link_adopt(g, base);   // a member is running: take the group's values
+    ) : (
+      rk_link_watch_n += 1;
+      rk_link_watch_n >= 4 && time_precise() - rk_link_watch_t >= rk_link_watch_s ?
+        _rk_link_seed(g, base);            // nobody: the group starts from ours
+    );
+    rk_link_watch_last = now;
+    g != rk_link_in ? (
+      i = 1;
+      loop(rk_link_sync_max,
+        rk_link_prev[i] = slider(i);
+        i += 1;
+      );
+    );
+  ) : g >= 1 && g <= 16 ? (
+    rk_link_watch_g = 0;  // back in its own group: a watch of another one is over
+    gmem[base + 33] = 1;  // used (old builds read it)
+    gmem[base + 63] = time_precise();  // member heartbeat (menu dots, joiners' watch)
 
     // ── Slider sync (old-value) ──────────────────────────────
     i = 1;
@@ -338,6 +427,7 @@ function rk_link_pull()
 
   ) : (
     // Not in a group — keep prev current so first join-push is clean
+    rk_link_in = 0; rk_link_watch_g = 0;
     i = 1;
     loop(rk_link_sync_max,
       rk_link_prev[i] = slider(i);
@@ -349,52 +439,16 @@ function rk_link_pull()
 );
 
 
-// ── JOIN: adopt group state or seed it ──
-// Called when user selects a new group via badge or menu.
+// ── JOIN: the user picked a new group via badge or menu ──
+// Nothing to do here any more: the group slider changed, so the next rk_link_pull
+// (from @block) finds it is not in that group and watches it first (see LIVENESS):
+// a running group's values arrive within a block or two; a group nobody runs any
+// more takes this instance's values. (It used to adopt whenever +33 was set: a
+// dead group's leftovers.) Kept so callers need not change; it writes nothing, as
+// the menu calls it from @gfx, beside the audio thread that owns the link state.
 function rk_link_join_group()
-  local(g, base, i)
 (
-  g = slider(rk_link_group_slider) | 0;
-
-  g >= 1 && g <= 16 ? (
-    base = rk_link_base + (g - 1) * 64;
-
-    gmem[base + 33] == 1 ? (
-      // Group is live — adopt its values and play-state
-      i = 1;
-      loop(rk_link_sync_max,
-        i != rk_link_group_slider && !rk_link_excl[i] ? (
-          slider(i) = gmem[base + rk_link_slot(i)];
-          slider_automate(slider(i));
-          rk_link_prev[i] = slider(i);
-        );
-        i += 1;
-      );
-
-      rk_ps_en_play = gmem[base + 34];
-      rk_ps_en_rec  = gmem[base + 35];
-      rk_ps_en_stop = gmem[base + 36];
-      rk_link_last_ps_counter = gmem[base + 37];
-
-    ) : (
-      // Group is empty — seed it with our current values
-      i = 1;
-      loop(rk_link_sync_max,
-        i != rk_link_group_slider && !rk_link_excl[i] ? (
-          gmem[base + rk_link_slot(i)] = slider(i);
-          rk_link_prev[i] = slider(i);
-        );
-        i += 1;
-      );
-      gmem[base + 33] = 1;
-
-      gmem[base + 34] = rk_ps_en_play;
-      gmem[base + 35] = rk_ps_en_rec;
-      gmem[base + 36] = rk_ps_en_stop;
-      gmem[base + 37] = 0;
-      rk_link_last_ps_counter = 0;
-    );
-  );
+  0;
 );
 
 

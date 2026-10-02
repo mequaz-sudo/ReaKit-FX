@@ -408,40 +408,96 @@ function rkth_namefont(cur) ( rkth_nf_ok = 1; rkth_nf_cur = min(max(cur | 0, 0),
 // Up to RKTH_X_N rows a host defines itself, without another edit of this
 // library: a caption, the current state, the number of states (2 or 3) and
 // their labels, all string literals. They sit after FONT and before LOCK, in
-// slot order. Click = next state, right-click = previous; the chip is lit in
+// slot order (with PAGES, on their page: rkth_xpage, below). Click = next
+// state, right-click = previous; the chip is lit in
 // any state but the first, which is the default. The same contract as the
-// rows above, by slot (GainKit's two, 2026-09-29):
+// rows above, by slot (GainKit's, 2026-09-29 and 2026-10-01: VU COLOR, VALUE, METERS, VU DRAG, ST/MONO):
 //   rkth_xrow(0, "VU COLOR", xx_vu_track, 2, "FACE", "TRACK", "");
 //   (xx_p = rkth_xpick(0)) >= 0 ? ( xx_vu_track = xx_p; slider_automate(xx_vu_track); );
 // ⛔OPT-IN: a host that never calls it has no such rows, and the panel is as before.
 // Live while LOCKED: display choices, not part of the frozen look.
-RKTH_X_N = 3;
+RKTH_X_N = 5;
 function rkth_xrow(slot, cap, cur, n, l0, l1, l2) (
   n = min(max(n | 0, 2), 3); cur = min(max(cur | 0, 0), n - 1);
   slot == 0 ? ( rkth_x0_ok = 1; rkth_x0_cap = cap; rkth_x0_cur = cur; rkth_x0_n = n; rkth_x0_l0 = l0; rkth_x0_l1 = l1; rkth_x0_l2 = l2; ) :
   slot == 1 ? ( rkth_x1_ok = 1; rkth_x1_cap = cap; rkth_x1_cur = cur; rkth_x1_n = n; rkth_x1_l0 = l0; rkth_x1_l1 = l1; rkth_x1_l2 = l2; ) :
-  slot == 2 ? ( rkth_x2_ok = 1; rkth_x2_cap = cap; rkth_x2_cur = cur; rkth_x2_n = n; rkth_x2_l0 = l0; rkth_x2_l1 = l1; rkth_x2_l2 = l2; );
+  slot == 2 ? ( rkth_x2_ok = 1; rkth_x2_cap = cap; rkth_x2_cur = cur; rkth_x2_n = n; rkth_x2_l0 = l0; rkth_x2_l1 = l1; rkth_x2_l2 = l2; ) :
+  slot == 3 ? ( rkth_x3_ok = 1; rkth_x3_cap = cap; rkth_x3_cur = cur; rkth_x3_n = n; rkth_x3_l0 = l0; rkth_x3_l1 = l1; rkth_x3_l2 = l2; ) :
+  slot == 4 ? ( rkth_x4_ok = 1; rkth_x4_cap = cap; rkth_x4_cur = cur; rkth_x4_n = n; rkth_x4_l0 = l0; rkth_x4_l1 = l1; rkth_x4_l2 = l2; );
 );
-function rkth_x_ok(s)  ( s == 0 ? rkth_x0_ok  : s == 1 ? rkth_x1_ok  : s == 2 ? rkth_x2_ok : 0; );
-function rkth_x_cap(s) ( s == 0 ? rkth_x0_cap : s == 1 ? rkth_x1_cap : rkth_x2_cap; );
-function rkth_x_cur(s) ( s == 0 ? rkth_x0_cur : s == 1 ? rkth_x1_cur : rkth_x2_cur; );
-function rkth_x_n(s)   ( s == 0 ? rkth_x0_n   : s == 1 ? rkth_x1_n   : rkth_x2_n; );
-function rkth_x_row(s) ( s == 0 ? rkth_clp_x0row : s == 1 ? rkth_clp_x1row : s == 2 ? rkth_clp_x2row : -1; );
+function rkth_x_ok(s)  ( s == 0 ? rkth_x0_ok  : s == 1 ? rkth_x1_ok  : s == 2 ? rkth_x2_ok : s == 3 ? rkth_x3_ok : s == 4 ? rkth_x4_ok : 0; );
+function rkth_x_cap(s) ( s == 0 ? rkth_x0_cap : s == 1 ? rkth_x1_cap : s == 2 ? rkth_x2_cap : s == 3 ? rkth_x3_cap : rkth_x4_cap; );
+function rkth_x_cur(s) ( s == 0 ? rkth_x0_cur : s == 1 ? rkth_x1_cur : s == 2 ? rkth_x2_cur : s == 3 ? rkth_x3_cur : rkth_x4_cur; );
+function rkth_x_n(s)   ( s == 0 ? rkth_x0_n   : s == 1 ? rkth_x1_n   : s == 2 ? rkth_x2_n   : s == 3 ? rkth_x3_n   : rkth_x4_n; );
+function rkth_x_row(s) ( s == 0 ? rkth_clp_x0row : s == 1 ? rkth_clp_x1row : s == 2 ? rkth_clp_x2row : s == 3 ? rkth_clp_x3row : s == 4 ? rkth_clp_x4row : -1; );
 function rkth_x_lab(s, i) (
   s == 0 ? ( i == 1 ? rkth_x0_l1 : i == 2 ? rkth_x0_l2 : rkth_x0_l0 ) :
   s == 1 ? ( i == 1 ? rkth_x1_l1 : i == 2 ? rkth_x1_l2 : rkth_x1_l0 ) :
-           ( i == 1 ? rkth_x2_l1 : i == 2 ? rkth_x2_l2 : rkth_x2_l0 );
+  s == 2 ? ( i == 1 ? rkth_x2_l1 : i == 2 ? rkth_x2_l2 : rkth_x2_l0 ) :
+  s == 3 ? ( i == 1 ? rkth_x3_l1 : i == 2 ? rkth_x3_l2 : rkth_x3_l0 ) :
+           ( i == 1 ? rkth_x4_l1 : i == 2 ? rkth_x4_l2 : rkth_x4_l0 );
 );
 function rkth_x_put(s, v) (
   s == 0 ? ( rkth_x0_cur = v; rkth_x0_pick = v; ) :
   s == 1 ? ( rkth_x1_cur = v; rkth_x1_pick = v; ) :
-  s == 2 ? ( rkth_x2_cur = v; rkth_x2_pick = v; );
+  s == 2 ? ( rkth_x2_cur = v; rkth_x2_pick = v; ) :
+  s == 3 ? ( rkth_x3_cur = v; rkth_x3_pick = v; ) :
+  s == 4 ? ( rkth_x4_cur = v; rkth_x4_pick = v; );
 );
 // The pick of one slot, once: -1 when the row was not clicked since the last call.
 function rkth_xpick(slot) local(p) (
-  p = slot == 0 ? rkth_x0_pick : slot == 1 ? rkth_x1_pick : slot == 2 ? rkth_x2_pick : -1;
-  slot == 0 ? rkth_x0_pick = -1 : slot == 1 ? rkth_x1_pick = -1 : slot == 2 ? rkth_x2_pick = -1;
+  p = slot == 0 ? rkth_x0_pick : slot == 1 ? rkth_x1_pick : slot == 2 ? rkth_x2_pick : slot == 3 ? rkth_x3_pick : slot == 4 ? rkth_x4_pick : -1;
+  slot == 0 ? rkth_x0_pick = -1 : slot == 1 ? rkth_x1_pick = -1 : slot == 2 ? rkth_x2_pick = -1 : slot == 3 ? rkth_x3_pick = -1 : slot == 4 ? rkth_x4_pick = -1;
   p;
+);
+
+// ── PAGES (opt-in): the panel in two, LOOK and STRIP ─────────────────────
+// (The user, 2026-10-01: "i think our theme menu could use some polish maybe even reorganzing", the
+// mock-up, then "yes build it".) A host with many rows calls rkth_pages() every frame before
+// rkth_cluster / rkth_cluster_hdr; the panel then shows two tabs across its top and one page at a time:
+//   LOOK   THEME, KNOB, VU, VU SYNC, the host's LOOK rows (EXTRA slots, by default), LOCK
+//   STRIP  EMBED, NAME BAR, STRIP, NUMBERS, the host's STRIP rows, NAME, FONT
+// One height serves both pages, so the panel never jumps between them, and a hint line at its foot
+// says what the row under the mouse does. Per EXTRA slot, every frame like rkth_xrow:
+//   rkth_xpage(slot, 1);                        // the row goes on STRIP (0, the default, = LOOK)
+//   rkth_xhint(slot, "line one", "line two");   // string literals, about 28 characters a line
+// The open page is the instance's while it runs, not saved. A host whose rows are all on one page keeps
+// the one list. ⛔OPT-IN: a host that never calls rkth_pages() has exactly the panel it had.
+// rkth_need1(has_vu) is the panel's height at scale 1 with its gaps closed, from the rows the host asked
+// for (its last frame's calls). A paged panel fits only the space under its toggle (it must never cover
+// it), so a host fitting a short window divides THAT space by it: GainKit,
+// rkth_scale = min(ret, (WIN_H - hdr_h * 0.5) / (rkth_need1(1) + 11)), its toggle centred in hdr_h.
+function rkth_pages() ( rkth_pg_ok = 1; );
+function rkth_xpage(slot, page) (
+  page = page ? 1 : 0;
+  slot == 0 ? rkth_x0_pg = page : slot == 1 ? rkth_x1_pg = page : slot == 2 ? rkth_x2_pg = page :
+  slot == 3 ? rkth_x3_pg = page : slot == 4 ? rkth_x4_pg = page;
+);
+function rkth_xhint(slot, l1, l2) (
+  slot == 0 ? ( rkth_x0_h1 = l1; rkth_x0_h2 = l2; rkth_x0_hok = 1; ) :
+  slot == 1 ? ( rkth_x1_h1 = l1; rkth_x1_h2 = l2; rkth_x1_hok = 1; ) :
+  slot == 2 ? ( rkth_x2_h1 = l1; rkth_x2_h2 = l2; rkth_x2_hok = 1; ) :
+  slot == 3 ? ( rkth_x3_h1 = l1; rkth_x3_h2 = l2; rkth_x3_hok = 1; ) :
+  slot == 4 ? ( rkth_x4_h1 = l1; rkth_x4_h2 = l2; rkth_x4_hok = 1; );
+);
+function rkth_x_pg(s)  ( s == 0 ? rkth_x0_pg  : s == 1 ? rkth_x1_pg  : s == 2 ? rkth_x2_pg  : s == 3 ? rkth_x3_pg  : s == 4 ? rkth_x4_pg  : 0; );
+function rkth_x_hok(s) ( s == 0 ? rkth_x0_hok : s == 1 ? rkth_x1_hok : s == 2 ? rkth_x2_hok : s == 3 ? rkth_x3_hok : s == 4 ? rkth_x4_hok : 0; );
+function rkth_x_h1(s)  ( s == 0 ? rkth_x0_h1  : s == 1 ? rkth_x1_h1  : s == 2 ? rkth_x2_h1  : s == 3 ? rkth_x3_h1  : rkth_x4_h1; );
+function rkth_x_h2(s)  ( s == 0 ? rkth_x0_h2  : s == 1 ? rkth_x1_h2  : s == 2 ? rkth_x2_h2  : s == 3 ? rkth_x3_h2  : rkth_x4_h2; );
+// How many rows each page holds (LOOK rkth_pg_nl, STRIP rkth_pg_ns); 1 = the host asked for pages and
+// both have rows.
+function rkth_pg_count(has_vu) local(xi) (
+  rkth_pg_nl = (has_vu ? 4 : 2) + (rkth_lk_ok ? 1 : 0);
+  rkth_pg_ns = (rkth_em_ok ? 1 : 0) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0) + (rkth_nu_ok ? 1 : 0)
+             + (rkth_ns_ok ? 1 : 0) + (rkth_nf_ok ? 1 : 0);
+  xi = 0;
+  loop(RKTH_X_N, rkth_x_ok(xi) ? ( rkth_x_pg(xi) ? rkth_pg_ns += 1 : rkth_pg_nl += 1; ); xi += 1; );
+  rkth_pg_ok && rkth_pg_nl > 0 && rkth_pg_ns > 0;
+);
+function rkth_need1(has_vu) local(on) (
+  on = rkth_pg_count(has_vu);
+  8 + (on ? max(rkth_pg_nl, rkth_pg_ns) : rkth_pg_nl + rkth_pg_ns) * RKTH_H_CHIP
+    + (on ? RKTH_H_CHIP + 2 * (RKTH_F_CAP + 2) + 4 : 0);
 );
 
 // ── EMBED (opt-in, the free six) ─────────────────────────────────────────
@@ -569,7 +625,10 @@ RK_IDLE_HOLD = 2.0;
 function rk_embed_idle(extra) local(_h, _i, _in, _now, _act, _skip) (
   _now = time_precise();
   _h = 0; _i = 1;
-  loop(128, _h += slider(_i) * (_i * 7.31 + 1.17); _i += 1; );
+  // The weights are square roots: no small set of slider changes cancels (within 1e-5 the closest is
+  // ~3e-4), where evenly spaced ones (7.31 i + 1.17) let four changes, +1 / -1 / -1 / +1, read as no
+  // change, and "Copy look to all" left an idle strip on its old look (audit, 2026-10-02).
+  loop(128, _h += slider(_i) * sqrt(_i + 1.618) * 73.1; _i += 1; );
   _h += gmem[GS_THEME_ID] * 3.7 + gmem[GS_THEME_KNOB_P] * 11.3 + gfx_w * 13.1 + gfx_h * 17.9
       + rk_ps_active * 23.3 + extra * 19.1 + rkth_local_off * 29.7 + rkth_locked * 31.3;
   _in = mouse_x >= 0 && mouse_x < gfx_w && mouse_y >= 0 && mouse_y < gfx_h;
@@ -945,6 +1004,53 @@ function rkth_cl_chipdraw(cx, cy, cw, ch, lbl_str) local(_f) (
 // VU-face broadcast — a lit-able chip with nothing to broadcast would lie).
 // cur_vu = the host's CURRENT face (its slider); the cluster never writes the
 // slider itself — picks surface on rkth_vu_pick for the host to apply.
+// PAGES: the row an id is on in the open page (-1 = not on it). Ids: 0 THEME, 1 KNOB, 2 VU, 3 VU SYNC,
+// 4 NAME BAR, 5 STRIP, 6 NUMBERS, 7 NAME, 8 FONT, 10..14 the EXTRA slots 0..4, 15 EMBED, 16 LOCK;
+// 17 / 18 are the LOOK / STRIP tabs, on no row.
+function rkth_pg_rowof(id) (
+  id == 0 ? ( rkth_pg_look ? 0 : -1 ) : id == 1 ? ( rkth_pg_look ? 1 : -1 ) :
+  id == 2 ? ( rkth_pg_look && rkth_clp_vu ? 2 : -1 ) : id == 3 ? ( rkth_pg_look && rkth_clp_vu ? 3 : -1 ) :
+  id == 4 ? rkth_clp_nbrow : id == 5 ? rkth_clp_svrow : id == 6 ? rkth_clp_nurow : id == 7 ? rkth_clp_nsrow :
+  id == 8 ? rkth_clp_nfrow : id >= 10 && id <= 14 ? rkth_x_row(id - 10) : id == 15 ? rkth_clp_emrow :
+  id == 16 ? rkth_clp_lockrow : -1;
+);
+// The hint's two lines for an id, into #rkth_h1 / #rkth_h2; -1 = the mouse is on no row.
+function rkth_pg_hint(id) (
+  id == 0  ? ( strcpy(#rkth_h1, "The colours of every ReaKit"); strcpy(#rkth_h2, "plugin; NATIVE: their own"); ) :
+  id == 1  ? ( strcpy(#rkth_h1, "The knob style of every"); strcpy(#rkth_h2, "ReaKit plugin"); ) :
+  id == 2  ? ( strcpy(#rkth_h1, "This meter's face"); strcpy(#rkth_h2, ""); ) :
+  id == 3  ? ( strcpy(#rkth_h1, ">ALL: every meter takes"); strcpy(#rkth_h2, "this face"); ) :
+  id == 4  ? ( strcpy(#rkth_h1, "REAPER's name bar over"); strcpy(#rkth_h2, "the strip"); ) :
+  id == 5  ? ( strcpy(#rkth_h1, "METER and knob, the VU"); strcpy(#rkth_h2, "alone, or the knob alone"); ) :
+  id == 6  ? ( strcpy(#rkth_h1, "The strip meter's numbers,"); strcpy(#rkth_h2, "or its ticks only"); ) :
+  id == 7  ? ( strcpy(#rkth_h1, "The name: a row, a band in"); strcpy(#rkth_h2, "the track's colour, or none"); ) :
+  id == 8  ? ( strcpy(#rkth_h1, "The name's typeface"); strcpy(#rkth_h2, ""); ) :
+  id >= 10 && id <= 14 ? (
+    rkth_x_hok(id - 10) ? ( strcpy(#rkth_h1, rkth_x_h1(id - 10)); strcpy(#rkth_h2, rkth_x_h2(id - 10)); )
+                        : ( strcpy(#rkth_h1, ""); strcpy(#rkth_h2, ""); );
+  ) :
+  id == 15 ? ( strcpy(#rkth_h1, "Where it shows: the mixer"); strcpy(#rkth_h2, "(MCP), track panel, or off"); ) :
+  id == 16 ? ( strcpy(#rkth_h1, "LOCKED: keep this look when"); strcpy(#rkth_h2, "the suite's theme changes"); ) :
+  id == 17 ? ( strcpy(#rkth_h1, "How it looks: the theme,");
+               strcpy(#rkth_h2, rkth_clp_vu ? "the knobs and the meter" : "the knobs and the lock"); ) :
+  id == 18 ? ( strcpy(#rkth_h1, "How it shows in the mixer"); strcpy(#rkth_h2, "and the track panel"); ) :
+             ( strcpy(#rkth_h1, "Point at a row to see"); strcpy(#rkth_h2, "what it does"); );
+);
+// One hint line at (x, y), cut to w px with ".." when it is longer, in the current font.
+function rkth_pg_line(str, x, y, w) local(tw, th) (
+  strcpy(#rkth_hl, str);
+  gfx_measurestr(#rkth_hl, tw, th);
+  tw > w ? (
+    strcat(#rkth_hl, "..");
+    gfx_measurestr(#rkth_hl, tw, th);
+    while (tw > w && strlen(#rkth_hl) > 3) (
+      str_delsub(#rkth_hl, strlen(#rkth_hl) - 3, 1);
+      gfx_measurestr(#rkth_hl, tw, th);
+    );
+  );
+  gfx_x = x; gfx_y = y; gfx_drawstr(#rkth_hl);
+);
+
 function rkth_cluster(x, y, has_vu, cur_vu)
 local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid, _ch, _rh,
       _capw, _pad, _gap, _cw, _lkw, _nbw, _svw, _nuw, _nfw, _nfi, _nsw, _xw, _xi, _xj, _xr,
@@ -1159,10 +1265,50 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_x0row = rkth_x0_ok ? _xr : -1; rkth_x0_ok ? _xr += 1;
     rkth_clp_x1row = rkth_x1_ok ? _xr : -1; rkth_x1_ok ? _xr += 1;
     rkth_clp_x2row = rkth_x2_ok ? _xr : -1; rkth_x2_ok ? _xr += 1;
+    rkth_clp_x3row = rkth_x3_ok ? _xr : -1; rkth_x3_ok ? _xr += 1;
+    rkth_clp_x4row = rkth_x4_ok ? _xr : -1; rkth_x4_ok ? _xr += 1;
     // EMBED last before LOCK: like LOCK it reaches past this panel (to REAPER, and to the six)
     rkth_clp_emrow = rkth_em_ok ? _xr : -1; rkth_em_ok ? _xr += 1;
     rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
     rkth_clp_rows  = _xr + (rkth_lk_ok ? 1 : 0);
+    // ── PAGES (rkth_pages, opt-in): the open page's rows only, the others -1, which every hit test and
+    // draw below already skips. THEME, KNOB, VU and VU SYNC stay LOOK's rows 0..3 and LOOK's other rows
+    // follow; STRIP counts from 0. One height for both pages: the panel never jumps between them.
+    rkth_pg_on = rkth_pg_count(has_vu);
+    rkth_pg = rkth_pg_req ? rkth_pg_req - 1 : rkth_pg ? 1 : 0; rkth_pg_req = 0;   // the open page (a tab click asks for it)
+    rkth_pg_on ? (
+      rkth_pg == 0 ? (
+        _xr = has_vu ? 4 : 2;
+        rkth_clp_x0row = rkth_x0_ok && !rkth_x0_pg ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
+        rkth_clp_x1row = rkth_x1_ok && !rkth_x1_pg ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
+        rkth_clp_x2row = rkth_x2_ok && !rkth_x2_pg ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
+        rkth_clp_x3row = rkth_x3_ok && !rkth_x3_pg ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
+        rkth_clp_x4row = rkth_x4_ok && !rkth_x4_pg ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
+        rkth_clp_emrow = -1; rkth_clp_nbrow = -1; rkth_clp_svrow = -1;
+        rkth_clp_nurow = -1; rkth_clp_nsrow = -1; rkth_clp_nfrow = -1;
+      ) : (
+        _xr = 0;
+        rkth_clp_emrow = rkth_em_ok ? _xr : -1; rkth_em_ok ? _xr += 1;
+        rkth_clp_nbrow = rkth_nb_ok ? _xr : -1; rkth_nb_ok ? _xr += 1;
+        rkth_clp_svrow = rkth_sv_ok ? _xr : -1; rkth_sv_ok ? _xr += 1;
+        rkth_clp_nurow = rkth_nu_ok ? _xr : -1; rkth_nu_ok ? _xr += 1;
+        rkth_clp_x0row = rkth_x0_ok && rkth_x0_pg ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
+        rkth_clp_x1row = rkth_x1_ok && rkth_x1_pg ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
+        rkth_clp_x2row = rkth_x2_ok && rkth_x2_pg ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
+        rkth_clp_x3row = rkth_x3_ok && rkth_x3_pg ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
+        rkth_clp_x4row = rkth_x4_ok && rkth_x4_pg ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_nsrow = rkth_ns_ok ? _xr : -1; rkth_ns_ok ? _xr += 1;
+        rkth_clp_nfrow = rkth_nf_ok ? _xr : -1; rkth_nf_ok ? _xr += 1;
+        rkth_clp_lockrow = -1;
+      );
+      rkth_clp_rows = max(rkth_pg_nl, rkth_pg_ns);
+    );
+    rkth_pg_look = !rkth_pg_on || rkth_pg == 0;
+    rkth_pg_th = rkth_pg_on ? _ch : 0;                                                                // the tabs
+    rkth_pg_hh = rkth_pg_on ? 2 * (((RKTH_F_CAP*rkth_scale)|0) + 2*rkth_scale) + 4*rkth_scale : 0;   // the hint
+    rkth_pg_ex = rkth_pg_th + rkth_pg_hh;
+    rkth_pg_ng = rkth_clp_rows - 1 + (rkth_pg_on ? 2 : 0);   // gaps: between rows, under the tabs, over the hint
     // A panel taller than the window closes its top and bottom margins to 3 px,
     // then its gaps, down to none, before a row falls off the bottom: GainKit's
     // WIDE face scales everything with a short window's height, and its 12 rows
@@ -1171,14 +1317,14 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     // chips and their text keep their size; the clamp below still decides where
     // the panel hangs. A panel that fits is exactly what it was.
     _vp = _pad;
-    _av = gfx_h - 2*rkth_scale;
-    _vp + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _vp > _av ? (
+    _av = gfx_h - 2*rkth_scale - (rkth_pg_on ? y : 0);   // PAGES: only the space under the toggle (see rkth_need1)
+    _vp + rkth_pg_ex + rkth_clp_rows*_ch + rkth_pg_ng*_gap + _vp > _av ? (
       _vp = min(_vp, 3*rkth_scale);
-      _gap = max(0, min(_gap, (_av - 2*_vp - rkth_clp_rows*_ch) / max(1, rkth_clp_rows - 1)));
+      _gap = max(0, min(_gap, (_av - 2*_vp - rkth_pg_ex - rkth_clp_rows*_ch) / max(1, rkth_pg_ng)));
     );
     rkth_clp_pitch = _ch + _gap;
     rkth_clp_w = _pad + _capw + _cw + _pad;
-    rkth_clp_h = _vp + rkth_clp_rows*_ch + (rkth_clp_rows - 1)*_gap + _vp;
+    rkth_clp_h = _vp + rkth_pg_ex + rkth_clp_rows*_ch + rkth_pg_ng*_gap + _vp;
     rkth_clp_x = x; rkth_clp_y = y;
     // Clamp into the window, same rule the dropdowns use.
     rkth_clp_x + rkth_clp_w > gfx_w - 2*rkth_scale ? rkth_clp_x = max(0, gfx_w - 2*rkth_scale - rkth_clp_w);
@@ -1186,7 +1332,8 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_capx = rkth_clp_x + _pad;
     rkth_clp_cx   = rkth_clp_x + _pad + _capw;
     rkth_clp_cw   = _cw;
-    rkth_clp_r0   = rkth_clp_y + _vp;
+    rkth_clp_r0   = rkth_clp_y + _vp + (rkth_pg_on ? rkth_pg_th + _gap : 0);   // PAGES: under the tabs
+    rkth_pg_tab_y = rkth_clp_y + _vp; rkth_pg_hint_y = rkth_clp_y + rkth_clp_h - _vp - rkth_pg_hh;
     rkth_clp_ch   = _ch;
     rkth_clp_vu   = has_vu;
     // One x/width for every chip; rows step by pitch. Hit tests, dropdown
@@ -1199,6 +1346,27 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     thw = _cw; knw = _cw; vuw = _cw; syw = _cw;
     rkth_cl_h = _ch;   // the header itself now only ever holds the toggle
 
+    // ── PAGES: a tab click opens its page at the next layout, tabs and rows together; live while LOCKED
+    // (it changes where you look, not what is shown). With a THEME / KNOB / VU list open, the click only
+    // shuts the list, like every click on the panel then. The row under the mouse names the hint, the
+    // tabs too (17 / 18). ──
+    rkth_pg_on && (lmb_down || rmb_down) && mx >= rkth_clp_x && mx < rkth_clp_x + rkth_clp_w &&
+      my >= rkth_pg_tab_y && my < rkth_pg_tab_y + rkth_pg_th ? (
+      rkth_pg_req = (mx < rkth_clp_x + rkth_clp_w * 0.5 ? 0 : 1) + 1; rkth_dd_open = 0; rkth_open = 0;
+      lmb_down = 0; rmb_down = 0; rkth_consumed = 1;
+    );
+    rkth_hid = -1;
+    rkth_pg_on && !rkth_dd_open && !rkth_open &&
+      mx >= rkth_clp_x && mx < rkth_clp_x + rkth_clp_w && my >= rkth_pg_tab_y && my < rkth_pg_hint_y ? (
+      my < rkth_pg_tab_y + rkth_pg_th ? (
+        rkth_hid = mx < rkth_clp_x + rkth_clp_w * 0.5 ? 17 : 18;
+      ) : my >= rkth_clp_r0 ? (
+        _xr = ((my - rkth_clp_r0) / rkth_clp_pitch) | 0; _xi = 0;
+        loop(17, rkth_pg_rowof(_xi) == _xr ? rkth_hid = _xi; _xi += 1; );
+      );
+    );
+    // rkth_hid: the row under the mouse, or -1
+
     // ── THEME chip: existing picker, interaction EARLY (rkth pattern). It
     // stores (thx, thy) as the chip geometry, so rkth_draw_chip (now called
     // from the overlay) and the theme list anchor both follow the panel. ──
@@ -1208,16 +1376,16 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     // chip geometry the overlay draws from; skipping it would leave the THEME
     // chip painting at last frame's coordinates.
     rkth_input(thx, thy, thw, _ch, mx, my,
-               rkth_locked ? 0 : lmb_down, rkth_locked ? 0 : rmb_down,
-               rkth_locked ? 0 : frame_wheel, _rh) ? (
+               rkth_locked || !rkth_pg_look ? 0 : lmb_down, rkth_locked || !rkth_pg_look ? 0 : rmb_down,
+               rkth_locked || !rkth_pg_look ? 0 : frame_wheel, _rh) ? (
       lmb_down = 0; frame_wheel = 0; rkth_consumed = 1;
     );
     // ── KNOB chip: click opens the list; hover-wheel cycles the suite style
     // via GS_THEME_KNOB_REQ (wraps) ──
-    !rkth_locked && lmb_down && mx >= knx && mx < knx + knw && my >= kny && my < kny + _ch ? (
+    rkth_pg_look && !rkth_locked && lmb_down && mx >= knx && mx < knx + knw && my >= kny && my < kny + _ch ? (
       rkth_cl_openat(3, 21, knx, kny + _ch + 2*rkth_scale, _rh); lmb_down = 0; rkth_consumed = 1;
     );
-    !rkth_locked && frame_wheel != 0 && mx >= knx && mx < knx + knw && my >= kny && my < kny + _ch ? (
+    rkth_pg_look && !rkth_locked && frame_wheel != 0 && mx >= knx && mx < knx + knw && my >= kny && my < kny + _ch ? (
       // count from the style already requested (still on its way while the
       // painter waits a few frames), else quick wheel ticks collapse into one step
       kid = gmem[GS_THEME_KNOB_REQ] > 0 ? (gmem[GS_THEME_KNOB_REQ] | 0) - 1 : gmem[GS_THEME_KNOB_P] | 0;
@@ -1227,7 +1395,7 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
       gmem[GS_THEME_KNOB_REQ] = kid + 1;
       frame_wheel = 0; rkth_consumed = 1;
     );
-    has_vu ? (
+    has_vu && rkth_pg_look ? (
       // ── VU chip: click opens the face list; hover-wheel cycles -> pick ──
       lmb_down && mx >= vux && mx < vux + vuw && my >= vuy && my < vuy + _ch ? (
         rkth_cl_openat(2, rkth_vu_n(), vux, vuy + _ch + 2*rkth_scale, _rh); lmb_down = 0; rkth_consumed = 1;
@@ -1454,6 +1622,29 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
       gfx_set(0, 0, 0, 0.35); gfx_rect(rkth_clp_x + 2*rkth_scale, rkth_clp_y + 3*rkth_scale, rkth_clp_w, rkth_clp_h);
       rkth_setcol(1, 0.14, 0.16, 0.20, 1); gfx_rect(rkth_clp_x, rkth_clp_y, rkth_clp_w, rkth_clp_h);
       rkth_setcol(7, 0.34, 0.37, 0.44, 1); gfx_rect(rkth_clp_x, rkth_clp_y, rkth_clp_w, rkth_clp_h, 0);
+      // ── PAGES: the two tabs across the top, the open one a chip with an accent line under its label,
+      // the other plain text on the panel
+      rkth_pg_on ? (
+        _xi = 0;
+        loop(2,
+          _ry = (rkth_clp_w - 2 * (rkth_clp_capx - rkth_clp_x)) * 0.5;      // a tab's width
+          _k = rkth_clp_capx + _xi * _ry;
+          gfx_setfont(1, "Arial", _f9, 'b');
+          gfx_measurestr(_xi ? "STRIP" : "LOOK", rkth_pg_lw, rkth_pg_lh);
+          rkth_pg == _xi ? (
+            rkth_setcol(1, 0.16, 0.18, 0.22, 1); gfx_rect(_k, rkth_pg_tab_y, _ry - 2*rkth_scale, rkth_clp_ch);
+            rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(_k, rkth_pg_tab_y, _ry - 2*rkth_scale, rkth_clp_ch, 0);
+            rkth_setcol(4, 0.95, 0.65, 0.15, 1);
+            gfx_rect(_k + (_ry - 2*rkth_scale - rkth_pg_lw) * 0.5, rkth_pg_tab_y + rkth_clp_ch - 3*rkth_scale,
+                     rkth_pg_lw, max(1, 2*rkth_scale));
+            rkth_setcol(2, 0.85, 0.87, 0.90, 1);
+          ) : rkth_setcol(3, 0.62, 0.65, 0.70, 1);
+          gfx_x = _k + (_ry - 2*rkth_scale - rkth_pg_lw) * 0.5;
+          gfx_y = rkth_pg_tab_y + (rkth_clp_ch - _f9) * 0.5 - rkth_scale;
+          gfx_drawstr(_xi ? "STRIP" : "LOOK");
+          _xi += 1;
+        );
+      );
       // Captions in the left column, vertically centred on their row.
       // CONTRAST: these were slot-3 ink at alpha 0.65 — a dark grey at
       // two-thirds opacity ON A DARK PANEL, the least readable text in the
@@ -1463,9 +1654,11 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
       gfx_setfont(1, "Arial", _f7, 'b');
       rkth_setcol(3, 0.62, 0.65, 0.70, 1);
       _cy = (rkth_clp_ch - _f7) * 0.5;
-      gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + _cy; gfx_drawstr("THEME");
-      gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + rkth_clp_pitch + _cy; gfx_drawstr("KNOB");
-      rkth_clp_vu ? (
+      rkth_pg_look ? (
+        gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + _cy; gfx_drawstr("THEME");
+        gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + rkth_clp_pitch + _cy; gfx_drawstr("KNOB");
+      );
+      rkth_clp_vu && rkth_pg_look ? (
         gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + 2*rkth_clp_pitch + _cy; gfx_drawstr("VU");
         // "VU SYNC", not a bare "SYNC": the chip face reads ">ALL", which with
         // an unqualified caption promises to broadcast the WHOLE appearance
@@ -1476,10 +1669,12 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
         gfx_x = rkth_clp_capx; gfx_y = rkth_clp_r0 + 3*rkth_clp_pitch + _cy; gfx_drawstr("VU SYNC");
       );
       // Chip faces. THEME reads its rect from the globals rkth_input stored.
-      rkth_draw_chip(_f9);
-      rkth_cl_lbl(3, rkth_knob_shown());   // the knob on screen (row = id)
-      rkth_cl_chipdraw(rkth_clp_cx, rkth_clp_r0 + rkth_clp_pitch, rkth_clp_cw, rkth_clp_ch, #rkth_ddl);
-      rkth_clp_vu ? (
+      rkth_pg_look ? (
+        rkth_draw_chip(_f9);
+        rkth_cl_lbl(3, rkth_knob_shown());   // the knob on screen (row = id)
+        rkth_cl_chipdraw(rkth_clp_cx, rkth_clp_r0 + rkth_clp_pitch, rkth_clp_cw, rkth_clp_ch, #rkth_ddl);
+      );
+      rkth_clp_vu && rkth_pg_look ? (
         rkth_cl_lbl(2, rkth_cl_vu);
         rkth_cl_chipdraw(rkth_clp_cx, rkth_clp_r0 + 2*rkth_clp_pitch, rkth_clp_cw, rkth_clp_ch, #rkth_ddl);
         // SYNC chip: lit (theme ACCENT / amber fallback, dark label ink) while
@@ -1630,6 +1825,23 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
         gfx_x = rkth_clp_cx + 5*rkth_scale; gfx_y = _ry + (rkth_clp_ch - _f9) * 0.5;
         gfx_drawstr(rkth_locked ? "LOCKED" : "FOLLOW");
       );
+      // ── PAGES: the row the mouse is on, framed, and what it does, under a divider at the foot
+      rkth_pg_on ? (
+        _k = rkth_pg_rowof(rkth_hid);
+        _k >= 0 ? (
+          gfx_set(1, 1, 1, 0.9);
+          gfx_rect(rkth_clp_capx - 3*rkth_scale, rkth_clp_r0 + _k*rkth_clp_pitch - 2*rkth_scale,
+                   rkth_clp_cx + rkth_clp_cw - rkth_clp_capx + 5*rkth_scale, rkth_clp_ch + 4*rkth_scale, 0);
+        );
+        _ry = rkth_clp_w - 2 * (rkth_clp_capx - rkth_clp_x);                  // the inner width
+        rkth_setcol(7, 0.34, 0.37, 0.44, 1); gfx_rect(rkth_clp_capx, rkth_pg_hint_y, _ry, max(1, rkth_scale|0));
+        rkth_pg_hint(rkth_hid);
+        gfx_setfont(1, "Arial", _f7);
+        rkth_hid >= 0 ? rkth_setcol(2, 0.85, 0.87, 0.90, 1) : rkth_setcol(3, 0.62, 0.65, 0.70, 1);
+        rkth_pg_line(#rkth_h1, rkth_clp_capx, rkth_pg_hint_y + 3*rkth_scale, _ry);
+        rkth_pg_line(#rkth_h2, rkth_clp_capx, rkth_pg_hint_y + 5*rkth_scale + _f7, _ry);
+        gfx_setfont(1, "Arial", _f9, 'b');
+      );
     );
     // CONSUME: rkth_cluster re-raises this next frame only if the host still
     // calls it. Cleared whether or not we painted, and inside the same
@@ -1696,9 +1908,13 @@ rkth_nf_pick = -1;      // FONT pick, the same contract
 rkth_nf_ok   = 0;       // re-established every frame by rkth_namefont()
 rkth_clp_nfrow = -1;    // no FONT row until the layout counts one
 rkth_nf_wsc  = 0;       // the FONT chip's width is measured again at the first frame
-rkth_x0_pick = -1; rkth_x1_pick = -1; rkth_x2_pick = -1;          // EXTRA rows: the same contract, by slot
-rkth_x0_ok = 0; rkth_x1_ok = 0; rkth_x2_ok = 0;                   // re-established every frame by rkth_xrow()
-rkth_clp_x0row = -1; rkth_clp_x1row = -1; rkth_clp_x2row = -1;    // no such rows until the layout counts them
+rkth_x0_pick = -1; rkth_x1_pick = -1; rkth_x2_pick = -1; rkth_x3_pick = -1; rkth_x4_pick = -1;    // EXTRA rows: the same contract, by slot
+rkth_x0_ok = 0; rkth_x1_ok = 0; rkth_x2_ok = 0; rkth_x3_ok = 0; rkth_x4_ok = 0;                        // re-established every frame by rkth_xrow()
+rkth_clp_x0row = -1; rkth_clp_x1row = -1; rkth_clp_x2row = -1; rkth_clp_x3row = -1; rkth_clp_x4row = -1; // no such rows until the layout counts them
+rkth_pg = 0; rkth_pg_req = 0; rkth_pg_ok = 0; rkth_pg_on = 0; rkth_pg_look = 1; rkth_hid = -1;   // PAGES: LOOK open
+rkth_pg_th = 0; rkth_pg_hh = 0; rkth_pg_ex = 0; rkth_pg_tab_y = 0; rkth_pg_hint_y = 0;
+rkth_x0_pg = 0; rkth_x1_pg = 0; rkth_x2_pg = 0; rkth_x3_pg = 0; rkth_x4_pg = 0;           // EXTRA rows: on LOOK
+rkth_x0_hok = 0; rkth_x1_hok = 0; rkth_x2_hok = 0; rkth_x3_hok = 0; rkth_x4_hok = 0;      // ...with no hint
 rkth_em_ok = 0;         // EMBED: re-established every frame by rkth_embedrow()
 rkth_clp_emrow = -1;    // no EMBED row until the layout counts one
 rkth_em_pend = 0;       // nothing asked of Plus yet

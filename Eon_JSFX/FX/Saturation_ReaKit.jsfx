@@ -130,7 +130,9 @@ drive_s += (drive_t - drive_s) * (1 - sm_coeff);
 wet_s   += ((rk_ps_active ? wet_t : 0) - wet_s) * (1 - sm_coeff);
 
 wet_s > 0.001 ? (
-  // sin(x) ~ x(1 - x²/6 + x⁴/120), within 0.01 % for |x| <= pi/2
+  // sin(x) ~ x(1 - x²/6 + x⁴/120): 0.45 % high at |x| = pi/2 (it said 0.01 %; outside audit, 2026-10-01).
+  // The normaliser is the same polynomial, so the top still lands on 1; the window draws the true
+  // sine, at most 0.004 of full scale from this curve at full drive (well under a pixel).
   f = drive_s / 200 * $pi;
   f > 0.001 ? (
     f2 = f * f;

@@ -1039,6 +1039,9 @@ RKVU_WN   = 13.54;   // 99% of a step at 300 ms                (measured)
 function rk_vu_init(ref_db) (
   this.pos = 0; this.vel = 0; this.hold = 0; this.hold_t = 0;
   this.acc = 0; this.cnt = 0; this.over = 0;
+  // the two sides' own needles, holds and LEDs, for rk_vu_sample2 / rk_vu_draw_side
+  this.pos_l = this.vel_l = this.acc_l = 0; this.pos_r = this.vel_r = this.acc_r = 0;
+  this.hold_l = this.hold_t_l = this.over_l = 0; this.hold_r = this.hold_t_r = this.over_r = 0;
   // 0 VU = a sine at ref_db. mean|sine| = 2A/pi, so scale the rectified
   // average by pi/2 to recover the peak the reference is quoted in.
   this.ref = 10 ^ (ref_db / 20);
@@ -1279,6 +1282,66 @@ function rk_vu_sample(x) local(amp, tgt, a, dt, peg) (
   );
 );
 
+// Stereo into ONE needle that reads the LOUDER side. Each side has its own rectified average and its
+// own ballistics, the same standard as rk_vu_sample's (this.pos_l / this.vel_l, this.pos_r /
+// this.vel_r), and the needle (this.pos) is the higher of the two, so its hold, readout and LED
+// follow the louder side too. Feeding rk_vu_sample (L+R)/2 read a source panned hard to one side
+// 6 dB low and two sides out of phase as nothing (outside audit, 2026-10-01); a per-sample
+// max(|L|,|R|) would read a wide, uncorrelated mix about 3 dB high. Each side also keeps its own
+// hold and LED (pos_l / hold_l / over_l, ..._r), so a host can draw it as two meters, one per side
+// (rk_vu_draw_side). Call once per sample instead of rk_vu_sample, never both.
+function rk_vu_sample2(l, r) local(tl, tr, a, dt, peg) (
+  l = abs(l); r = abs(r);
+  l >= 0 ? ( l > 1000000 ? l = 1000000; ) : ( l = 0; );   // NaN -> silence, +inf -> finite
+  r >= 0 ? ( r > 1000000 ? r = 1000000; ) : ( r = 0; );
+  this.acc_l = this.legacy ? max(this.acc_l, min(l, 16)) : this.acc_l + min(l, 16);
+  this.acc_r = this.legacy ? max(this.acc_r, min(r, 16)) : this.acc_r + min(r, 16);
+  this.pkb = max(this.pkb, max(l, r));
+  max(l, r) > this.lim ? this.over = this.led_hold;
+  l > this.lim ? this.over_l = this.led_hold;
+  r > this.lim ? this.over_r = this.led_hold;
+  this.cnt += 1;
+  this.cnt >= RKVU_DEC ? (
+    dt  = RKVU_DEC / max(srate, 1);
+    peg = this.legacy ? RKVU_PEG_LEGACY : RKVU_PEG;
+    tl = this.legacy ? this.acc_l : (this.acc_l / RKVU_DEC) * ($pi * 0.5) / max(this.ref, 0.0000001);
+    tr = this.legacy ? this.acc_r : (this.acc_r / RKVU_DEC) * ($pi * 0.5) / max(this.ref, 0.0000001);
+    a = this.wn * this.wn * (tl - this.pos_l) - 2 * this.zeta * this.wn * this.vel_l;
+    this.vel_l += a * dt;
+    this.pos_l += this.vel_l * dt;
+    this.pos_l < 0 ? ( this.pos_l = 0; this.vel_l = max(this.vel_l, 0); );
+    this.pos_l > peg ? ( this.pos_l = peg; this.vel_l = min(this.vel_l, 0); );
+    abs(this.vel_l) < 0.0000001 ? this.vel_l = 0;
+    abs(this.pos_l) >= 0 && abs(this.vel_l) >= 0 ? 0 : ( this.pos_l = 0; this.vel_l = 0; );
+    a = this.wn * this.wn * (tr - this.pos_r) - 2 * this.zeta * this.wn * this.vel_r;
+    this.vel_r += a * dt;
+    this.pos_r += this.vel_r * dt;
+    this.pos_r < 0 ? ( this.pos_r = 0; this.vel_r = max(this.vel_r, 0); );
+    this.pos_r > peg ? ( this.pos_r = peg; this.vel_r = min(this.vel_r, 0); );
+    abs(this.vel_r) < 0.0000001 ? this.vel_r = 0;
+    abs(this.pos_r) >= 0 && abs(this.vel_r) >= 0 ? 0 : ( this.pos_r = 0; this.vel_r = 0; );
+    this.pos = max(this.pos_l, this.pos_r);
+    this.vel = this.pos_r > this.pos_l ? this.vel_r : this.vel_l;
+    // each side's hold and LED, as the needle's below
+    this.pos_l > this.hold_l ? ( this.hold_l = this.pos_l; this.hold_t_l = RKVU_HOLD_S; );
+    this.hold_t_l > 0 ? this.hold_t_l -= dt : this.hold_l = max(this.hold_l - dt * 0.8, this.pos_l);
+    this.pos_r > this.hold_r ? ( this.hold_r = this.pos_r; this.hold_t_r = RKVU_HOLD_S; );
+    this.hold_t_r > 0 ? this.hold_t_r -= dt : this.hold_r = max(this.hold_r - dt * 0.8, this.pos_r);
+    this.over_l > 0 ? this.over_l -= dt;
+    this.over_r > 0 ? this.over_r -= dt;
+
+    this.pos > this.hold ? ( this.hold = this.pos; this.hold_t = RKVU_HOLD_S; );
+    this.hold_t > 0 ? this.hold_t -= dt
+                    : this.hold = max(this.hold - dt * 0.8, this.pos);
+    this.over > 0 ? this.over -= dt;
+    this.pkb > this.pk_cur ? ( this.pk_cur = this.pkb; this.pk_t = this.pk_hold >= 0 ? this.pk_hold : RKVU_HOLD_S; )
+                           : ( this.pk_t > 0 ? this.pk_t -= dt : this.pk_cur = this.pkb; );
+    this.pk_max = max(this.pk_max, this.pkb);
+    this.pkb = 0;
+    this.acc_l = 0; this.acc_r = 0; this.cnt = 0;
+  );
+);
+
 // ══ DRAW ═══════════════════════════════════════════════════════════════
 // Split three ways on purpose. The face is a plain global function, so a
 // caller that wants TWO movements on ONE plate (stereo, or mid/side) draws
@@ -1400,6 +1463,28 @@ function rk_vu_draw(x, y, w, h, mode, theme, label) local(v, pk) (
     );
   );
   rkvu_nums = 1;                           // the defaults again, for rk_vu_face / rk_vu_geom callers
+  rkvu_flat = 0;
+  rkvu_lbl_font = 0;
+);
+
+// ONE SIDE of a meter fed by rk_vu_sample2 (side 0 = left, 1 = right), as its own meter in the rect:
+// the face with this instance's settings (numerals, flat, label font, hold style, legacy scale), that
+// side's needle and hold, and its own LED. No readout box: two meters read by their needles. The host
+// lays the two out (side by side, stacked) and can add its own marks to each face, which rk_vu's
+// globals (rkvu_*) describe until the next face is drawn.
+function rk_vu_draw_side(x, y, w, h, mode, theme, label, side) local(p, hd) (
+  rkvu_nums = this.nums;
+  rkvu_flat = this.flat;
+  rkvu_lbl_font = this.lbl_font;
+  rk_vu_face(x, y, w, h, mode, theme, label);
+  rkvu_hold_style = this.hold_style;
+  p  = side ? this.pos_r : this.pos_l;
+  hd = side ? this.hold_r : this.hold_l;
+  this.legacy && mode == 0
+    ? rk_vu_ink(rk_vu_legacy_ratio(p), rk_vu_legacy_ratio(hd), mode, 0)
+    : rk_vu_ink(p, hd, mode, 0);
+  rk_vu_cap_led((side ? this.over_r : this.over_l) > 0);
+  rkvu_nums = 1;
   rkvu_flat = 0;
   rkvu_lbl_font = 0;
 );

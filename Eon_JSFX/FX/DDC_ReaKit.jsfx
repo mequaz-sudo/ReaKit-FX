@@ -17,7 +17,7 @@
 // EON Studios — ReaKit Suite. LOSER's Digital Drum Compressor with a ReaKit GUI (Quaz) and
 // additions around his detector and gain computer: knee, mix, sidechain HPF, stereo link,
 // lookahead, and 2x on the detector. His header above is kept as he wrote it.
-// v2.1.1
+// v2.1.2
 desc:EON: DDC
 options:gmem=Swing_Media_Transfer no_meter
 
@@ -82,17 +82,16 @@ freemem = 1100000;
 km  = freemem; freemem += 12 * KS;
 bm  = freemem; freemem += 2 * BS;
 
-// Lookahead rings: 2048 samples = 5 ms up to 409.6 kHz. ⚠ Widen slider16 past 5 ms and
-// grow these AND the dry ring below.
-la_buf_L = freemem; freemem += 2048;
-la_buf_R = freemem; freemem += 2048;
-la_pos = 0;
-la_size = 0;
-// The Mix's dry, delayed by the lookahead so both halves are the same moment. 4096: a power
-// of two ABOVE the lookahead's 2048 (equal, the read would land on the sample just written).
+// The lookahead: one ring per channel holds the input, and the audio and the Mix's dry are both
+// read from it la_size samples back, so both halves are the same moment. The lookahead is at
+// most 2048 samples (5 ms up to 409.6 kHz); 4096 is a power of two ABOVE that (equal, the read
+// would land on the sample just written). ⚠ Widen slider16 past 5 ms and grow the ring.
 dry_buf_L = freemem; freemem += 4096;
 dry_buf_R = freemem; freemem += 4096;
 dry_pos = 0;
+la_size = 0;
+// the read point @sample is on (la_tap), the one it fades from (la_tap0), the fade (1 = none)
+la_tap = la_tap0 = 0; la_xf = 1; la_xf_step = 1;
 
 // SC HPF biquad state
 sc_hpf_b0 = 1; sc_hpf_b1 = 0; sc_hpf_b2 = 0;
@@ -136,7 +135,6 @@ function recalc_dsp() (
   det_sr = slider15 ? srate * 2 : srate;
   attack = exp( -treshdB/max( slider3*det_sr/1000 , 1) / c_ampdB  ) ;
   hold = slider4/1000*det_sr;
-  under_treshL = 0; under_treshR = 0;
   release = exp( -treshdB/max( slider5*det_sr/1000 , 1) / c_ampdB ) ;
 
   rms_size_1 = rms_size;
@@ -158,12 +156,22 @@ function recalc_dsp() (
       volume = exp(slider9/c_ampdB) / (mode_make_up ? tresh+(1-tresh)/ratio * 2.828427125 : 1);
   );
 
-  seekgainL = 1; seekgainR = 1;
-
   // Knee
   knee = slider11;
   knee_lo = treshdB - knee * 0.5;
   knee_hi = treshdB + knee * 0.5;
+
+  // The hold and the target restart (LOSER's own reset) only when what they are computed from
+  // changes: threshold, ratio, hold, RMS size, feed, knee, 2x or the rate. Every knob restarted
+  // them, so with a long Hold, moving Mix, Output, Link, SC HPF, Lookahead or Make-Up let the
+  // compression go early (outside audit, 2026-10-01).
+  slider1 != det_k1 || slider2 != det_k2 || slider4 != det_k4 || slider6 != det_k6 ||
+  slider7 != det_k7 || slider11 != det_k11 || slider15 != det_k15 || srate != det_ksr ? (
+    det_k1 = slider1; det_k2 = slider2; det_k4 = slider4; det_k6 = slider6;
+    det_k7 = slider7; det_k11 = slider11; det_k15 = slider15; det_ksr = srate;
+    under_treshL = 0; under_treshR = 0;
+    seekgainL = 1; seekgainR = 1;
+  );
 
   // Mix
   mix_pct = slider12 / 100;
@@ -190,15 +198,10 @@ function recalc_dsp() (
   os_on = slider15;
   os_on != os_prev ? ( os_on ? os.os2_stereo_reset(); os_prev = os_on; );
 
-  // Lookahead
+  // Lookahead: only the read point moves; @sample fades to it over 10 ms
   la_ms = slider16;
-  la_size_new = min(floor(la_ms * 0.001 * srate + 0.5), 2048);
-  la_size_new != la_size ? (
-    la_size = la_size_new;
-    la_pos = 0;
-    memset(la_buf_L, 0, 2048);
-    memset(la_buf_R, 0, 2048);
-  );
+  la_size = min(floor(la_ms * 0.001 * srate + 0.5), 2048);
+  la_xf_step = 1 / max(0.01 * srate, 1);
   vol_s.smooth_init(10);
 );
 
@@ -324,6 +327,7 @@ rkth_native_tick();
 @sample
 snap_params ? (
   vol_s.smooth_set(volume);
+  la_tap = la_tap0 = la_size; la_xf = 1;   // the saved lookahead from the first sample, no fade
   snap_params = 0;
 );
 
@@ -364,29 +368,30 @@ vol_sm = vol_s.smooth(volume);
 gL = gainL * vol_sm;
 gR = gainR * vol_sm;
 
-// ── Lookahead: delay the audio, the detector stays current ──
-la_size > 0 ? (
-  _la_out_L = la_buf_L[la_pos];
-  _la_out_R = la_buf_R[la_pos];
-  la_buf_L[la_pos] = spl0;
-  la_buf_R[la_pos] = spl1;
-  la_pos = (la_pos + 1) % la_size;
-  spl0 = _la_out_L;
-  spl1 = _la_out_R;
-);
-
-// ── Apply gain, always at the native rate ──
-spl0 *= gL;
-spl1 *= gR;
-
-// ── Mix, against the dry la_size samples back (the same moment as the wet) ──
+// ── Lookahead: the input la_size samples back, for the audio and the Mix's dry alike (the
+// detector stays current). A change of Lookahead fades from the old read point to the new over
+// 10 ms, one change at a time, so a drag follows in 10 ms steps. It used to empty the ring, and
+// the sound dropped out until it refilled: a buzz while the knob moved (outside audit, 2026-10-01).
 dry_buf_L[dry_pos] = dry0; dry_buf_R[dry_pos] = dry1;
-_dry_d = la_size;
-_dry_rd = (dry_pos - _dry_d + 4096) & 4095;
+la_xf >= 1 && la_tap != la_size ? ( la_tap0 = la_tap; la_tap = la_size; la_xf = 0; );
+la_xf < 1 ? (
+  _la_a = (dry_pos - la_tap0 + 4096) & 4095;
+  _la_b = (dry_pos - la_tap + 4096) & 4095;
+  _la_l = dry_buf_L[_la_a] + (dry_buf_L[_la_b] - dry_buf_L[_la_a]) * la_xf;
+  _la_r = dry_buf_R[_la_a] + (dry_buf_R[_la_b] - dry_buf_R[_la_a]) * la_xf;
+  la_xf = min(la_xf + la_xf_step, 1);
+) : (
+  _la_b = (dry_pos - la_tap + 4096) & 4095;
+  _la_l = dry_buf_L[_la_b]; _la_r = dry_buf_R[_la_b];
+);
 dry_pos = (dry_pos + 1) & 4095;
+
+// ── Apply gain, always at the native rate; the Mix against the same delayed input ──
+spl0 = _la_l * gL;
+spl1 = _la_r * gR;
 mix_pct < 1 ? (
-  spl0 = dry_buf_L[_dry_rd] + (spl0 - dry_buf_L[_dry_rd]) * mix_pct;
-  spl1 = dry_buf_R[_dry_rd] + (spl1 - dry_buf_R[_dry_rd]) * mix_pct;
+  spl0 = _la_l + (spl0 - _la_l) * mix_pct;
+  spl1 = _la_r + (spl1 - _la_r) * mix_pct;
 );
 
 spl0_out = spl0;

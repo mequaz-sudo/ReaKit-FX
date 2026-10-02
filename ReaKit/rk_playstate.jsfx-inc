@@ -60,6 +60,7 @@ function rk_ps_init(tail_ms)
   // >0 = fade out over N ms
   rk_ps_tail_ms     = tail_ms;
   rk_ps_tail_samps  = tail_ms > 0 ? (tail_ms * srate / 1000) | 0 : 0;
+  rk_ps_tail_sr     = srate;   // rk_ps_update_block re-takes the samples when the rate moves
   rk_ps_tail_count  = 0;
 
   // Previous state for edge detection
@@ -79,6 +80,14 @@ function rk_ps_init(tail_ms)
 function rk_ps_update_block()
   local(ps, was_active)
 (
+  // The tail counts samples: re-take it when the rate moves. With ext_noinit, @init (and so
+  // rk_ps_init) does not re-run on a rate change (wiki 3.2): a 200 ms tail set at 48 kHz lasted
+  // 100 ms at 96 (outside audit, 2026-10-01).
+  srate != rk_ps_tail_sr ? (
+    rk_ps_tail_sr = srate;
+    rk_ps_tail_samps = rk_ps_tail_ms > 0 ? (rk_ps_tail_ms * srate / 1000) | 0 : 0;
+  );
+
   ps = play_state;
 
   // Decode state flags
