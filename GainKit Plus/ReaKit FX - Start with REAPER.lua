@@ -147,10 +147,10 @@ if emsg then say(eok, emsg, etip) end
 
 -- 2. EON Floatter: registers itself in the start-up file on its first run
 local need_floatter = false
+local fl                                              -- Floatter's script, when installed
 if startup:find("-- EON:EON_Floatter BEGIN", 1, true) then
   say(true, "EON Floatter starts with REAPER")
 else
-  local fl
   for _, p in ipairs(FLOATTERS) do if exists(p) then fl = p; break end end
   if not fl then
     say(false, "EON Floatter isn't installed. Install it from ReaPack, then run this again.")
@@ -211,15 +211,54 @@ end
 -- the start-up file says it starts with REAPER. Launched quietly it stops at once without
 -- js_ReaScriptAPI (one console line), and a user who switched "starts with REAPER" off keeps it
 -- off: the summary says what is true (outside review, 2026-10-02: it used to say "running" always).
+-- Returns true when it runs.
 local function floatter_says()
   local hb = tonumber(r.GetExtState("EON_Floatter", "alive_t")) or 0
   if r.time_precise() - hb > 1.0 then
-    return say(false, "EON Floatter didn't start: it needs js_ReaScriptAPI. Install that from ReaPack, restart REAPER, then run this again.")
+    say(false, "EON Floatter didn't start: it needs js_ReaScriptAPI. Install that from ReaPack, restart REAPER, then run this again.")
+    return false
   end
   if (read(STARTUP) or ""):find("-- EON:EON_Floatter BEGIN", 1, true) then
-    return say(true, "EON Floatter is on and starts with REAPER")
+    say(true, "EON Floatter is on and starts with REAPER")
+  else
+    say(false, "EON Floatter is on, but won't start with REAPER. Open EON Floatter from the action list and switch on \"starts with REAPER\".")
   end
-  say(false, "EON Floatter is on, but won't start with REAPER. Open EON Floatter from the action list and switch on \"starts with REAPER\".")
+  return true
+end
+
+-- The EON plugins already in this project, counted the way Floatter's "Set them now" counts them
+-- (W.instances: a size in its table, or one the user kept). Its embed entry returns L and SIZES
+-- before anything of it runs (EON_FLOATTER_EMBED, as its probes use it). 0 when that fails.
+local function eon_in_project(path)
+  EON_FLOATTER_EMBED = true
+  local ok, mod = pcall(dofile, path)
+  EON_FLOATTER_EMBED = nil
+  if not ok or type(mod) ~= "table" or type(mod.L) ~= "table" or type(mod.SIZES) ~= "table" then return 0 end
+  local L, SIZES, n = mod.L, mod.SIZES, 0
+  local function scan(tr)
+    if not tr then return end
+    for fx = 0, r.TrackFX_GetCount(tr) - 1 do
+      local key = L.fx_key(tr, fx)
+      if SIZES[key] or (L.get_capture and L.get_capture(key)) or (L.get_legacy and L.get_legacy(key)) then n = n + 1 end
+    end
+  end
+  scan(r.GetMasterTrack(0))
+  for i = 0, r.CountTracks(0) - 1 do scan(r.GetTrack(0, i)) end
+  return n
+end
+
+-- The quiet launch shows no panel, so nobody sees Floatter's welcome card and its "Set them now":
+-- this does it for them (the user, 2026-10-02: "that should happen automatically after install, to
+-- make it seamless"). Floatter's own request "apply_project" runs that same pass (W.quiet_pass:
+-- every EON plugin in the project to its size, closed floats opened invisibly for a moment) on its
+-- next tick; the card is marked seen, its question answered.
+local function floatter_size_project()
+  local n = fl and eon_in_project(fl) or 0
+  r.SetExtState("EON_Floatter", "welcomed_v1", "1", true)
+  if n == 0 then return end
+  r.SetExtState("EON_Floatter", "req", "apply_project", false)
+  say(true, n == 1 and "The EON plugin in this project is set to its designed size"
+    or ("The %d EON plugins in this project are set to their designed sizes"):format(n))
 end
 
 -- 4. The summary: one small window in the ReaKit look (Floatter's palette: dark slate, EON blue,
@@ -338,10 +377,20 @@ local function window(cur)
         ImGui.DrawList_AddText(dl, sx + sw + 10, sy + (sh - lh) / 2, P.text, "Faster mixer strips")
         ImGui.SetCursorScreenPos(ctx, sx + sw + 10, sy + sh + 4)
         ImGui.PushTextWrapPos(ctx, ImGui.GetCursorPosX(ctx) + W - sw - 10)
-        ImGui.TextColored(ctx, P.muted, "Plugin faces in the mixer move more smoothly. Takes effect the next time REAPER starts.")
+        ImGui.TextColored(ctx, P.muted, "Plugin faces in the mixer move more smoothly.")
         ImGui.PopTextWrapPos(ctx)
       end
       ImGui.Dummy(ctx, 0, 4)
+      -- the one thing left to do, right above OK, while the offer is on (the user, 2026-10-02: the
+      -- grey "next time REAPER starts" was too easy to miss). The line is always reserved, so the
+      -- window does not jump when the switch moves.
+      if cur then
+        if fast then
+          ImGui.TextColored(ctx, P.warn, "Restart REAPER to get the faster mixer strips")
+        else
+          ImGui.Dummy(ctx, 0, ImGui.GetTextLineHeight(ctx))
+        end
+      end
       local bw = 96
       ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + W - bw)
       ImGui.PushStyleColor(ctx, ImGui.Col_Text, P.white)
@@ -382,7 +431,7 @@ local function settle()
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, PLUS, true)
     if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
   end
-  if need_floatter then floatter_says() end
+  if need_floatter and floatter_says() then floatter_size_project() end
   for _, d in ipairs(done) do all_ok = all_ok and d.ok end
   local cur = rate_offer()
   if r.GetExtState("EON_GainKitPlus", "quiet") == "1" then          -- a probe: no window
