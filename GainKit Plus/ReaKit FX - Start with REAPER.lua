@@ -5,7 +5,8 @@
 -- part is skipped when it is already in place. Once, it sets the six to open embedded in the
 -- mixer strip (REAPER's own per-plugin default), and offers to raise REAPER's meter refresh to
 -- 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
--- One message says what was done. MIT, EON Studios, 2026.
+-- One small window in the ReaKit look says what was done and carries that offer as a switch
+-- (the plain message box without ReaImGui). MIT, EON Studios, 2026.
 local r = reaper
 local _, own = r.get_action_context()
 local sep = own:find("\\", 1, true) and "\\" or "/"
@@ -57,14 +58,16 @@ local function replace_file(p, text)
   return false
 end
 local startup = read(STARTUP) or ""
+-- what the summary says, one line each: ok = a check mark, not ok = something for the user to do
 local done = {}
+local function say(ok, text, tip) done[#done + 1] = { ok = ok, text = text, tip = tip } end
 local need_plus = false
 
 -- 1. GainKit Plus: its action is a toggle, so only run it when its block is absent
 if startup:find("GainKit Plus: start with REAPER", 1, true) then
-  done[#done + 1] = "GainKit Plus already starts with REAPER."
+  say(true, "GainKit Plus starts with REAPER")
 elseif not exists(PLUS_SETUP) then
-  done[#done + 1] = "GainKit Plus - Start with REAPER.lua was not found beside this script."
+  say(false, "GainKit Plus is missing a file. Reinstall GainKit Plus from ReaPack, then run this again.")
 else
   local was_quiet = r.GetExtState("EON_GainKitPlus", "quiet")
   r.SetExtState("EON_GainKitPlus", "quiet", "1", false)          -- no dialog from it; ours below
@@ -72,9 +75,11 @@ else
   if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
   if was_quiet == "1" then r.SetExtState("EON_GainKitPlus", "quiet", "1", false) else r.DeleteExtState("EON_GainKitPlus", "quiet", false) end
   startup = read(STARTUP) or ""
-  done[#done + 1] = startup:find("GainKit Plus: start with REAPER", 1, true)
-    and "GainKit Plus starts with REAPER from now on (and is running now)."
-    or "GainKit Plus could not be added to Scripts/__startup.lua."
+  if startup:find("GainKit Plus: start with REAPER", 1, true) then
+    say(true, "GainKit Plus is on and starts with REAPER")
+  else
+    say(false, "GainKit Plus couldn't be set to start with REAPER. Run this again.")
+  end
   need_plus = true   -- the setup starts Plus itself, but not when it is launched from a launched action: checked below
 end
 
@@ -85,6 +90,8 @@ end
 -- bit, the line's other bits kept. Once: a plugin the user later sets back stays as they set it.
 local FREE6 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx" }
+local BUSY = "REAPER was busy, so the six effects weren't set to open in the mixer strip. Run this again."
+-- returns ok, the line to show (nil, nil when it was done on an earlier run)
 local function embed_defaults()
   if r.GetExtState("EON_ReaKitFX", "embed_defaults") == "1" then return nil end
   local paths, have = {}, {}
@@ -97,10 +104,10 @@ local function embed_defaults()
     local p = "ReaKit FX/FX/Eon_JSFX/FX/" .. f
     if not have[p] and exists(res .. sep .. "Effects" .. sep .. p:gsub("/", sep)) then have[p] = true; paths[#paths + 1] = p end
   end
-  if #paths == 0 then return "The ReaKit FX were not found, so they were not set to open in the mixer strip." end
+  if #paths == 0 then return false, "The six effects weren't found. Install ReaKit FX from ReaPack, then run this again." end
   local opt = res .. sep .. "reaper-fxoptions.ini"
   local txt = read_opt(opt)
-  if not txt then return "reaper-fxoptions.ini could not be read just now, so the ReaKit FX were not set to open in the mixer strip; run this again." end
+  if not txt then return false, BUSY end              -- reaper-fxoptions.ini locked for a moment
   local bom = txt:sub(1, 3) == "\239\187\191" and "\239\187\191" or ""   -- kept, not parsed as text
   txt = txt:sub(#bom + 1)
   local nl = txt:find("\r\n", 1, true) and "\r\n" or (txt == "" and "\r\n" or "\n")
@@ -129,108 +136,262 @@ local function embed_defaults()
     end
     if not found then table.insert(lines, sec_end + 1, p .. "=4"); sec_end = sec_end + 1; changed = changed + 1 end
   end
-  if changed > 0 and not replace_file(opt, bom .. table.concat(lines, nl) .. nl) then
-    return "reaper-fxoptions.ini could not be replaced, so the ReaKit FX were not set to open in the mixer strip; run this again."
-  end
+  if changed > 0 and not replace_file(opt, bom .. table.concat(lines, nl) .. nl) then return false, BUSY end
   r.SetExtState("EON_ReaKitFX", "embed_defaults", "1", true)
-  return "New copies of the six ReaKit FX open embedded in the mixer strip (REAPER's own setting per plugin: FX browser, right-click, Default settings for new instances)."
+  -- REAPER's own setting per plugin: the line stays plain, its tooltip says where to change it
+  return true, "The six effects open right in the mixer strip",
+    "REAPER's own setting for each plugin: right-click it in the FX browser, then Default settings for new instances."
 end
-local emsg = embed_defaults()
-if emsg then done[#done + 1] = emsg end
+local eok, emsg, etip = embed_defaults()
+if emsg then say(eok, emsg, etip) end
 
 -- 2. EON Floatter: registers itself in the start-up file on its first run
 local need_floatter = false
 if startup:find("-- EON:EON_Floatter BEGIN", 1, true) then
-  done[#done + 1] = "EON Floatter already starts with REAPER."
+  say(true, "EON Floatter starts with REAPER")
 else
   local fl
   for _, p in ipairs(FLOATTERS) do if exists(p) then fl = p; break end end
   if not fl then
-    done[#done + 1] = "EON Floatter is not installed (ReaPack: EON Floatter, from the ReaKit FX repository)."
+    say(false, "EON Floatter isn't installed. Install it from ReaPack, then run this again.")
   else
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, fl, true)
     if ok and c and c > 0 then
-      -- launch_src "setup": Floatter 1.0.3+ opens its panel and closes it by itself after a few
-      -- seconds (an older Floatter reads it as a quiet launch: no panel)
-      r.SetExtState("EON_Floatter", "launch_src", "setup:" .. r.time_precise(), false)
+      -- a quiet launch: Floatter turns on and registers itself with no panel (the user, 2026-10-02:
+      -- "turn the startup action on without opening floatter"). Any launch_src word other than
+      -- "user" / "setup" is quiet in every Floatter that reads it; "setup" (1.0.3's open-then-close
+      -- peek) is no longer sent. Without js_ReaScriptAPI it prints one console line and stops, and
+      -- the summary says so.
+      r.SetExtState("EON_Floatter", "launch_src", "reakitfx:" .. r.time_precise(), false)
       r.Main_OnCommand(c, 0)
       need_floatter = true   -- what to say waits for its heartbeat (settle, below)
     else
-      done[#done + 1] = "EON Floatter could not be started; run EON Floatter from the action list."
+      say(false, "EON Floatter couldn't be started. Run EON Floatter from the action list.")
     end
   end
 end
 
 -- Plus running? Its heartbeat (EXT alive, stamped every tick while it runs) is the sign; a
 -- launch from here is one level shallower than the setup's own, which REAPER drops when this
--- action was itself launched by another script. Checked after a short wait, then the one
--- dialog; a probe sets EON_GainKitPlus/quiet and gets none (a modal box from an action run by
--- Main_OnCommand blocks the caller).
+-- action was itself launched by another script. Checked after a short wait, then the summary;
+-- a probe sets EON_GainKitPlus/quiet and gets none.
 local function plus_alive()
   local hb = tonumber(r.GetExtState("EON_GainKitPlus", "alive")) or 0
   local st = tonumber(r.GetExtState("EON_GainKitPlus", "stop")) or 0
   return hb > st and r.time_precise() - hb < 1.0
 end
 -- 3. Faster mixer strips: REAPER redraws its meters and every plugin face in a strip at its meter
--- rate (Preferences > Appearance > Track meter settings), 30 a second out of the box. Asked ONCE,
+-- rate (Preferences > Appearance > Track meter settings), 30 a second out of the box. Offered ONCE,
 -- only raised, never lowered: 120 took a 23-track mixer's strips from 27 to 55 redraws a second
 -- (2026-10-01). Written to reaper.ini; REAPER applies it at its next start. A probe answers
--- through EON_ReaKitFX/test_rate ("yes"/"no") instead of the dialog.
+-- through EON_ReaKitFX/test_rate ("yes"/"no") instead of the summary's switch.
 local RATE = 120
 local NL = string.char(10)
-local function meter_rate()
-  if not (r.get_config_var_string and r.set_config_var_string) then return end   -- older REAPER
-  if r.GetExtState("EON_ReaKitFX", "rate_asked") == "1" then return end
+-- the meter rate now when the offer is due; nil on an older REAPER, once offered, or at RATE already
+local function rate_offer()
+  if not (r.get_config_var_string and r.set_config_var_string) then return nil end   -- older REAPER
+  if r.GetExtState("EON_ReaKitFX", "rate_asked") == "1" then return nil end
   local ok, cur = r.get_config_var_string("vuupdfreq")
   cur = ok and tonumber(cur) or 30
-  if cur >= RATE then r.SetExtState("EON_ReaKitFX", "rate_asked", "1", true); return end
-  local yes
-  if r.GetExtState("EON_GainKitPlus", "quiet") == "1" then
-    local t = r.GetExtState("EON_ReaKitFX", "test_rate")
-    if t == "" then return end   -- quiet and no test answer: ask next time instead
-    yes = (t == "yes")
-  else
-    yes = r.MB("Make the mixer strips redraw faster?" .. NL .. NL
-      .. "This raises REAPER's meter refresh from " .. math.floor(cur) .. " to " .. RATE
-      .. " times a second, so the plugin faces in the mixer and the track panel answer quicker."
-      .. " It takes effect the next time REAPER starts." .. NL .. NL
-      .. "You can change it any time in Preferences > Appearance > Track meter settings.",
-      "ReaKit FX", 4) == 6
-  end
+  if cur >= RATE then r.SetExtState("EON_ReaKitFX", "rate_asked", "1", true); return nil end
+  return cur
+end
+-- the answer: offered once either way; only a yes writes, and a write REAPER refuses says where
+local function rate_answer(yes)
   r.SetExtState("EON_ReaKitFX", "rate_asked", "1", true)
-  if yes then
-    local res = r.set_config_var_string("vuupdfreq", tostring(RATE), 1)
-    done[#done + 1] = (res and res > 0)
-      and ("Mixer strips redraw " .. RATE .. " times a second from the next start of REAPER.")
-      or "REAPER did not take the faster meter refresh; set it in Preferences > Appearance > Track meter settings."
+  if not yes then return end
+  local res = r.set_config_var_string("vuupdfreq", tostring(RATE), 1)
+  if not (res == true or (type(res) == "number" and res > 0)) and r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then
+    r.MB("REAPER didn't take the faster mixer setting. You can set it in Preferences > Appearance > Track meter settings.",
+         "ReaKit FX", 0)
   end
 end
 
 -- Floatter launched? Its heartbeat (EON_Floatter/alive_t, every tick) says it runs; its block in
--- the start-up file says it starts with REAPER. It stops at once without js_ReaScriptAPI (and says
--- so in its own box), and a user who switched "starts with REAPER" off keeps it off: the summary
--- says what is true (outside review, 2026-10-02: it used to say "running" in every case).
+-- the start-up file says it starts with REAPER. Launched quietly it stops at once without
+-- js_ReaScriptAPI (one console line), and a user who switched "starts with REAPER" off keeps it
+-- off: the summary says what is true (outside review, 2026-10-02: it used to say "running" always).
 local function floatter_says()
   local hb = tonumber(r.GetExtState("EON_Floatter", "alive_t")) or 0
   if r.time_precise() - hb > 1.0 then
-    return "EON Floatter did not start. It needs the js_ReaScriptAPI extension (ReaPack: js_ReaScriptAPI); install it, restart REAPER and run this again."
+    return say(false, "EON Floatter didn't start: it needs js_ReaScriptAPI. Install that from ReaPack, restart REAPER, then run this again.")
   end
   if (read(STARTUP) or ""):find("-- EON:EON_Floatter BEGIN", 1, true) then
-    return "EON Floatter is running and starts with REAPER from now on."
+    return say(true, "EON Floatter is on and starts with REAPER")
   end
-  return "EON Floatter is running, but it is not set to start with REAPER: run EON Floatter from the action list and turn on \"starts with REAPER\" in its panel."
+  say(false, "EON Floatter is on, but won't start with REAPER. Open EON Floatter from the action list and switch on \"starts with REAPER\".")
 end
 
-local t0, n = r.time_precise(), 0
+-- 4. The summary: one small window in the ReaKit look (Floatter's palette: dark slate, EON blue,
+-- the orange mark). A check mark per line done, an amber mark per line the user has to act on,
+-- the faster-mixer offer as a switch (on to start with); OK or Enter finishes and answers the
+-- offer. Not modal: Floatter and GainKit Plus keep running behind it (the old
+-- message box held every script's loop). Without ReaImGui, or if the window fails: the plain
+-- message box, the offer as its Yes / No. (The user, 2026-10-02: "too wordy", "too techy",
+-- "needs some gui polish".)
+local P = {
+  bg = 0x161F28FF, raised = 0x1C2732FF, line = 0x283644FF, line2 = 0x34465AFF, text = 0xDBE3EAFF,
+  muted = 0x8B95A1FF, dim = 0x5B6773FF, accent = 0x3A86D0FF, accent_lo = 0x2A6FB0FF,
+  accent_hi = 0x4D9AE6FF, accent_dn = 0x1E5A94FF, brand = 0xE8532AFF, ok = 0x58C858FF,
+  warn = 0xE6B84FFF, warn_ink = 0x1A1408FF, white = 0xFFFFFFFF,
+}
+local all_ok = true
+local function plain_box(cur)
+  local t = {}
+  for _, d in ipairs(done) do t[#t + 1] = (d.ok and "" or "(!) ") .. d.text end
+  local msg = table.concat(t, NL)
+  if cur then
+    rate_answer(r.MB(msg .. NL .. NL .. "Make the mixer strips faster? Plugin faces in the mixer move more smoothly"
+      .. " from the next time REAPER starts.", "ReaKit FX", 4) == 6)
+  else
+    r.MB(msg, "ReaKit FX", 0)
+  end
+end
+
+local function window(cur)
+  if not r.ImGui_GetBuiltinPath then return false end
+  local okl, ImGui = pcall(function()
+    package.path = r.ImGui_GetBuiltinPath() .. "/?.lua;" .. package.path
+    return require("imgui")("0.10")
+  end)
+  if not okl or type(ImGui) ~= "table" then return false end
+  local ctx = ImGui.CreateContext("ReaKit FX")
+  local function font(flags)
+    local okf, f = pcall(ImGui.CreateFont, "sans-serif", flags)
+    if okf and f and pcall(ImGui.Attach, ctx, f) then return f end
+  end
+  local bold, body = font(ImGui.FontFlags_Bold), font(nil)
+  local fast, W = true, 360                           -- the offer starts on; the text column's width
+  local FLAGS = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_NoResize
+    | ImGui.WindowFlags_AlwaysAutoResize | ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoSavedSettings
+    | (rawget(ImGui, "WindowFlags_TopMost") or 0)
+  local COLS = {
+    { ImGui.Col_WindowBg, P.bg }, { ImGui.Col_Border, P.line2 }, { ImGui.Col_Text, P.text },
+    { ImGui.Col_PopupBg, P.raised }, { ImGui.Col_Separator, P.line }, { ImGui.Col_Button, P.accent_lo },
+    { ImGui.Col_ButtonHovered, P.accent }, { ImGui.Col_ButtonActive, P.accent_dn },
+  }
+  local VARS = {
+    { ImGui.StyleVar_WindowRounding, 6 }, { ImGui.StyleVar_FrameRounding, 4 },
+    { ImGui.StyleVar_WindowBorderSize, 1 }, { ImGui.StyleVar_WindowPadding, 22, 18 },
+    { ImGui.StyleVar_ItemSpacing, 8, 9 }, { ImGui.StyleVar_FramePadding, 10, 6 },
+  }
+
+  local function row_mark(dl, x, y, lh, ok)          -- a check mark, or an amber "!" disc
+    local cy = y + lh / 2
+    if ok then
+      ImGui.DrawList_AddLine(dl, x + 2, cy, x + 6, cy + 4, P.ok, 2)
+      ImGui.DrawList_AddLine(dl, x + 6, cy + 4, x + 14, cy - 5, P.ok, 2)
+    else
+      ImGui.DrawList_AddCircleFilled(dl, x + 8, cy, 8, P.warn)
+      local ew, eh = ImGui.CalcTextSize(ctx, "!")
+      ImGui.DrawList_AddText(dl, x + 8 - ew / 2, cy - eh / 2, P.warn_ink, "!")
+    end
+  end
+
+  local function draw()
+    local finish, open = false, true
+    for _, c in ipairs(COLS) do ImGui.PushStyleColor(ctx, c[1], c[2]) end
+    for _, v in ipairs(VARS) do ImGui.PushStyleVar(ctx, v[1], v[2], v[3]) end
+    local cx, cy = ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))
+    ImGui.SetNextWindowPos(ctx, cx, cy, ImGui.Cond_Appearing, 0.5, 0.5)
+    local visible
+    visible, open = ImGui.Begin(ctx, "ReaKit FX###reakitfx_summary", true, FLAGS)
+    if visible then
+      local dl = ImGui.GetWindowDrawList(ctx)
+      if body then ImGui.PushFont(ctx, body, 15) end
+      -- the title: the orange mark, then one bold line
+      local x, y = ImGui.GetCursorScreenPos(ctx)
+      if bold then ImGui.PushFont(ctx, bold, 19) end
+      local th = ImGui.GetTextLineHeight(ctx)
+      ImGui.DrawList_AddCircleFilled(dl, x + 5, y + th / 2 + 1, 5, P.brand)
+      ImGui.SetCursorScreenPos(ctx, x + 18, y)
+      ImGui.Text(ctx, all_ok and "ReaKit FX is ready" or "ReaKit FX is almost ready")
+      if bold then ImGui.PopFont(ctx) end
+      ImGui.Dummy(ctx, W, 0)                          -- holds the window at the column's width
+      ImGui.Separator(ctx)
+      ImGui.Dummy(ctx, 0, 2)
+      for _, d in ipairs(done) do
+        local ix, iy = ImGui.GetCursorScreenPos(ctx)
+        row_mark(dl, ix, iy, ImGui.GetTextLineHeight(ctx), d.ok)
+        ImGui.SetCursorScreenPos(ctx, ix + 26, iy)
+        ImGui.PushTextWrapPos(ctx, ImGui.GetCursorPosX(ctx) + W - 26)
+        ImGui.Text(ctx, d.text)
+        ImGui.PopTextWrapPos(ctx)
+        if d.tip and ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, d.tip) end
+      end
+      if cur then                                     -- the offer: a switch, its name, one quiet line
+        ImGui.Dummy(ctx, 0, 2)
+        ImGui.Separator(ctx)
+        ImGui.Dummy(ctx, 0, 2)
+        local sx, sy = ImGui.GetCursorScreenPos(ctx)
+        local lh = ImGui.GetTextLineHeight(ctx)
+        local sw, sh = 34, 18
+        if ImGui.InvisibleButton(ctx, "##fast", W, math.max(sh, lh)) then fast = not fast end
+        local hov = ImGui.IsItemHovered(ctx)
+        if hov then
+          ImGui.SetTooltip(ctx, ("REAPER's meter refresh, from %d to %d times a second. You can change it any time"
+            .. " in Preferences > Appearance > Track meter settings."):format(math.floor(cur), RATE))
+        end
+        local track = fast and (hov and P.accent_hi or P.accent) or (hov and P.dim or P.line2)
+        ImGui.DrawList_AddRectFilled(dl, sx, sy, sx + sw, sy + sh, track, sh / 2)
+        ImGui.DrawList_AddCircleFilled(dl, fast and (sx + sw - 9) or (sx + 9), sy + sh / 2, 7, P.white)
+        ImGui.DrawList_AddText(dl, sx + sw + 10, sy + (sh - lh) / 2, P.text, "Faster mixer strips")
+        ImGui.SetCursorScreenPos(ctx, sx + sw + 10, sy + sh + 4)
+        ImGui.PushTextWrapPos(ctx, ImGui.GetCursorPosX(ctx) + W - sw - 10)
+        ImGui.TextColored(ctx, P.muted, "Plugin faces in the mixer move more smoothly. Takes effect the next time REAPER starts.")
+        ImGui.PopTextWrapPos(ctx)
+      end
+      ImGui.Dummy(ctx, 0, 4)
+      local bw = 96
+      ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + W - bw)
+      ImGui.PushStyleColor(ctx, ImGui.Col_Text, P.white)
+      if ImGui.Button(ctx, "OK", bw, 0) then finish = true end
+      ImGui.PopStyleColor(ctx, 1)
+      -- Enter as OK. No Esc: it never reached the window in the test REAPER, keyboard capture and
+      -- keyboard navigation tried (2026-10-02), so the window does not promise it
+      if ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) or ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter) then finish = true end
+      if body then ImGui.PopFont(ctx) end
+      ImGui.End(ctx)
+    end
+    ImGui.PopStyleVar(ctx, #VARS)
+    ImGui.PopStyleColor(ctx, #COLS)
+    return finish, open
+  end
+
+  local function frame()
+    if not ImGui.ValidatePtr(ctx, "ImGui_Context*") then return plain_box(cur) end
+    local ok, finish, open = pcall(draw)
+    if not ok then
+      r.ShowConsoleMsg("[ReaKit FX] the summary window failed (" .. tostring(finish) .. "); the plain box instead." .. NL)
+      return plain_box(cur)
+    end
+    if finish then
+      if cur then rate_answer(fast) end
+      return
+    end
+    if open then r.defer(frame) end                   -- (no close box: OK / Enter end it)
+  end
+  frame()
+  return true
+end
+
+local t0 = r.time_precise()
 local function settle()
-  n = n + 1
   if (need_plus or need_floatter) and r.time_precise() - t0 < 1.0 then return r.defer(settle) end
   if need_plus and not plus_alive() and exists(PLUS) then
     local ok, c = pcall(r.AddRemoveReaScript, true, 0, PLUS, true)
     if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
   end
-  if need_floatter then done[#done + 1] = floatter_says() end
-  meter_rate()
-  if r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then r.MB(table.concat(done, NL), "ReaKit FX", 0) end
+  if need_floatter then floatter_says() end
+  for _, d in ipairs(done) do all_ok = all_ok and d.ok end
+  local cur = rate_offer()
+  if r.GetExtState("EON_GainKitPlus", "quiet") == "1" then          -- a probe: no window
+    if cur then
+      local t = r.GetExtState("EON_ReaKitFX", "test_rate")
+      if t ~= "" then rate_answer(t == "yes") end                    -- no test answer: offered next time
+    end
+    return
+  end
+  if not window(cur) then plain_box(cur) end
 end
 settle()
