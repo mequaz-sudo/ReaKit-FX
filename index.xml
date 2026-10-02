@@ -715,6 +715,22 @@
         <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8c56cf80d03285e7e5cff2b4e684aab7597b0c86/GainKit%20Plus/GainKit%20Plus.lua</source>
         <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8c56cf80d03285e7e5cff2b4e684aab7597b0c86/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
       </version>
+      <version name="1.0.14" author="Quaz (EON Studios)" time="2026-10-02T22:07:57Z">
+        <changelog><![CDATA[ReaKit FX - Start with REAPER: the summary is one small window in the ReaKit look, with a check mark for each thing that was set up and a plain note for anything you still need to do. The faster mixer strips offer is a switch in the same window. EON Floatter now turns on without opening its panel.]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/d98e5851cc1dacdf6a531fe8ad3baf601022b8b3/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+      </version>
     </reapack>
   </category>
   <category name="EON Floatter">
