@@ -50,6 +50,13 @@ type, and the name is printed on the meter like a legend and on top of the strip
 as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
 M/S modes it used to show are still there as parameters, so old projects sound the same.
 
+![GainKit with METERS on ONE and on TWO](screenshots/session/gainkit_one_two.png)
+
+![Mixer strips with two meters each, in the track's colour](screenshots/session/strips_two_meters.png)
+
+*METERS on ONE and on TWO: a meter for each side, with a trim knob under each in the window, and
+two meters in every strip and on the master, here in the track's colour.*
+
 #### GainKit Plus
 
 Actions that come with GainKit (install **GainKit Plus** from the same repository; they appear
@@ -184,6 +191,8 @@ WIDTH knob at the bottom of the channel.
   instance's look while the rest follows the theme. It has two pages: LOOK (the theme, the knob,
   the VU's face and colour, METERS, LOCK) and STRIP (everything about the mixer strip), and a line
   at the bottom says what the row under the mouse does.
+
+  ![GainKit's THEME panel: the LOOK page at METERS, the STRIP page at VU DRAG](screenshots/session/gainkit_theme_panel.png)
 
   **With EON Swing** — its bridge paints the other eleven themes and keeps the whole suite in step:
 
