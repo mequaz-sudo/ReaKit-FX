@@ -241,9 +241,8 @@ WIDTH knob at the bottom of the channel.
    and install it the same way. Then type **ReaImGui**, click only the one called "ReaImGui: ReaScript
    binding for Dear ImGui" and install it: EON Floatter needs both. Click **Apply**, then restart REAPER.
 4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run/close**. GainKit Plus and
-   EON Floatter start with REAPER from then on, and new copies of the six open in the mixer strip. It asks
-   once whether to make the mixer strips redraw faster: say yes. Floatter's panel opens too: click Later
-   and close it.
+   EON Floatter start with REAPER from then on, and new copies of the six open in the mixer strip. A small
+   window shows what it set up: leave **Faster mixer strips** on, click **OK**, then restart REAPER.
 5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit`. Close the effects
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
