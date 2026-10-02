@@ -99,6 +99,7 @@ sc_hpf_a1 = 0; sc_hpf_a2 = 0;
 sc_hpf_x1L = 0; sc_hpf_x2L = 0; sc_hpf_y1L = 0; sc_hpf_y2L = 0;
 sc_hpf_x1R = 0; sc_hpf_x2R = 0; sc_hpf_y1R = 0; sc_hpf_y2R = 0;
 sc_hpf_on = 0;
+mix_snap = 1;      // the first sample takes the Mix as it is (no glide from 0 at load)
 
 // RMS ring buffer for stereo unlinked (R channel)
 // L channel reuses existing rms_bpos[0..rms_size] at address 0
@@ -173,8 +174,9 @@ function recalc_dsp() (
     seekgainL = 1; seekgainR = 1;
   );
 
-  // Mix
+  // Mix: the target; @sample glides mix_s to it, ~5 ms
   mix_pct = slider12 / 100;
+  mix_k = 1 - exp(-1 / max(0.005 * srate, 1));
 
   // SC HPF (RBJ highpass)
   sc_hpf_freq = slider13;
@@ -389,9 +391,13 @@ dry_pos = (dry_pos + 1) & 4095;
 // ── Apply gain, always at the native rate; the Mix against the same delayed input ──
 spl0 = _la_l * gL;
 spl1 = _la_r * gR;
-mix_pct < 1 ? (
-  spl0 = _la_l + (spl0 - _la_l) * mix_pct;
-  spl1 = _la_r + (spl1 - _la_r) * mix_pct;
+// the Mix glides (~5 ms), taken as it is on the first sample: a jump swapped dry and wet in one sample,
+// a click on fast automation (outside audit 2026-10-02)
+mix_snap ? ( mix_s = mix_pct; mix_snap = 0; );
+abs(mix_pct - mix_s) > 0.000001 ? mix_s += (mix_pct - mix_s) * mix_k : mix_s = mix_pct;
+mix_s < 1 ? (
+  spl0 = _la_l + (spl0 - _la_l) * mix_s;
+  spl1 = _la_r + (spl1 - _la_r) * mix_s;
 );
 
 spl0_out = spl0;

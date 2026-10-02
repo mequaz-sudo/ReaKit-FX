@@ -563,7 +563,11 @@ function gk_plus_read() local(t, b, g, n, i, j, c, p, fl) (
     i += 1;
   );
   i < n ? str_setlen(#gk_hname, i);
-  t == -1 ? t = GK_PLUS_MASTER;   // the master reads its own slot: the project's name (the user, 2026-09-30)
+  // the master reads its own slot: the project's name (the user, 2026-09-30). A track past the 512 the
+  // script publishes has no slot: the 513th track's index IS 512, and it read the master's colour and
+  // icon (outside audit 2026-10-02). It gets no Plus colour, icon or name; REAPER 7.81+ still names it
+  // (#gk_hname above), an older REAPER leaves it unnamed.
+  t == -1 ? t = GK_PLUS_MASTER : (t >= GK_PLUS_MAX ? t = -2);
   (t >= 0 && t <= GK_PLUS_MASTER) ? (
     b = GK_PLUS_BASE + t * GK_PLUS_STRIDE;
     g = gmem[b];

@@ -229,18 +229,22 @@ function recalc_dsp()
   thr = pow(10, 2 * (slider1 / 80 + 1) - 2);
   thr_inv = 1 / thr;
   rat = (slider4 - 1) / 19;
-  outgain = pow(10, slider9 / 20);
-  de_ps_step = 1 / max(0.005 * srate, 1);
+  outgain = pow(10, slider9 / 20);          // the target: @sample glides outgain_s to it
+  og_k = 1 - exp(-1 / max(0.005 * srate, 1));   // ~5 ms (outside audit 2026-10-02: it jumped, a click)
+  de_ps_step = 1 / max(0.005 * srate, 1);   // also the Target / Monitor crossfades' step (5 ms)
   la_len = min(floor(slider7 * 0.001 * srate + 0.5), LA_MAX - 1);
   la_xf_step = 1 / max(0.01 * srate, 1);   // @sample fades to a new la_len over 10 ms
 
-  // Bandpass: crossovers at the band's low (fl) and high (fh) edges; Hipass: one at the frequency
+  // Bandpass: crossovers at the band's low (fl) and high (fh) edges; Hipass: one at the frequency.
+  // The high edge (s1) is set in both modes: its filters run in Hipass too, so a switch to Bandpass
+  // crossfades from a running filter (outside audit 2026-10-02: they stood still in Hipass and came
+  // back with old state)
+  fh = min(slider2 + slider2 * slider3 / 2, 20000);
+  calc_lr2(fh);
+  tgt_b1_s1  = lr2_b1;   tgt_b2_s1  = lr2_b2;
+  tgt_a0s1lp = lr2_a0lp; tgt_a1s1lp = lr2_a1lp; tgt_a2s1lp = lr2_a2lp;
+  tgt_a0s1hp = lr2_a0hp; tgt_a1s1hp = lr2_a1hp; tgt_a2s1hp = lr2_a2hp;
   de_bp ? (
-    fh = min(slider2 + slider2 * slider3 / 2, 20000);
-    calc_lr2(fh);
-    tgt_b1_s1  = lr2_b1;   tgt_b2_s1  = lr2_b2;
-    tgt_a0s1lp = lr2_a0lp; tgt_a1s1lp = lr2_a1lp; tgt_a2s1lp = lr2_a2lp;
-    tgt_a0s1hp = lr2_a0hp; tgt_a1s1hp = lr2_a1hp; tgt_a2s1hp = lr2_a2hp;
     fl = slider2 - slider2 * slider3 / 4;
     calc_lr2(fl);
   ) : (
@@ -271,6 +275,7 @@ function de_prime() (
   d_b1_s0=d_b2_s0=d_a0s0lp=d_a1s0lp=d_a2s0lp=d_a0s0hp=d_a1s0hp=d_a2s0hp=0;
   d_b1_s1=d_b2_s1=d_a0s1lp=d_a1s1lp=d_a2s1lp=d_a0s1hp=d_a1s1hp=d_a2s1hp=0;
   de_la_snap = 1;   // the first sample takes the lookahead as it is then (the saved one at load), no fade
+  outgain_s = outgain; de_xbp = de_bp; de_xmon = de_mon;   // and the output gain and the two modes
   de_srate_seen = srate;
 );
 de_prime();
@@ -297,16 +302,15 @@ samplesblock > 0 ? (
   d_a0s0hp = (tgt_a0s0hp - src_a0s0hp) / samplesblock; a0s0hp = src_a0s0hp; src_a0s0hp = tgt_a0s0hp;
   d_a1s0hp = (tgt_a1s0hp - src_a1s0hp) / samplesblock; a1s0hp = src_a1s0hp; src_a1s0hp = tgt_a1s0hp;
   d_a2s0hp = (tgt_a2s0hp - src_a2s0hp) / samplesblock; a2s0hp = src_a2s0hp; src_a2s0hp = tgt_a2s0hp;
-  de_bp ? (
-    d_b1_s1 = (tgt_b1_s1 - src_b1_s1) / samplesblock; b1_s1 = src_b1_s1; src_b1_s1 = tgt_b1_s1;
-    d_b2_s1 = (tgt_b2_s1 - src_b2_s1) / samplesblock; b2_s1 = src_b2_s1; src_b2_s1 = tgt_b2_s1;
-    d_a0s1lp = (tgt_a0s1lp - src_a0s1lp) / samplesblock; a0s1lp = src_a0s1lp; src_a0s1lp = tgt_a0s1lp;
-    d_a1s1lp = (tgt_a1s1lp - src_a1s1lp) / samplesblock; a1s1lp = src_a1s1lp; src_a1s1lp = tgt_a1s1lp;
-    d_a2s1lp = (tgt_a2s1lp - src_a2s1lp) / samplesblock; a2s1lp = src_a2s1lp; src_a2s1lp = tgt_a2s1lp;
-    d_a0s1hp = (tgt_a0s1hp - src_a0s1hp) / samplesblock; a0s1hp = src_a0s1hp; src_a0s1hp = tgt_a0s1hp;
-    d_a1s1hp = (tgt_a1s1hp - src_a1s1hp) / samplesblock; a1s1hp = src_a1s1hp; src_a1s1hp = tgt_a1s1hp;
-    d_a2s1hp = (tgt_a2s1hp - src_a2s1hp) / samplesblock; a2s1hp = src_a2s1hp; src_a2s1hp = tgt_a2s1hp;
-  );
+  // s1 in both modes (it runs in Hipass too, warm for a switch to Bandpass)
+  d_b1_s1 = (tgt_b1_s1 - src_b1_s1) / samplesblock; b1_s1 = src_b1_s1; src_b1_s1 = tgt_b1_s1;
+  d_b2_s1 = (tgt_b2_s1 - src_b2_s1) / samplesblock; b2_s1 = src_b2_s1; src_b2_s1 = tgt_b2_s1;
+  d_a0s1lp = (tgt_a0s1lp - src_a0s1lp) / samplesblock; a0s1lp = src_a0s1lp; src_a0s1lp = tgt_a0s1lp;
+  d_a1s1lp = (tgt_a1s1lp - src_a1s1lp) / samplesblock; a1s1lp = src_a1s1lp; src_a1s1lp = tgt_a1s1lp;
+  d_a2s1lp = (tgt_a2s1lp - src_a2s1lp) / samplesblock; a2s1lp = src_a2s1lp; src_a2s1lp = tgt_a2s1lp;
+  d_a0s1hp = (tgt_a0s1hp - src_a0s1hp) / samplesblock; a0s1hp = src_a0s1hp; src_a0s1hp = tgt_a0s1hp;
+  d_a1s1hp = (tgt_a1s1hp - src_a1s1hp) / samplesblock; a1s1hp = src_a1s1hp; src_a1s1hp = tgt_a1s1hp;
+  d_a2s1hp = (tgt_a2s1hp - src_a2s1hp) / samplesblock; a2s1hp = src_a2s1hp; src_a2s1hp = tgt_a2s1hp;
 );
 
 // GR meter: the block's peak reduction
@@ -367,8 +371,8 @@ de_psm > 0 ? (
   s0_hp_r_xm1 = a2s0hp * inp_r - b2_s0 * s0_hp_r_out;
   s0_hp_r_out *= -1;
 
-  // ── s1 on LIVE signal (bandpass detection path) ───────────────────────────
-  de_bp ? (
+  // ── s1 on LIVE signal (bandpass detection path), in both modes: warm for a switch ──
+  (
     b1_s1 += d_b1_s1; b2_s1 += d_b2_s1;
     a0s1lp += d_a0s1lp; a1s1lp += d_a1s1lp; a2s1lp += d_a2s1lp;
     a0s1hp += d_a0s1hp; a1s1hp += d_a1s1hp; a2s1hp += d_a2s1hp;
@@ -386,12 +390,11 @@ de_psm > 0 ? (
     s1_hp_r_xm0 = a1s1hp * s0_hp_r_out - b1_s1 * s1_hp_r_out + s1_hp_r_xm1;
     s1_hp_r_xm1 = a2s1hp * s0_hp_r_out - b2_s1 * s1_hp_r_out;
     s1_hp_r_out *= -1;
-    cband_l = s1_lp_l_out;
-    cband_r = s1_lp_r_out;
-  ) : (
-    cband_l = s0_hp_l_out;
-    cband_r = s0_hp_r_out;
   );
+  // the detected band crossfades between Hipass (s0's high side) and Bandpass (s1's low side), 5 ms
+  de_xbp = de_bp ? min(de_xbp + de_ps_step, 1) : max(de_xbp - de_ps_step, 0);
+  cband_l = s0_hp_l_out + (s1_lp_l_out - s0_hp_l_out) * de_xbp;
+  cband_r = s0_hp_r_out + (s1_lp_r_out - s0_hp_r_out) * de_xbp;
 
   // ── peak detector (both channels), gain computer, 0.1-per-sample smoothing ──
   dtl = max(abs(cband_l), abs(cband_r));
@@ -421,7 +424,7 @@ de_psm > 0 ? (
   ds0_hp_r_xm0 = a1s0hp * dinp_r - b1_s0 * ds0_hp_r + ds0_hp_r_xm1;
   ds0_hp_r_xm1 = a2s0hp * dinp_r - b2_s0 * ds0_hp_r;
   ds0_hp_r *= -1;
-  de_bp ? (
+  (   // s1 on the delayed signal, in both modes
     ds1_lp_l = a0s1lp * ds0_hp_l + ds1_lp_l_xm0;
     ds1_lp_l_xm0 = a1s1lp * ds0_hp_l - b1_s1 * ds1_lp_l + ds1_lp_l_xm1;
     ds1_lp_l_xm1 = a2s1lp * ds0_hp_l - b2_s1 * ds1_lp_l;
@@ -437,15 +440,25 @@ de_psm > 0 ? (
     ds1_hp_r_xm1 = a2s1hp * ds0_hp_r - b2_s1 * ds1_hp_r;
     ds1_hp_r *= -1;
   );
-  de_mon ? (
-    spl0 = max(-1, min(1, (de_bp ? ds1_lp_l : ds0_hp_l) / gain_smooth * outgain));
-    spl1 = max(-1, min(1, (de_bp ? ds1_lp_r : ds0_hp_r) / gain_smooth * outgain));
-  ) : de_bp ? (
-    spl0 = (ds0_lp_l + ds1_lp_l / gain_smooth + ds1_hp_l) * outgain;
-    spl1 = (ds0_lp_r + ds1_lp_r / gain_smooth + ds1_hp_r) * outgain;
+  // Target and Monitor crossfade over 5 ms and the output gain glides (~5 ms): each switched or
+  // jumped in one sample, a click (outside audit 2026-10-02; Monitor 0.43 and Output 7.4 on the click
+  // rig's 220 Hz tone at 0.5)
+  de_xmon = de_mon ? min(de_xmon + de_ps_step, 1) : max(de_xmon - de_ps_step, 0);
+  abs(outgain - outgain_s) > 0.000001 ? outgain_s += (outgain - outgain_s) * og_k : outgain_s = outgain;
+  de_nl = ds0_lp_l + ds0_hp_l / gain_smooth;                 // Hipass: the low side + the reduced high side
+  de_nr = ds0_lp_r + ds0_hp_r / gain_smooth;
+  de_xbp > 0 ? (                                             // Bandpass: low + the reduced band + the top
+    de_nl += (ds1_lp_l / gain_smooth + ds1_hp_l - ds0_hp_l / gain_smooth) * de_xbp;
+    de_nr += (ds1_lp_r / gain_smooth + ds1_hp_r - ds0_hp_r / gain_smooth) * de_xbp;
+  );
+  de_xmon > 0 ? (                                            // Monitor: the detected band alone
+    de_ml = max(-1, min(1, (ds0_hp_l + (ds1_lp_l - ds0_hp_l) * de_xbp) / gain_smooth * outgain_s));
+    de_mr = max(-1, min(1, (ds0_hp_r + (ds1_lp_r - ds0_hp_r) * de_xbp) / gain_smooth * outgain_s));
+    spl0 = de_nl * outgain_s + (de_ml - de_nl * outgain_s) * de_xmon;
+    spl1 = de_nr * outgain_s + (de_mr - de_nr * outgain_s) * de_xmon;
   ) : (
-    spl0 = (ds0_lp_l + ds0_hp_l / gain_smooth) * outgain;
-    spl1 = (ds0_lp_r + ds0_hp_r / gain_smooth) * outgain;
+    spl0 = de_nl * outgain_s;
+    spl1 = de_nr * outgain_s;
   );
 
   de_psm < 1 ? (

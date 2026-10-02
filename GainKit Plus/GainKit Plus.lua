@@ -44,6 +44,14 @@ if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, 1); r.RefreshT
 r.gmem_attach("Swing_Media_Transfer")
 
 local last, gen = {}, {}
+-- This run's GENs start past every earlier run's in this REAPER session. GainKit rereads a slot only
+-- when the GEN (or its track) changed, and every run used to count from 1 again: a GainKit whose window
+-- was closed while Plus stopped and started kept generation 1 from the old run, took the new run's 1
+-- for the same data and showed an old colour or icon (outside audit 2026-10-02). A session counter,
+-- not saved: the GainKits' caches and the shared memory both start empty with REAPER.
+local run = math.floor(tonumber(r.GetExtState(EXT, "run")) or 0) + 1
+r.SetExtState(EXT, "run", string.format("%d", run), false)
+local GEN0 = run * 1000000000
 
 -- names and icon paths go as UTF-8 bytes, control bytes dropped. They were folded to printable ASCII,
 -- so accents vanished from names and an icon in a folder with one never loaded, REAPER's own icons
@@ -122,7 +130,7 @@ local function publish(idx, tr, name)
     r.gmem_write(base + 1, packed)
     write_str(base, 2, 3, name, NAME_MAX)
     write_str(base, 27, 28, icon, PATH_MAX)
-    gen[idx] = (gen[idx] or 0) + 1
+    gen[idx] = (gen[idx] or GEN0) + 1
     r.gmem_write(base, gen[idx])                       -- GEN last: the JSFX takes the slot whole
   end
 end
