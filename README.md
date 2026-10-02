@@ -227,17 +227,31 @@ WIDTH knob at the bottom of the channel.
 
 ## Install (ReaPack)
 
-Extensions > ReaPack > Import repositories, paste:
+1. No Extensions menu in REAPER? Get ReaPack free at [reapack.com](https://reapack.com). In REAPER, open
+   **Options > Show REAPER resource path**, put the file in the **UserPlugins** folder there, and restart
+   REAPER. If ReaPack shows a list of repositories the first time, just click OK.
+2. **Extensions > ReaPack > Import repositories**, paste this address and click OK:
 
-```
-https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
-```
+   ```
+   https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
+   ```
 
-Then install **ReaKit FX** from the browser, **GainKit Plus** for the scripts, and **EON Floatter**
-so every window opens at its designed size. Run the action **ReaKit FX - Start with REAPER** once
-and both scripts are on from every launch. The plugins appear in REAPER's FX list as
-`JS: EON: GainKit`, `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
-`JS: EON: De-Esser` and `JS: EON: Stereo Width`.
+3. **Extensions > ReaPack > Browse packages.** Type **ReaKit**, click **Select all**, then **Actions >
+   Install/update selection**. Do the same for **js_ReaScriptAPI**, and for **ReaImGui** (the one called
+   "ReaImGui: ReaScript binding for Dear ImGui"): EON Floatter needs both. Click **Apply**, then restart
+   REAPER.
+4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run**. GainKit Plus and
+   EON Floatter start with REAPER from then on, and new copies of the six open in the mixer strip. It asks
+   once whether to make the mixer strips redraw faster: say yes. Floatter's panel opens too: click Later
+   and close it.
+5. Add a track, click its **FX** button, type **GainKit** and add `JS: EON: GainKit`. Close the effects
+   window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
+   others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
+   `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
+6. To change the look, open the plugin's window (the track's FX button) and click **THEME** at the top.
+
+Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so
+nothing shows up twice. Updates arrive through **Extensions > ReaPack > Synchronize packages**.
 
 **EON Floatter** ships here too (the same file as in the ReaKit library; having both is harmless,
 only one ever runs). The action above starts it, or run it once yourself from the action list; it stays on: every EON window opens at
@@ -258,7 +272,8 @@ scripts are EON Studios' own code, MIT, and so are the `ReaKit/` includes. The f
 ## Building on it
 
 The `ReaKit/` folder holds the ReaKit files the plugins import (`import ../../ReaKit/<file>`);
-the ones the ReaKit library also publishes are the same as its 1.7.1 release. Nothing else is
+the ones the ReaKit library also publishes match its 1.7.2 release, except `rk_vu`, which is a step ahead
+(it has GainKit's two-meter code, which goes into the library next). Nothing else is
 needed: install the package and the plugins compile. To write your own, start from the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) repository's showcase and Starter.
 
