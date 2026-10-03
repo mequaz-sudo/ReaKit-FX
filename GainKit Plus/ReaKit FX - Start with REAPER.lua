@@ -315,7 +315,21 @@ local function plain_box(cur)
   end
 end
 
-local function window(cur)
+-- 5. The track with all six (the user, 2026-10-03: "one track with all the plugins floating"): its
+-- own action, offered ONCE as a switch in the window (on to start with), so a new user sees all six
+-- at first setup; the action list runs it again any time. Answered = offered, either way.
+local DEMO = dir .. sep .. "ReaKit FX - Add a track with all six.lua"
+local function demo_offer()
+  return exists(DEMO) and r.GetExtState("EON_ReaKitFX", "demo_offered") ~= "1"
+end
+local function demo_answer(yes)
+  r.SetExtState("EON_ReaKitFX", "demo_offered", "1", true)
+  if not yes then return end
+  local ok, c = pcall(r.AddRemoveReaScript, true, 0, DEMO, true)
+  if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
+end
+
+local function window(cur, demo)
   if not r.ImGui_GetBuiltinPath then return false end
   local okl, ImGui = pcall(function()
     package.path = r.ImGui_GetBuiltinPath() .. "/?.lua;" .. package.path
@@ -329,6 +343,7 @@ local function window(cur)
   end
   local bold, body = font(ImGui.FontFlags_Bold), font(nil)
   local fast, W = true, 360                           -- the offer starts on; the text column's width
+  local addtrk = true                                 -- the track with all six: on to start with
   local FLAGS = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_NoResize
     | ImGui.WindowFlags_AlwaysAutoResize | ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoSavedSettings
     | (rawget(ImGui, "WindowFlags_TopMost") or 0)
@@ -353,6 +368,25 @@ local function window(cur)
       local ew, eh = ImGui.CalcTextSize(ctx, "!")
       ImGui.DrawList_AddText(dl, x + 8 - ew / 2, cy - eh / 2, P.warn_ink, "!")
     end
+  end
+
+  -- a switch, its name and one quiet line under it; the whole row toggles it. Returns the new state.
+  local function switch_row(dl, id, on, label, desc, tip)
+    local sx, sy = ImGui.GetCursorScreenPos(ctx)
+    local lh = ImGui.GetTextLineHeight(ctx)
+    local sw, sh = 34, 18
+    if ImGui.InvisibleButton(ctx, id, W, math.max(sh, lh)) then on = not on end
+    local hov = ImGui.IsItemHovered(ctx)
+    if hov and tip then ImGui.SetTooltip(ctx, tip) end
+    local track = on and (hov and P.accent_hi or P.accent) or (hov and P.dim or P.line2)
+    ImGui.DrawList_AddRectFilled(dl, sx, sy, sx + sw, sy + sh, track, sh / 2)
+    ImGui.DrawList_AddCircleFilled(dl, on and (sx + sw - 9) or (sx + 9), sy + sh / 2, 7, P.white)
+    ImGui.DrawList_AddText(dl, sx + sw + 10, sy + (sh - lh) / 2, P.text, label)
+    ImGui.SetCursorScreenPos(ctx, sx + sw + 10, sy + sh + 4)
+    ImGui.PushTextWrapPos(ctx, ImGui.GetCursorPosX(ctx) + W - sw - 10)
+    ImGui.TextColored(ctx, P.muted, desc)
+    ImGui.PopTextWrapPos(ctx)
+    return on
   end
 
   local function draw()
@@ -386,27 +420,21 @@ local function window(cur)
         ImGui.PopTextWrapPos(ctx)
         if d.tip and ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, d.tip) end
       end
-      if cur then                                     -- the offer: a switch, its name, one quiet line
+      if cur or demo then                             -- the offers: a switch each, its name, one quiet line
         ImGui.Dummy(ctx, 0, 2)
         ImGui.Separator(ctx)
         ImGui.Dummy(ctx, 0, 2)
-        local sx, sy = ImGui.GetCursorScreenPos(ctx)
-        local lh = ImGui.GetTextLineHeight(ctx)
-        local sw, sh = 34, 18
-        if ImGui.InvisibleButton(ctx, "##fast", W, math.max(sh, lh)) then fast = not fast end
-        local hov = ImGui.IsItemHovered(ctx)
-        if hov then
-          ImGui.SetTooltip(ctx, ("REAPER's meter refresh, from %d to %d times a second. You can change it any time"
+      end
+      if demo then
+        addtrk = switch_row(dl, "##demo", addtrk, "Add a track with all six",
+          "One track with all six effects, their windows open side by side.",
+          "A track called ReaKit FX at the end of this project. Run \"ReaKit FX - Add a track with all six\""
+          .. " from the action list any time for another.")
+      end
+      if cur then
+        fast = switch_row(dl, "##fast", fast, "Faster mixer strips", "Plugin faces in the mixer move more smoothly.",
+          ("REAPER's meter refresh, from %d to %d times a second. You can change it any time"
             .. " in Preferences > Appearance > Track meter settings."):format(math.floor(cur), RATE))
-        end
-        local track = fast and (hov and P.accent_hi or P.accent) or (hov and P.dim or P.line2)
-        ImGui.DrawList_AddRectFilled(dl, sx, sy, sx + sw, sy + sh, track, sh / 2)
-        ImGui.DrawList_AddCircleFilled(dl, fast and (sx + sw - 9) or (sx + 9), sy + sh / 2, 7, P.white)
-        ImGui.DrawList_AddText(dl, sx + sw + 10, sy + (sh - lh) / 2, P.text, "Faster mixer strips")
-        ImGui.SetCursorScreenPos(ctx, sx + sw + 10, sy + sh + 4)
-        ImGui.PushTextWrapPos(ctx, ImGui.GetCursorPosX(ctx) + W - sw - 10)
-        ImGui.TextColored(ctx, P.muted, "Plugin faces in the mixer move more smoothly.")
-        ImGui.PopTextWrapPos(ctx)
       end
       ImGui.Dummy(ctx, 0, 4)
       -- the one thing left to do, right above OK, while the offer is on (the user, 2026-10-02: the
@@ -444,6 +472,7 @@ local function window(cur)
     end
     if finish then
       if cur then rate_answer(fast) end
+      if demo then demo_answer(addtrk) end
       return
     end
     if open then r.defer(frame) end                   -- (no close box: OK / Enter end it)
@@ -469,6 +498,6 @@ local function settle()
     end
     return
   end
-  if not window(cur) then plain_box(cur) end
+  if not window(cur, demo_offer()) then plain_box(cur) end   -- the plain box offers no track (no window to lay out)
 end
 settle()

@@ -1,12 +1,14 @@
 -- GainKit Plus -- copy the LOOK of the selected track's GainKit to every GainKit in the project
 -- (the master's too, and GainKits inside FX containers): the THEME panel's STRIP, NUMBERS, NAME,
--- FONT, VU COLOR, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR and NATIVE rows. Not the VU face (it is kept
--- inside each plugin's own saved state, out of a script's reach) and not the knob style (it follows
--- the suite theme). Gains, keys and names stay as they are. One undo step. MIT, EON Studios, 2026.
+-- FONT, VU COLOR, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR and NATIVE rows, and the METER tab's 0 VU,
+-- SPEED, HOLD, READOUT and PEAK LIGHT (2026-10-03: a 0 VU of -20 set on one GainKit goes to them all). Not
+-- the VU face (it is kept inside each plugin's own saved state, out of a script's reach) and not the knob
+-- style (it follows the suite theme). Gains, keys and names stay as they are. One undo step. MIT, EON Studios, 2026.
 local r = reaper
 local LOOK = { ["Strip view"] = true, ["Strip numbers"] = true, ["Name style"] = true, ["Name font"] = true,
                ["Meter colour"] = true, ["Gain number"] = true, ["VU meters"] = true, ["VU drag"] = true,
-               ["Stereo key"] = true, ["Name bar"] = true, ["Native look"] = true }
+               ["Stereo key"] = true, ["Name bar"] = true, ["Native look"] = true,
+               ["0 VU"] = true, ["VU speed"] = true, ["VU hold"] = true, ["VU readout"] = true, ["Peak light"] = true }
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
 -- "GainKit" in its name does not. A REAPER that cannot tell an FX's file finds none: these scripts

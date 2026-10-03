@@ -416,38 +416,64 @@ function rkth_namefont(cur) ( rkth_nf_ok = 1; rkth_nf_cur = min(max(cur | 0, 0),
 //   (xx_p = rkth_xpick(0)) >= 0 ? ( xx_vu_track = xx_p; slider_automate(xx_vu_track); );
 // ⛔OPT-IN: a host that never calls it has no such rows, and the panel is as before.
 // Live while LOCKED: display choices, not part of the frozen look.
-RKTH_X_N = 5;
+// Slots 0..9 (5..9 since 2026-10-03, for GainKit's METER page: the user, "a whole new tab in the theme
+// menu", then "add the peak light setting"); a host that names only 0..4 is unchanged.
+RKTH_X_N = 10;
 function rkth_xrow(slot, cap, cur, n, l0, l1, l2) (
   n = min(max(n | 0, 2), 3); cur = min(max(cur | 0, 0), n - 1);
   slot == 0 ? ( rkth_x0_ok = 1; rkth_x0_cap = cap; rkth_x0_cur = cur; rkth_x0_n = n; rkth_x0_l0 = l0; rkth_x0_l1 = l1; rkth_x0_l2 = l2; ) :
   slot == 1 ? ( rkth_x1_ok = 1; rkth_x1_cap = cap; rkth_x1_cur = cur; rkth_x1_n = n; rkth_x1_l0 = l0; rkth_x1_l1 = l1; rkth_x1_l2 = l2; ) :
   slot == 2 ? ( rkth_x2_ok = 1; rkth_x2_cap = cap; rkth_x2_cur = cur; rkth_x2_n = n; rkth_x2_l0 = l0; rkth_x2_l1 = l1; rkth_x2_l2 = l2; ) :
   slot == 3 ? ( rkth_x3_ok = 1; rkth_x3_cap = cap; rkth_x3_cur = cur; rkth_x3_n = n; rkth_x3_l0 = l0; rkth_x3_l1 = l1; rkth_x3_l2 = l2; ) :
-  slot == 4 ? ( rkth_x4_ok = 1; rkth_x4_cap = cap; rkth_x4_cur = cur; rkth_x4_n = n; rkth_x4_l0 = l0; rkth_x4_l1 = l1; rkth_x4_l2 = l2; );
+  slot == 4 ? ( rkth_x4_ok = 1; rkth_x4_cap = cap; rkth_x4_cur = cur; rkth_x4_n = n; rkth_x4_l0 = l0; rkth_x4_l1 = l1; rkth_x4_l2 = l2; ) :
+  slot == 5 ? ( rkth_x5_ok = 1; rkth_x5_cap = cap; rkth_x5_cur = cur; rkth_x5_n = n; rkth_x5_l0 = l0; rkth_x5_l1 = l1; rkth_x5_l2 = l2; ) :
+  slot == 6 ? ( rkth_x6_ok = 1; rkth_x6_cap = cap; rkth_x6_cur = cur; rkth_x6_n = n; rkth_x6_l0 = l0; rkth_x6_l1 = l1; rkth_x6_l2 = l2; ) :
+  slot == 7 ? ( rkth_x7_ok = 1; rkth_x7_cap = cap; rkth_x7_cur = cur; rkth_x7_n = n; rkth_x7_l0 = l0; rkth_x7_l1 = l1; rkth_x7_l2 = l2; ) :
+  slot == 8 ? ( rkth_x8_ok = 1; rkth_x8_cap = cap; rkth_x8_cur = cur; rkth_x8_n = n; rkth_x8_l0 = l0; rkth_x8_l1 = l1; rkth_x8_l2 = l2; ) :
+  slot == 9 ? ( rkth_x9_ok = 1; rkth_x9_cap = cap; rkth_x9_cur = cur; rkth_x9_n = n; rkth_x9_l0 = l0; rkth_x9_l1 = l1; rkth_x9_l2 = l2; );
 );
-function rkth_x_ok(s)  ( s == 0 ? rkth_x0_ok  : s == 1 ? rkth_x1_ok  : s == 2 ? rkth_x2_ok : s == 3 ? rkth_x3_ok : s == 4 ? rkth_x4_ok : 0; );
-function rkth_x_cap(s) ( s == 0 ? rkth_x0_cap : s == 1 ? rkth_x1_cap : s == 2 ? rkth_x2_cap : s == 3 ? rkth_x3_cap : rkth_x4_cap; );
-function rkth_x_cur(s) ( s == 0 ? rkth_x0_cur : s == 1 ? rkth_x1_cur : s == 2 ? rkth_x2_cur : s == 3 ? rkth_x3_cur : rkth_x4_cur; );
-function rkth_x_n(s)   ( s == 0 ? rkth_x0_n   : s == 1 ? rkth_x1_n   : s == 2 ? rkth_x2_n   : s == 3 ? rkth_x3_n   : rkth_x4_n; );
-function rkth_x_row(s) ( s == 0 ? rkth_clp_x0row : s == 1 ? rkth_clp_x1row : s == 2 ? rkth_clp_x2row : s == 3 ? rkth_clp_x3row : s == 4 ? rkth_clp_x4row : -1; );
+function rkth_x_ok(s)  ( s == 0 ? rkth_x0_ok  : s == 1 ? rkth_x1_ok  : s == 2 ? rkth_x2_ok : s == 3 ? rkth_x3_ok : s == 4 ? rkth_x4_ok :
+                         s == 5 ? rkth_x5_ok  : s == 6 ? rkth_x6_ok  : s == 7 ? rkth_x7_ok : s == 8 ? rkth_x8_ok : s == 9 ? rkth_x9_ok : 0; );
+function rkth_x_cap(s) ( s == 0 ? rkth_x0_cap : s == 1 ? rkth_x1_cap : s == 2 ? rkth_x2_cap : s == 3 ? rkth_x3_cap : s == 4 ? rkth_x4_cap :
+                         s == 5 ? rkth_x5_cap : s == 6 ? rkth_x6_cap : s == 7 ? rkth_x7_cap : s == 8 ? rkth_x8_cap : rkth_x9_cap; );
+function rkth_x_cur(s) ( s == 0 ? rkth_x0_cur : s == 1 ? rkth_x1_cur : s == 2 ? rkth_x2_cur : s == 3 ? rkth_x3_cur : s == 4 ? rkth_x4_cur :
+                         s == 5 ? rkth_x5_cur : s == 6 ? rkth_x6_cur : s == 7 ? rkth_x7_cur : s == 8 ? rkth_x8_cur : rkth_x9_cur; );
+function rkth_x_n(s)   ( s == 0 ? rkth_x0_n   : s == 1 ? rkth_x1_n   : s == 2 ? rkth_x2_n   : s == 3 ? rkth_x3_n   : s == 4 ? rkth_x4_n :
+                         s == 5 ? rkth_x5_n   : s == 6 ? rkth_x6_n   : s == 7 ? rkth_x7_n   : s == 8 ? rkth_x8_n   : rkth_x9_n; );
+function rkth_x_row(s) ( s == 0 ? rkth_clp_x0row : s == 1 ? rkth_clp_x1row : s == 2 ? rkth_clp_x2row : s == 3 ? rkth_clp_x3row : s == 4 ? rkth_clp_x4row :
+                         s == 5 ? rkth_clp_x5row : s == 6 ? rkth_clp_x6row : s == 7 ? rkth_clp_x7row : s == 8 ? rkth_clp_x8row :
+                         s == 9 ? rkth_clp_x9row : -1; );
 function rkth_x_lab(s, i) (
   s == 0 ? ( i == 1 ? rkth_x0_l1 : i == 2 ? rkth_x0_l2 : rkth_x0_l0 ) :
   s == 1 ? ( i == 1 ? rkth_x1_l1 : i == 2 ? rkth_x1_l2 : rkth_x1_l0 ) :
   s == 2 ? ( i == 1 ? rkth_x2_l1 : i == 2 ? rkth_x2_l2 : rkth_x2_l0 ) :
   s == 3 ? ( i == 1 ? rkth_x3_l1 : i == 2 ? rkth_x3_l2 : rkth_x3_l0 ) :
-           ( i == 1 ? rkth_x4_l1 : i == 2 ? rkth_x4_l2 : rkth_x4_l0 );
+  s == 4 ? ( i == 1 ? rkth_x4_l1 : i == 2 ? rkth_x4_l2 : rkth_x4_l0 ) :
+  s == 5 ? ( i == 1 ? rkth_x5_l1 : i == 2 ? rkth_x5_l2 : rkth_x5_l0 ) :
+  s == 6 ? ( i == 1 ? rkth_x6_l1 : i == 2 ? rkth_x6_l2 : rkth_x6_l0 ) :
+  s == 7 ? ( i == 1 ? rkth_x7_l1 : i == 2 ? rkth_x7_l2 : rkth_x7_l0 ) :
+  s == 8 ? ( i == 1 ? rkth_x8_l1 : i == 2 ? rkth_x8_l2 : rkth_x8_l0 ) :
+           ( i == 1 ? rkth_x9_l1 : i == 2 ? rkth_x9_l2 : rkth_x9_l0 );
 );
 function rkth_x_put(s, v) (
   s == 0 ? ( rkth_x0_cur = v; rkth_x0_pick = v; ) :
   s == 1 ? ( rkth_x1_cur = v; rkth_x1_pick = v; ) :
   s == 2 ? ( rkth_x2_cur = v; rkth_x2_pick = v; ) :
   s == 3 ? ( rkth_x3_cur = v; rkth_x3_pick = v; ) :
-  s == 4 ? ( rkth_x4_cur = v; rkth_x4_pick = v; );
+  s == 4 ? ( rkth_x4_cur = v; rkth_x4_pick = v; ) :
+  s == 5 ? ( rkth_x5_cur = v; rkth_x5_pick = v; ) :
+  s == 6 ? ( rkth_x6_cur = v; rkth_x6_pick = v; ) :
+  s == 7 ? ( rkth_x7_cur = v; rkth_x7_pick = v; ) :
+  s == 8 ? ( rkth_x8_cur = v; rkth_x8_pick = v; ) :
+  s == 9 ? ( rkth_x9_cur = v; rkth_x9_pick = v; );
 );
 // The pick of one slot, once: -1 when the row was not clicked since the last call.
 function rkth_xpick(slot) local(p) (
-  p = slot == 0 ? rkth_x0_pick : slot == 1 ? rkth_x1_pick : slot == 2 ? rkth_x2_pick : slot == 3 ? rkth_x3_pick : slot == 4 ? rkth_x4_pick : -1;
-  slot == 0 ? rkth_x0_pick = -1 : slot == 1 ? rkth_x1_pick = -1 : slot == 2 ? rkth_x2_pick = -1 : slot == 3 ? rkth_x3_pick = -1 : slot == 4 ? rkth_x4_pick = -1;
+  p = slot == 0 ? rkth_x0_pick : slot == 1 ? rkth_x1_pick : slot == 2 ? rkth_x2_pick : slot == 3 ? rkth_x3_pick : slot == 4 ? rkth_x4_pick :
+      slot == 5 ? rkth_x5_pick : slot == 6 ? rkth_x6_pick : slot == 7 ? rkth_x7_pick : slot == 8 ? rkth_x8_pick : slot == 9 ? rkth_x9_pick : -1;
+  slot == 0 ? rkth_x0_pick = -1 : slot == 1 ? rkth_x1_pick = -1 : slot == 2 ? rkth_x2_pick = -1 : slot == 3 ? rkth_x3_pick = -1 : slot == 4 ? rkth_x4_pick = -1 :
+  slot == 5 ? rkth_x5_pick = -1 : slot == 6 ? rkth_x6_pick = -1 : slot == 7 ? rkth_x7_pick = -1 : slot == 8 ? rkth_x8_pick = -1 :
+  slot == 9 ? rkth_x9_pick = -1;
   p;
 );
 
@@ -467,36 +493,60 @@ function rkth_xpick(slot) local(p) (
 // for (its last frame's calls). A paged panel fits only the space under its toggle (it must never cover
 // it), so a host fitting a short window divides THAT space by it: GainKit,
 // rkth_scale = min(ret, (WIN_H - hdr_h * 0.5) / (rkth_need1(1) + 11)), its toggle centred in hdr_h.
+// METER (2026-10-03, the user: "a whole new tab in the theme menu" for the meter's options): a third
+// page, opt-in like the rest. rkth_xpage(slot, 2) puts an EXTRA row there; the METER tab shows only
+// while at least one row is on it, so a host without one keeps the two tabs it had.
 function rkth_pages() ( rkth_pg_ok = 1; );
 function rkth_xpage(slot, page) (
-  page = page ? 1 : 0;
+  page = min(max(page | 0, 0), 2);
   slot == 0 ? rkth_x0_pg = page : slot == 1 ? rkth_x1_pg = page : slot == 2 ? rkth_x2_pg = page :
-  slot == 3 ? rkth_x3_pg = page : slot == 4 ? rkth_x4_pg = page;
+  slot == 3 ? rkth_x3_pg = page : slot == 4 ? rkth_x4_pg = page : slot == 5 ? rkth_x5_pg = page :
+  slot == 6 ? rkth_x6_pg = page : slot == 7 ? rkth_x7_pg = page : slot == 8 ? rkth_x8_pg = page :
+  slot == 9 ? rkth_x9_pg = page;
 );
 function rkth_xhint(slot, l1, l2) (
   slot == 0 ? ( rkth_x0_h1 = l1; rkth_x0_h2 = l2; rkth_x0_hok = 1; ) :
   slot == 1 ? ( rkth_x1_h1 = l1; rkth_x1_h2 = l2; rkth_x1_hok = 1; ) :
   slot == 2 ? ( rkth_x2_h1 = l1; rkth_x2_h2 = l2; rkth_x2_hok = 1; ) :
   slot == 3 ? ( rkth_x3_h1 = l1; rkth_x3_h2 = l2; rkth_x3_hok = 1; ) :
-  slot == 4 ? ( rkth_x4_h1 = l1; rkth_x4_h2 = l2; rkth_x4_hok = 1; );
+  slot == 4 ? ( rkth_x4_h1 = l1; rkth_x4_h2 = l2; rkth_x4_hok = 1; ) :
+  slot == 5 ? ( rkth_x5_h1 = l1; rkth_x5_h2 = l2; rkth_x5_hok = 1; ) :
+  slot == 6 ? ( rkth_x6_h1 = l1; rkth_x6_h2 = l2; rkth_x6_hok = 1; ) :
+  slot == 7 ? ( rkth_x7_h1 = l1; rkth_x7_h2 = l2; rkth_x7_hok = 1; ) :
+  slot == 8 ? ( rkth_x8_h1 = l1; rkth_x8_h2 = l2; rkth_x8_hok = 1; ) :
+  slot == 9 ? ( rkth_x9_h1 = l1; rkth_x9_h2 = l2; rkth_x9_hok = 1; );
 );
-function rkth_x_pg(s)  ( s == 0 ? rkth_x0_pg  : s == 1 ? rkth_x1_pg  : s == 2 ? rkth_x2_pg  : s == 3 ? rkth_x3_pg  : s == 4 ? rkth_x4_pg  : 0; );
-function rkth_x_hok(s) ( s == 0 ? rkth_x0_hok : s == 1 ? rkth_x1_hok : s == 2 ? rkth_x2_hok : s == 3 ? rkth_x3_hok : s == 4 ? rkth_x4_hok : 0; );
-function rkth_x_h1(s)  ( s == 0 ? rkth_x0_h1  : s == 1 ? rkth_x1_h1  : s == 2 ? rkth_x2_h1  : s == 3 ? rkth_x3_h1  : rkth_x4_h1; );
-function rkth_x_h2(s)  ( s == 0 ? rkth_x0_h2  : s == 1 ? rkth_x1_h2  : s == 2 ? rkth_x2_h2  : s == 3 ? rkth_x3_h2  : rkth_x4_h2; );
-// How many rows each page holds (LOOK rkth_pg_nl, STRIP rkth_pg_ns); 1 = the host asked for pages and
-// both have rows.
-function rkth_pg_count(has_vu) local(xi) (
+function rkth_x_pg(s)  ( s == 0 ? rkth_x0_pg  : s == 1 ? rkth_x1_pg  : s == 2 ? rkth_x2_pg  : s == 3 ? rkth_x3_pg  : s == 4 ? rkth_x4_pg  :
+                         s == 5 ? rkth_x5_pg  : s == 6 ? rkth_x6_pg  : s == 7 ? rkth_x7_pg  : s == 8 ? rkth_x8_pg  :
+                         s == 9 ? rkth_x9_pg  : 0; );
+function rkth_x_hok(s) ( s == 0 ? rkth_x0_hok : s == 1 ? rkth_x1_hok : s == 2 ? rkth_x2_hok : s == 3 ? rkth_x3_hok : s == 4 ? rkth_x4_hok :
+                         s == 5 ? rkth_x5_hok : s == 6 ? rkth_x6_hok : s == 7 ? rkth_x7_hok : s == 8 ? rkth_x8_hok :
+                         s == 9 ? rkth_x9_hok : 0; );
+function rkth_x_h1(s)  ( s == 0 ? rkth_x0_h1  : s == 1 ? rkth_x1_h1  : s == 2 ? rkth_x2_h1  : s == 3 ? rkth_x3_h1  : s == 4 ? rkth_x4_h1 :
+                         s == 5 ? rkth_x5_h1  : s == 6 ? rkth_x6_h1  : s == 7 ? rkth_x7_h1  : s == 8 ? rkth_x8_h1  : rkth_x9_h1; );
+function rkth_x_h2(s)  ( s == 0 ? rkth_x0_h2  : s == 1 ? rkth_x1_h2  : s == 2 ? rkth_x2_h2  : s == 3 ? rkth_x3_h2  : s == 4 ? rkth_x4_h2 :
+                         s == 5 ? rkth_x5_h2  : s == 6 ? rkth_x6_h2  : s == 7 ? rkth_x7_h2  : s == 8 ? rkth_x8_h2  : rkth_x9_h2; );
+// How many rows each page holds (LOOK rkth_pg_nl, STRIP rkth_pg_ns, METER rkth_pg_nm) and how many tabs
+// (rkth_pg_nt: 3 while METER has a row); 1 = the host asked for pages and LOOK and STRIP both have rows.
+function rkth_pg_count(has_vu) local(xi, pg) (
   rkth_pg_nl = (has_vu ? 4 : 2) + (rkth_lk_ok ? 1 : 0);
   rkth_pg_ns = (rkth_em_ok ? 1 : 0) + (rkth_nb_ok ? 1 : 0) + (rkth_sv_ok ? 1 : 0) + (rkth_nu_ok ? 1 : 0)
              + (rkth_ns_ok ? 1 : 0) + (rkth_nf_ok ? 1 : 0);
+  rkth_pg_nm = 0;
   xi = 0;
-  loop(RKTH_X_N, rkth_x_ok(xi) ? ( rkth_x_pg(xi) ? rkth_pg_ns += 1 : rkth_pg_nl += 1; ); xi += 1; );
+  loop(RKTH_X_N,
+    rkth_x_ok(xi) ? (
+      pg = rkth_x_pg(xi);
+      pg == 2 ? rkth_pg_nm += 1 : pg == 1 ? rkth_pg_ns += 1 : rkth_pg_nl += 1;
+    );
+    xi += 1;
+  );
+  rkth_pg_nt = rkth_pg_nm > 0 ? 3 : 2;
   rkth_pg_ok && rkth_pg_nl > 0 && rkth_pg_ns > 0;
 );
 function rkth_need1(has_vu) local(on) (
   on = rkth_pg_count(has_vu);
-  8 + (on ? max(rkth_pg_nl, rkth_pg_ns) : rkth_pg_nl + rkth_pg_ns) * RKTH_H_CHIP
+  8 + (on ? max(max(rkth_pg_nl, rkth_pg_ns), rkth_pg_nm) : rkth_pg_nl + rkth_pg_ns + rkth_pg_nm) * RKTH_H_CHIP
     + (on ? RKTH_H_CHIP + 2 * (RKTH_F_CAP + 2) + 4 : 0);
 );
 
@@ -1005,14 +1055,15 @@ function rkth_cl_chipdraw(cx, cy, cw, ch, lbl_str) local(_f) (
 // cur_vu = the host's CURRENT face (its slider); the cluster never writes the
 // slider itself — picks surface on rkth_vu_pick for the host to apply.
 // PAGES: the row an id is on in the open page (-1 = not on it). Ids: 0 THEME, 1 KNOB, 2 VU, 3 VU SYNC,
-// 4 NAME BAR, 5 STRIP, 6 NUMBERS, 7 NAME, 8 FONT, 10..14 the EXTRA slots 0..4, 15 EMBED, 16 LOCK;
-// 17 / 18 are the LOOK / STRIP tabs, on no row.
+// 4 NAME BAR, 5 STRIP, 6 NUMBERS, 7 NAME, 8 FONT, 10..14 the EXTRA slots 0..4, 15 EMBED, 16 LOCK,
+// 20..24 the EXTRA slots 5..9; 17 / 18 / 19 are the LOOK / STRIP / METER tabs, on no row.
+RKTH_PG_IDS = 25;   // ids 0 .. RKTH_PG_IDS - 1 (the hover loop's count)
 function rkth_pg_rowof(id) (
   id == 0 ? ( rkth_pg_look ? 0 : -1 ) : id == 1 ? ( rkth_pg_look ? 1 : -1 ) :
   id == 2 ? ( rkth_pg_look && rkth_clp_vu ? 2 : -1 ) : id == 3 ? ( rkth_pg_look && rkth_clp_vu ? 3 : -1 ) :
   id == 4 ? rkth_clp_nbrow : id == 5 ? rkth_clp_svrow : id == 6 ? rkth_clp_nurow : id == 7 ? rkth_clp_nsrow :
   id == 8 ? rkth_clp_nfrow : id >= 10 && id <= 14 ? rkth_x_row(id - 10) : id == 15 ? rkth_clp_emrow :
-  id == 16 ? rkth_clp_lockrow : -1;
+  id == 16 ? rkth_clp_lockrow : id >= 20 && id <= 24 ? rkth_x_row(id - 15) : -1;
 );
 // The hint's two lines for an id, into #rkth_h1 / #rkth_h2; -1 = the mouse is on no row.
 function rkth_pg_hint(id) (
@@ -1029,6 +1080,11 @@ function rkth_pg_hint(id) (
     rkth_x_hok(id - 10) ? ( strcpy(#rkth_h1, rkth_x_h1(id - 10)); strcpy(#rkth_h2, rkth_x_h2(id - 10)); )
                         : ( strcpy(#rkth_h1, ""); strcpy(#rkth_h2, ""); );
   ) :
+  id >= 20 && id <= 24 ? (
+    rkth_x_hok(id - 15) ? ( strcpy(#rkth_h1, rkth_x_h1(id - 15)); strcpy(#rkth_h2, rkth_x_h2(id - 15)); )
+                        : ( strcpy(#rkth_h1, ""); strcpy(#rkth_h2, ""); );
+  ) :
+  id == 19 ? ( strcpy(#rkth_h1, "How the meter reads: 0 VU,"); strcpy(#rkth_h2, "speed, hold and the peak"); ) :
   id == 15 ? ( strcpy(#rkth_h1, "Where it shows: the mixer"); strcpy(#rkth_h2, "(MCP), track panel, or off"); ) :
   id == 16 ? ( strcpy(#rkth_h1, "LOCKED: keep this look when"); strcpy(#rkth_h2, "the suite's theme changes"); ) :
   id == 17 ? ( strcpy(#rkth_h1, "How it looks: the theme,");
@@ -1267,6 +1323,11 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     rkth_clp_x2row = rkth_x2_ok ? _xr : -1; rkth_x2_ok ? _xr += 1;
     rkth_clp_x3row = rkth_x3_ok ? _xr : -1; rkth_x3_ok ? _xr += 1;
     rkth_clp_x4row = rkth_x4_ok ? _xr : -1; rkth_x4_ok ? _xr += 1;
+    rkth_clp_x5row = rkth_x5_ok ? _xr : -1; rkth_x5_ok ? _xr += 1;
+    rkth_clp_x6row = rkth_x6_ok ? _xr : -1; rkth_x6_ok ? _xr += 1;
+    rkth_clp_x7row = rkth_x7_ok ? _xr : -1; rkth_x7_ok ? _xr += 1;
+    rkth_clp_x8row = rkth_x8_ok ? _xr : -1; rkth_x8_ok ? _xr += 1;
+    rkth_clp_x9row = rkth_x9_ok ? _xr : -1; rkth_x9_ok ? _xr += 1;
     // EMBED last before LOCK: like LOCK it reaches past this panel (to REAPER, and to the six)
     rkth_clp_emrow = rkth_em_ok ? _xr : -1; rkth_em_ok ? _xr += 1;
     rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
@@ -1275,34 +1336,62 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     // draw below already skips. THEME, KNOB, VU and VU SYNC stay LOOK's rows 0..3 and LOOK's other rows
     // follow; STRIP counts from 0. One height for both pages: the panel never jumps between them.
     rkth_pg_on = rkth_pg_count(has_vu);
-    rkth_pg = rkth_pg_req ? rkth_pg_req - 1 : rkth_pg ? 1 : 0; rkth_pg_req = 0;   // the open page (a tab click asks for it)
+    // the open page (a tab click asks for it); METER only while it has a row, else LOOK
+    rkth_pg = rkth_pg_req ? rkth_pg_req - 1 : rkth_pg; rkth_pg_req = 0;
+    rkth_pg = rkth_pg == 2 && rkth_pg_nm > 0 ? 2 : rkth_pg == 1 ? 1 : 0;
     rkth_pg_on ? (
       rkth_pg == 0 ? (
         _xr = has_vu ? 4 : 2;
-        rkth_clp_x0row = rkth_x0_ok && !rkth_x0_pg ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
-        rkth_clp_x1row = rkth_x1_ok && !rkth_x1_pg ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
-        rkth_clp_x2row = rkth_x2_ok && !rkth_x2_pg ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
-        rkth_clp_x3row = rkth_x3_ok && !rkth_x3_pg ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
-        rkth_clp_x4row = rkth_x4_ok && !rkth_x4_pg ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_x0row = rkth_x0_ok && rkth_x0_pg == 0 ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
+        rkth_clp_x1row = rkth_x1_ok && rkth_x1_pg == 0 ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
+        rkth_clp_x2row = rkth_x2_ok && rkth_x2_pg == 0 ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
+        rkth_clp_x3row = rkth_x3_ok && rkth_x3_pg == 0 ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
+        rkth_clp_x4row = rkth_x4_ok && rkth_x4_pg == 0 ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_x5row = rkth_x5_ok && rkth_x5_pg == 0 ? _xr : -1; rkth_clp_x5row >= 0 ? _xr += 1;
+        rkth_clp_x6row = rkth_x6_ok && rkth_x6_pg == 0 ? _xr : -1; rkth_clp_x6row >= 0 ? _xr += 1;
+        rkth_clp_x7row = rkth_x7_ok && rkth_x7_pg == 0 ? _xr : -1; rkth_clp_x7row >= 0 ? _xr += 1;
+        rkth_clp_x8row = rkth_x8_ok && rkth_x8_pg == 0 ? _xr : -1; rkth_clp_x8row >= 0 ? _xr += 1;
+        rkth_clp_x9row = rkth_x9_ok && rkth_x9_pg == 0 ? _xr : -1; rkth_clp_x9row >= 0 ? _xr += 1;
         rkth_clp_lockrow = rkth_lk_ok ? _xr : -1;
         rkth_clp_emrow = -1; rkth_clp_nbrow = -1; rkth_clp_svrow = -1;
         rkth_clp_nurow = -1; rkth_clp_nsrow = -1; rkth_clp_nfrow = -1;
-      ) : (
+      ) : rkth_pg == 1 ? (
         _xr = 0;
         rkth_clp_emrow = rkth_em_ok ? _xr : -1; rkth_em_ok ? _xr += 1;
         rkth_clp_nbrow = rkth_nb_ok ? _xr : -1; rkth_nb_ok ? _xr += 1;
         rkth_clp_svrow = rkth_sv_ok ? _xr : -1; rkth_sv_ok ? _xr += 1;
         rkth_clp_nurow = rkth_nu_ok ? _xr : -1; rkth_nu_ok ? _xr += 1;
-        rkth_clp_x0row = rkth_x0_ok && rkth_x0_pg ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
-        rkth_clp_x1row = rkth_x1_ok && rkth_x1_pg ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
-        rkth_clp_x2row = rkth_x2_ok && rkth_x2_pg ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
-        rkth_clp_x3row = rkth_x3_ok && rkth_x3_pg ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
-        rkth_clp_x4row = rkth_x4_ok && rkth_x4_pg ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_x0row = rkth_x0_ok && rkth_x0_pg == 1 ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
+        rkth_clp_x1row = rkth_x1_ok && rkth_x1_pg == 1 ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
+        rkth_clp_x2row = rkth_x2_ok && rkth_x2_pg == 1 ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
+        rkth_clp_x3row = rkth_x3_ok && rkth_x3_pg == 1 ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
+        rkth_clp_x4row = rkth_x4_ok && rkth_x4_pg == 1 ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_x5row = rkth_x5_ok && rkth_x5_pg == 1 ? _xr : -1; rkth_clp_x5row >= 0 ? _xr += 1;
+        rkth_clp_x6row = rkth_x6_ok && rkth_x6_pg == 1 ? _xr : -1; rkth_clp_x6row >= 0 ? _xr += 1;
+        rkth_clp_x7row = rkth_x7_ok && rkth_x7_pg == 1 ? _xr : -1; rkth_clp_x7row >= 0 ? _xr += 1;
+        rkth_clp_x8row = rkth_x8_ok && rkth_x8_pg == 1 ? _xr : -1; rkth_clp_x8row >= 0 ? _xr += 1;
+        rkth_clp_x9row = rkth_x9_ok && rkth_x9_pg == 1 ? _xr : -1; rkth_clp_x9row >= 0 ? _xr += 1;
         rkth_clp_nsrow = rkth_ns_ok ? _xr : -1; rkth_ns_ok ? _xr += 1;
         rkth_clp_nfrow = rkth_nf_ok ? _xr : -1; rkth_nf_ok ? _xr += 1;
         rkth_clp_lockrow = -1;
+      ) : (
+        // METER: the host's rows put on page 2, in slot order, from row 0
+        _xr = 0;
+        rkth_clp_x0row = rkth_x0_ok && rkth_x0_pg == 2 ? _xr : -1; rkth_clp_x0row >= 0 ? _xr += 1;
+        rkth_clp_x1row = rkth_x1_ok && rkth_x1_pg == 2 ? _xr : -1; rkth_clp_x1row >= 0 ? _xr += 1;
+        rkth_clp_x2row = rkth_x2_ok && rkth_x2_pg == 2 ? _xr : -1; rkth_clp_x2row >= 0 ? _xr += 1;
+        rkth_clp_x3row = rkth_x3_ok && rkth_x3_pg == 2 ? _xr : -1; rkth_clp_x3row >= 0 ? _xr += 1;
+        rkth_clp_x4row = rkth_x4_ok && rkth_x4_pg == 2 ? _xr : -1; rkth_clp_x4row >= 0 ? _xr += 1;
+        rkth_clp_x5row = rkth_x5_ok && rkth_x5_pg == 2 ? _xr : -1; rkth_clp_x5row >= 0 ? _xr += 1;
+        rkth_clp_x6row = rkth_x6_ok && rkth_x6_pg == 2 ? _xr : -1; rkth_clp_x6row >= 0 ? _xr += 1;
+        rkth_clp_x7row = rkth_x7_ok && rkth_x7_pg == 2 ? _xr : -1; rkth_clp_x7row >= 0 ? _xr += 1;
+        rkth_clp_x8row = rkth_x8_ok && rkth_x8_pg == 2 ? _xr : -1; rkth_clp_x8row >= 0 ? _xr += 1;
+        rkth_clp_x9row = rkth_x9_ok && rkth_x9_pg == 2 ? _xr : -1; rkth_clp_x9row >= 0 ? _xr += 1;
+        rkth_clp_emrow = -1; rkth_clp_nbrow = -1; rkth_clp_svrow = -1;
+        rkth_clp_nurow = -1; rkth_clp_nsrow = -1; rkth_clp_nfrow = -1;
+        rkth_clp_lockrow = -1;
       );
-      rkth_clp_rows = max(rkth_pg_nl, rkth_pg_ns);
+      rkth_clp_rows = max(max(rkth_pg_nl, rkth_pg_ns), rkth_pg_nm);
     );
     rkth_pg_look = !rkth_pg_on || rkth_pg == 0;
     rkth_pg_th = rkth_pg_on ? _ch : 0;                                                                // the tabs
@@ -1350,19 +1439,21 @@ local(thw, knw, vuw, syw, thx, thy, knx, kny, vux, vuy, syx, syy, _tw, _th, kid,
     // (it changes where you look, not what is shown). With a THEME / KNOB / VU list open, the click only
     // shuts the list, like every click on the panel then. The row under the mouse names the hint, the
     // tabs too (17 / 18). ──
+    // the tab under the mouse: the panel's width in rkth_pg_nt equal parts (two, or three with METER)
     rkth_pg_on && (lmb_down || rmb_down) && mx >= rkth_clp_x && mx < rkth_clp_x + rkth_clp_w &&
       my >= rkth_pg_tab_y && my < rkth_pg_tab_y + rkth_pg_th ? (
-      rkth_pg_req = (mx < rkth_clp_x + rkth_clp_w * 0.5 ? 0 : 1) + 1; rkth_dd_open = 0; rkth_open = 0;
+      rkth_pg_req = min(((mx - rkth_clp_x) / rkth_clp_w * rkth_pg_nt) | 0, rkth_pg_nt - 1) + 1;
+      rkth_dd_open = 0; rkth_open = 0;
       lmb_down = 0; rmb_down = 0; rkth_consumed = 1;
     );
     rkth_hid = -1;
     rkth_pg_on && !rkth_dd_open && !rkth_open &&
       mx >= rkth_clp_x && mx < rkth_clp_x + rkth_clp_w && my >= rkth_pg_tab_y && my < rkth_pg_hint_y ? (
       my < rkth_pg_tab_y + rkth_pg_th ? (
-        rkth_hid = mx < rkth_clp_x + rkth_clp_w * 0.5 ? 17 : 18;
+        rkth_hid = 17 + min(((mx - rkth_clp_x) / rkth_clp_w * rkth_pg_nt) | 0, rkth_pg_nt - 1);
       ) : my >= rkth_clp_r0 ? (
         _xr = ((my - rkth_clp_r0) / rkth_clp_pitch) | 0; _xi = 0;
-        loop(17, rkth_pg_rowof(_xi) == _xr ? rkth_hid = _xi; _xi += 1; );
+        loop(RKTH_PG_IDS, rkth_pg_rowof(_xi) == _xr ? rkth_hid = _xi; _xi += 1; );
       );
     );
     // rkth_hid: the row under the mouse, or -1
@@ -1622,15 +1713,15 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
       gfx_set(0, 0, 0, 0.35); gfx_rect(rkth_clp_x + 2*rkth_scale, rkth_clp_y + 3*rkth_scale, rkth_clp_w, rkth_clp_h);
       rkth_setcol(1, 0.14, 0.16, 0.20, 1); gfx_rect(rkth_clp_x, rkth_clp_y, rkth_clp_w, rkth_clp_h);
       rkth_setcol(7, 0.34, 0.37, 0.44, 1); gfx_rect(rkth_clp_x, rkth_clp_y, rkth_clp_w, rkth_clp_h, 0);
-      // ── PAGES: the two tabs across the top, the open one a chip with an accent line under its label,
-      // the other plain text on the panel
+      // ── PAGES: the tabs across the top (LOOK, STRIP, and METER when it has rows), the open one a chip
+      // with an accent line under its label, the others plain text on the panel
       rkth_pg_on ? (
         _xi = 0;
-        loop(2,
-          _ry = (rkth_clp_w - 2 * (rkth_clp_capx - rkth_clp_x)) * 0.5;      // a tab's width
+        loop(rkth_pg_nt,
+          _ry = (rkth_clp_w - 2 * (rkth_clp_capx - rkth_clp_x)) / rkth_pg_nt;   // a tab's width
           _k = rkth_clp_capx + _xi * _ry;
           gfx_setfont(1, "Arial", _f9, 'b');
-          gfx_measurestr(_xi ? "STRIP" : "LOOK", rkth_pg_lw, rkth_pg_lh);
+          gfx_measurestr(_xi == 2 ? "METER" : _xi ? "STRIP" : "LOOK", rkth_pg_lw, rkth_pg_lh);
           rkth_pg == _xi ? (
             rkth_setcol(1, 0.16, 0.18, 0.22, 1); gfx_rect(_k, rkth_pg_tab_y, _ry - 2*rkth_scale, rkth_clp_ch);
             rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(_k, rkth_pg_tab_y, _ry - 2*rkth_scale, rkth_clp_ch, 0);
@@ -1641,7 +1732,7 @@ function rkth_cluster_overlay() local(_k, _idx, _ry, _f7, _f9, _cy, _xi) (
           ) : rkth_setcol(3, 0.62, 0.65, 0.70, 1);
           gfx_x = _k + (_ry - 2*rkth_scale - rkth_pg_lw) * 0.5;
           gfx_y = rkth_pg_tab_y + (rkth_clp_ch - _f9) * 0.5 - rkth_scale;
-          gfx_drawstr(_xi ? "STRIP" : "LOOK");
+          gfx_drawstr(_xi == 2 ? "METER" : _xi ? "STRIP" : "LOOK");
           _xi += 1;
         );
       );
@@ -1909,12 +2000,18 @@ rkth_nf_ok   = 0;       // re-established every frame by rkth_namefont()
 rkth_clp_nfrow = -1;    // no FONT row until the layout counts one
 rkth_nf_wsc  = 0;       // the FONT chip's width is measured again at the first frame
 rkth_x0_pick = -1; rkth_x1_pick = -1; rkth_x2_pick = -1; rkth_x3_pick = -1; rkth_x4_pick = -1;    // EXTRA rows: the same contract, by slot
+rkth_x5_pick = -1; rkth_x6_pick = -1; rkth_x7_pick = -1; rkth_x8_pick = -1; rkth_x9_pick = -1;
 rkth_x0_ok = 0; rkth_x1_ok = 0; rkth_x2_ok = 0; rkth_x3_ok = 0; rkth_x4_ok = 0;                        // re-established every frame by rkth_xrow()
+rkth_x5_ok = 0; rkth_x6_ok = 0; rkth_x7_ok = 0; rkth_x8_ok = 0; rkth_x9_ok = 0;
 rkth_clp_x0row = -1; rkth_clp_x1row = -1; rkth_clp_x2row = -1; rkth_clp_x3row = -1; rkth_clp_x4row = -1; // no such rows until the layout counts them
+rkth_clp_x5row = -1; rkth_clp_x6row = -1; rkth_clp_x7row = -1; rkth_clp_x8row = -1; rkth_clp_x9row = -1;
 rkth_pg = 0; rkth_pg_req = 0; rkth_pg_ok = 0; rkth_pg_on = 0; rkth_pg_look = 1; rkth_hid = -1;   // PAGES: LOOK open
 rkth_pg_th = 0; rkth_pg_hh = 0; rkth_pg_ex = 0; rkth_pg_tab_y = 0; rkth_pg_hint_y = 0;
+rkth_pg_nl = 0; rkth_pg_ns = 0; rkth_pg_nm = 0; rkth_pg_nt = 2;                            // two tabs until METER has a row
 rkth_x0_pg = 0; rkth_x1_pg = 0; rkth_x2_pg = 0; rkth_x3_pg = 0; rkth_x4_pg = 0;           // EXTRA rows: on LOOK
+rkth_x5_pg = 0; rkth_x6_pg = 0; rkth_x7_pg = 0; rkth_x8_pg = 0; rkth_x9_pg = 0;
 rkth_x0_hok = 0; rkth_x1_hok = 0; rkth_x2_hok = 0; rkth_x3_hok = 0; rkth_x4_hok = 0;      // ...with no hint
+rkth_x5_hok = 0; rkth_x6_hok = 0; rkth_x7_hok = 0; rkth_x8_hok = 0; rkth_x9_hok = 0;
 rkth_em_ok = 0;         // EMBED: re-established every frame by rkth_embedrow()
 rkth_clp_emrow = -1;    // no EMBED row until the layout counts one
 rkth_em_pend = 0;       // nothing asked of Plus yet

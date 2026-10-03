@@ -37,6 +37,11 @@ slider24:ct_val_mode=0<0,1,1{Touch,Always}>-Gain number (internal; the THEME pan
 slider25:ct_vu_pair=0<0,1,1{One,Two}>-VU meters (internal; the THEME panel's METERS row: 1 = two meters, the left and the right, in the window and the strip (its METER and VU views); one needle is the default; persists via FX chunk)
 slider26:ct_vu_drag=0<0,1,1{Off,On}>-VU drag (internal; the THEME panel's VU DRAG row: 1 = the strip's meter sets the gain -- drag it, the wheel over it, double-click for 0 dB -- and the VU view shows the gain as a fill of its face; 0, the default, = the strip's meter only reads; persists via FX chunk)
 slider27:ct_key_hide=0<0,1,1{Shown,Hidden}>-Stereo key (internal; the THEME panel's ST/MONO row: 1 = the strip shows no STEREO / MONO key -- MONO still shows, as a cyan dot while it is on, and the VU view drops the key's band; the window keeps its MONO button; persists via FX chunk)
+slider28:ct_vu_ref=0<0,2,1{-18,-20,-14}>-0 VU (internal; the THEME panel's METER tab, 0 VU row: the level in dBFS that reads 0 VU; persists via FX chunk)
+slider29:ct_vu_speed=0<0,2,1{Normal,Fast,Slow}>-VU speed (internal; the METER tab's SPEED row: the needle at the standard 300 ms, twice as fast, or half; persists via FX chunk)
+slider30:ct_vu_hold=0<0,2,1{Needle,Arc,Off}>-VU hold (internal; the METER tab's HOLD row: the last high held by a second needle, by the arc, or not at all; persists via FX chunk)
+slider31:ct_vu_peak=0<0,2,1{VU,Peak,Max}>-VU readout (internal; the METER tab's READOUT row: the number on the window's meter, the VU now, the peak in dBFS held, or the highest peak since a click on it; persists via FX chunk)
+slider32:ct_vu_warn=0<0,2,1{-6,-3,-1}>-Peak light (internal; the METER tab's PEAK LIGHT row: the meter's PEAK light comes on above -6, -3 or -1 dBFS; persists via FX chunk)
 
 in_pin:left input
 in_pin:right input
@@ -86,8 +91,9 @@ meter_init(freemem); freemem += 1380; // must match memset size in meter_init() 
 // rkth_lk_ok = 0 and the LOCK row simply does not appear.
 freemem = rkth_lock_mem(freemem);
 // The VU needle: rk_vu, the ReaKit house meter (clean-room, 300 ms movement),
-// one mono instance fed (L+R)/2, 0 VU at -18 dBFS.
+// one mono instance fed (L+R)/2, 0 VU at -18 dBFS (the METER tab's 0 VU row moves it).
 vu_ct.rk_vu_init(-18);
+gk_ref_seen = gk_spd_seen = gk_warn_seen = -1;   // @block puts the METER tab's 0 VU, SPEED and PEAK LIGHT back on it
 
 // ── EON "One Rack" theme listener ────────────────────────────────────────
 // Reads the unified theme band the Swing bridge publishes into the shared
@@ -335,12 +341,14 @@ function gk_badges(x, y, avail, bh, fs, c) local(i, tw, th, pw, x0, hov, lt) (
 // scale's -20 end down beside this corner, so there it must also clear that
 // numeral's box: sit below it, or left of it. On the flattest faces it cannot,
 // and the reading is left off; the dial there carries every numeral anyway.
-function gk_vu_corner() local(sc, fs, tw, th, x, y, lx, ly, lw, lh, ok) (
-  vu_mono_db > -20.5 ? (
+function gk_vu_corner() local(sc, fs, tw, th, x, y, lx, ly, lw, lh, ok, pk) (
+  // READOUT row: PEAK and MAX read the peak in dBFS here too, as rk_vu's box does
+  pk = ct_vu_peak == 2 ? vu_ct.pk_max : vu_ct.pk_cur;
+  (ct_vu_peak ? pk > 0.001 : vu_mono_db > -20.5) ? (
     sc = max(1, gfx_ext_retina);
     fs = floor(max(7 * sc, rkvu_r * 0.22));
     gfx_setfont(1, "Arial", fs, gk_wt(fs));
-    gfx_measurestr("-20.0", tw, th);
+    gfx_measurestr(ct_vu_peak ? "-60.0" : "-20.0", tw, th);
     x = rkvu_fx + rkvu_r * 0.10;
     y = rkvu_fy + rkvu_fh - th - rkvu_r * 0.06;
     ok = 1;
@@ -354,7 +362,7 @@ function gk_vu_corner() local(sc, fs, tw, th, x, y, lx, ly, lw, lh, ok) (
     ok && x + tw + 2 * sc <= min(rkvu_cx - max(rkvu_cy - y, 0) * 1.192,    // tan 50: the rest line
                                  rkvu_cx - rkvu_r * 0.19) ? (             // the cover's edge
       gfx_set(rkvu_ik_r, rkvu_ik_g, rkvu_ik_b, 0.85);
-      sprintf(#gk_vt, "%+.1f", min(vu_mono_db, 3));
+      ct_vu_peak ? sprintf(#gk_vt, "%.1f", 20 * log10(pk)) : sprintf(#gk_vt, "%+.1f", min(vu_mono_db, 3));
       gfx_x = x; gfx_y = y;
       gfx_drawstr(#gk_vt);
     );
@@ -912,6 +920,16 @@ rk_link_pull() ? atomic_set(dsp_dirty, 1);
 atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp() );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
+// The METER tab (sliders 28, 29): where 0 VU sits and how fast the needle moves, set here, on the
+// audio's side, which reads them. READOUT's MAX is cleared here too, when the window asks.
+ct_vu_ref != gk_ref_seen ? ( gk_ref_seen = ct_vu_ref; vu_ct.rk_vu_set_ref(ct_vu_ref == 1 ? -20 : ct_vu_ref == 2 ? -14 : -18); );
+ct_vu_speed != gk_spd_seen ? ( gk_spd_seen = ct_vu_speed; vu_ct.rk_vu_set_speed(ct_vu_speed == 1 ? 2 : ct_vu_speed == 2 ? 0.5 : 1); );
+// PEAK LIGHT (slider 32): the light at a fixed level in dBFS, -6 by default, as ZenoMOD's (the user,
+// 2026-10-03, side by side on a vocal: "why does mine peak? and his dont" -- rk_vu's own default, 3 VU
+// over the reference, is -15 dBFS at -18, which a vocal's peaks pass all the time)
+ct_vu_warn != gk_warn_seen ? ( gk_warn_seen = ct_vu_warn; vu_ct.rk_vu_set_warn(ct_vu_warn == 1 ? -3 : ct_vu_warn == 2 ? -1 : -6); );
+atomic_get(gk_pk_clear) ? ( atomic_set(gk_pk_clear, 0); vu_ct.rk_vu_reset_peak(); );
+
 // NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
 // step and is saved in the mode the others are in
 rkth_native_tick();
@@ -1082,6 +1100,7 @@ mouse_wheel = 0;
 rk_link_menu_gate();
 gk_plus_read();                        // GainKit Plus: this track's name, colour, icon (if published)
 vu_ct.rk_vu_set_label_font(ct_name_font ? gk_font() : 0);   // FONT row: the legend's face (0 = the lib's Arial)
+vu_ct.rk_vu_set_hold_style(ct_vu_hold == 1 ? 2 : ct_vu_hold == 2 ? 0 : 1);   // HOLD row: NEEDLE, ARC, OFF
 // Adopt a VU face broadcast by a SYNC-latched sibling (zm_theme = this
 // instance's face; the plugin keeps its own theme/sk_kp reader below).
 rkth_vu_f = rkth_vu_follow(zm_theme);
@@ -1486,6 +1505,19 @@ is_embedded ? (
   rkth_xpage(3, 1); rkth_xhint(3, "ON: drag the strip's meter", "to set the gain");
   rkth_xrow(4, "ST/MONO", ct_key_hide, 2, "SHOWN", "HIDDEN", "");    // the strip's STEREO / MONO key (slider27)
   rkth_xpage(4, 1); rkth_xhint(4, "Hide the STEREO / MONO key;", "MONO then shows as a dot");
+  // The METER tab (the user, 2026-10-03, after ZenoMOD's meter options: "we need that ppl asking";
+  // the four rows and a tab of their own were the user's picks): where 0 VU sits, the needle's
+  // speed, what marks the last high, and the number on the window's meter (sliders 28..31).
+  rkth_xrow(5, "0 VU", ct_vu_ref, 3, "-18", "-20", "-14");
+  rkth_xpage(5, 2); rkth_xhint(5, "The level that reads 0 VU:", "-18, -20 or -14 dBFS");
+  rkth_xrow(6, "SPEED", ct_vu_speed, 3, "NORMAL", "FAST", "SLOW");
+  rkth_xpage(6, 2); rkth_xhint(6, "NORMAL is the VU standard;", "FAST twice that, SLOW half");
+  rkth_xrow(7, "HOLD", ct_vu_hold, 3, "NEEDLE", "ARC", "OFF");
+  rkth_xpage(7, 2); rkth_xhint(7, "What marks the last high:", "a NEEDLE, the ARC, or none");
+  rkth_xrow(8, "READOUT", ct_vu_peak, 3, "VU", "PEAK", "MAX");
+  rkth_xpage(8, 2); rkth_xhint(8, "The number on the meter: VU,", "PEAK or MAX (click clears)");
+  rkth_xrow(9, "PEAK LIGHT", ct_vu_warn, 3, "-6 dB", "-3 dB", "-1 dB");   // when the PEAK light comes on (slider32)
+  rkth_xpage(9, 2); rkth_xhint(9, "The PEAK light comes on", "above -6, -3 or -1 dBFS");
   rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
   rkth_cluster_hdr(gk_hx, (hdr_h - ((RKTH_H_CHIP * rkth_scale) | 0)) * 0.5, 1, zm_theme);
   rkth_nb_pick >= 0 ? (
@@ -1508,6 +1540,14 @@ is_embedded ? (
   (gk_xp = rkth_xpick(2)) >= 0 ? ( ct_vu_pair = gk_xp; slider_automate(ct_vu_pair); );
   (gk_xp = rkth_xpick(3)) >= 0 ? ( ct_vu_drag = gk_xp; slider_automate(ct_vu_drag); );
   (gk_xp = rkth_xpick(4)) >= 0 ? ( ct_key_hide = gk_xp; slider_automate(ct_key_hide); );
+  (gk_xp = rkth_xpick(5)) >= 0 ? ( ct_vu_ref = gk_xp; slider_automate(ct_vu_ref); );
+  (gk_xp = rkth_xpick(6)) >= 0 ? ( ct_vu_speed = gk_xp; slider_automate(ct_vu_speed); );
+  (gk_xp = rkth_xpick(7)) >= 0 ? ( ct_vu_hold = gk_xp; slider_automate(ct_vu_hold); );
+  (gk_xp = rkth_xpick(8)) >= 0 ? (
+    ct_vu_peak = gk_xp; slider_automate(ct_vu_peak);
+    gk_xp == 2 ? atomic_set(gk_pk_clear, 1);   // MAX starts from now
+  );
+  (gk_xp = rkth_xpick(9)) >= 0 ? ( ct_vu_warn = gk_xp; slider_automate(ct_vu_warn); );
   ct_native != rkth_local_off ? ( ct_native = rkth_local_off; slider_automate(ct_native); );   // the panel's own pick, at once
   rkth_vu_pick >= 0 ? ( zm_theme = rkth_vu_pick; rkth_vu_pick = -1; );
   rk_gear_r = max(5 * ret, hdr_h * 0.20);
@@ -1544,7 +1584,7 @@ is_embedded ? (
   rkvu_gmode = 0;                                        // a level face's labels (rk_vu's rule)
   rk_vu_geom(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph);   // publishes rkvu_r for this rect
   gk_ro = rkvu_r >= 60 * max(1, gfx_ext_retina);
-  vu_ct.rk_vu_set_readout(gk_ro ? 1 : 0);
+  vu_ct.rk_vu_set_readout(gk_ro ? (ct_vu_peak == 1 ? 3 : ct_vu_peak == 2 ? 4 : 1) : 0);   // READOUT row: VU, PEAK, MAX
   vu_ct.rk_vu_set_numbers(1);                    // the window always shows them
   vu_ct.rk_vu_set_flat(0);                       // ...on the 1.6:1 face
   ct_vu_pair ? (
@@ -1581,6 +1621,13 @@ is_embedded ? (
     // draws it under the needle); while it is being typed, gk_name_face's box.
     vu_ct.rk_vu_draw(ct_vu_px, ct_vu_py, ct_vu_pw, ct_vu_ph, 0, -1, gk_ne_on ? "" : #gk_dname);
     !gk_ro ? gk_vu_corner();
+    // READOUT's MAX: a click on the number (rk_vu's box, or the corner reading, lower left) clears
+    // it; @block does the clearing, on the audio's side
+    ct_vu_peak == 2 && lmb_down && !gk_ne_on &&
+      mx >= rkvu_fx + rkvu_r * 0.05 && mx <= rkvu_fx + rkvu_r * 0.10 + max(rkvu_r * 0.42, 44 * ret) &&
+      my >= rkvu_fy + rkvu_fh - rkvu_r * 0.08 - max(rkvu_r * 0.16, 16 * ret) - 4 * ret && my <= rkvu_fy + rkvu_fh ? (
+      atomic_set(gk_pk_clear, 1); lmb_down = 0;
+    );
     gk_name_face();
   );
   ct_vu_drawn = 1;                         // for the picker at end of frame

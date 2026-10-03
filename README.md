@@ -50,6 +50,12 @@ type, and the name is printed on the meter like a legend and on top of the strip
 as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
 M/S modes it used to show are still there as parameters, so old projects sound the same.
 
+The THEME panel's METER tab sets how the meter reads: where 0 VU sits (-18, -20 or -14 dBFS), how
+fast the needle moves (the standard speed, twice as fast, or half), what marks the last high (a
+second needle, the arc, or nothing), the number on the window's meter (the VU reading, the peak in
+dBFS, or the highest peak, cleared with a click on it), and when the PEAK light comes on (above -6,
+-3 or -1 dBFS; -6 by default).
+
 ![GainKit with METERS on ONE and on TWO](screenshots/session/gainkit_one_two.png)
 
 ![Mixer strips with two meters each, in the track's colour](screenshots/session/strips_two_meters.png)
@@ -79,8 +85,8 @@ in the Actions list as `Script: GainKit Plus…`):
 - **GainKit last on the master** — moves the master's GainKit to the end of its chain, or adds
   one there, so the mix gets a final VU after everything else.
 - **Copy look to all** — the look of the selected track's GainKit (what the strip shows, the name
-  row and its font, the meter's colour, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR, NATIVE) on every
-  GainKit at once.
+  row and its font, the meter's colour, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR, NATIVE and the
+  METER tab) on every GainKit at once.
 - **Reset all gains** — every GainKit's GAIN back to 0 dB.
 - **All MONO** / **All STEREO** — every GainKit's key at once.
 - **Bypass all** — every GainKit off; run it again and they are all on.
@@ -90,9 +96,12 @@ in the Actions list as `Script: GainKit Plus…`):
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
   file, and EON Floatter started once so it registers itself. Once, it sets the six to open
   embedded in the mixer strip (REAPER's own default for new instances; other plugins' defaults are
-  left as they are). The first time, it also offers to
+  left as they are). The first time, it also offers a track with all six and to
   raise REAPER's meter refresh to 120 a second so the mixer strips answer quicker (from the next
   start). Run it again and nothing changes.
+- **ReaKit FX - Add a track with all six** — a track called ReaKit FX at the end of the project
+  with GainKit, 3-Band EQ, DDC, De-Esser, Saturation and Stereo Width, their windows open side by
+  side. One undo step.
 
 The actions and the names reach a GainKit inside an FX container too.
 
