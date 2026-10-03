@@ -156,6 +156,12 @@ WIDTH knob at the bottom of the channel.
 
 ## Across the plugins
 
+- **Presets** — each of the six has factory presets in REAPER's preset menu at the top of its
+  window, named for the job: Vocal Smooth, Kick Punch and Drum Bus Glue on DDC, Vocal Standard and
+  Hi-Hat Tame on the De-Esser, Warmth, De-Mud and Telephone on the 3-Band EQ, and more on
+  Saturation, Stereo Width and GainKit (62 in all). The DDC and De-Esser presets are tuned to a set
+  amount of reduction. A preset sets the sound and leaves the look, the link group and GainKit's
+  name as they are.
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
   slot it is given. The THEME panel's EMBED row (MCP / TCP / OFF) moves a plugin between the mixer
   strip, the track panel and neither, and sets where new copies of all six open; GainKit Plus does
