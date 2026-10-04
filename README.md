@@ -102,6 +102,11 @@ in the Actions list as `Script: GainKit Plus…`):
 - **ReaKit FX - Add a track with all six** — a track called ReaKit FX at the end of the project
   with GainKit, 3-Band EQ, DDC, De-Esser, Saturation and Stereo Width, their windows open side by
   side. One undo step.
+- **ReaKit FX - Dock following the selected track** — the selected track's ReaKit FX in a docker
+  tab (see [The ReaKit FX dock](#the-reakit-fx-dock) below).
+- **ReaKit FX - Docker tabs off-on** — REAPER's tab bar off for every docker holding one window
+  (a docker holding two keeps its tabs, to switch between them); run it again and the tabs are
+  back as they were. It is REAPER's own setting, so it holds for every docker and after a restart.
 
 The actions and the names reach a GainKit inside an FX container too.
 
@@ -123,12 +128,44 @@ window's meter and on top of the strip.
 *The same session on the EON theme. The channels and buses take their names and colours from
 their tracks, through GainKit Plus; the master's name is typed.*
 
+#### The ReaKit FX dock
+
+![The dock across the bottom of the window: all six of a track's ReaKit FX side by side](screenshots/session/dock_strip.png)
+
+*STRIP on: every ReaKit FX on the selected track, side by side in the order of its chain.*
+
+**ReaKit FX - Dock following the selected track** puts the selected track's ReaKit FX in a
+docker tab, whole and working, and follows your selection: click another track and the dock shows
+its effects. A track without any keeps the last ones on view. The bar on top:
+
+- the track's name, and a button for each of the six; a dim one is an effect the track does not
+  have: right-click it to add it to the track (GainKit first in the chain, the others at the end);
+- **STRIP** — every one of the six on the track side by side, as many as fit at a usable width;
+  `<` `>`, an effect's button or the mouse wheel over the bar bring the rest on view. With STRIP
+  off, the effect you pick fills the dock;
+- **PIN** — the dock stays on this track (or the master) whatever you select;
+- **TABS** — the same as the Docker tabs action above.
+
+![The dock beside the mixer, one effect at a time, and three on a track in a wider dock](screenshots/session/dock_keys.png)
+
+*Narrow, it shows one effect at a time; wider, as many as fit.*
+
+Double-click a plugin's name at the top of its own window and it goes into the dock, on its
+track; double-click it in the dock and it comes back out into its own window. Open an effect's
+own window, its mixer strip or the FX chain on it, and the dock steps aside until that window
+closes. Run the action again to close the dock; GainKit Plus, starting with REAPER, opens it again
+if it was open when REAPER closed. The dock runs on Windows and needs js_ReaScriptAPI (ReaPack).
+
 ### Saturation
 
 ![Saturation](screenshots/session/saturation.png)
 
 LOSER's saturation: one DRIVE knob, a transfer display that shows what the drive is doing to the
-signal, and an output meter. The LED bypasses it.
+signal, and an output meter. The LED bypasses it. In a short window, as in the dock, the display
+steps aside and the knob takes the room; the CURVE button opens the display over the knob, and a
+click anywhere else closes it.
+
+![Saturation in the dock, the CURVE button, and its window at four sizes](screenshots/session/saturation_compact.png)
 
 ### 3-Band EQ
 

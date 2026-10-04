@@ -545,6 +545,7 @@ is_embedded ? (
 
   gfx_set(ac_r, ac_g, ac_b, 1); gfx_setfont(1, "Arial", floor(14*ret), 'b');
   gfx_x = 12*ret; gfx_y = 7*ret; gfx_drawstr("DDC");
+  rkth_dock_name(0, 0, gfx_x, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
 
   // ▸THEME, as the other five: after the title, centred in the header, BEFORE the body
   // widgets so an open panel takes the click first. No NAME BAR row (no slider for it)

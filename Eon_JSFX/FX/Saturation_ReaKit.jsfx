@@ -341,14 +341,28 @@ gfx_ext_flags & 1 ? (
   body_w = gfx_w - mtr_w;
   body_h = gfx_h - hdr_h;
 
-  // Split body vertically: top = knob zone, bottom = curve zone
-  knob_zone_h = body_h * 0.48;
+  // Split body vertically: top = knob zone, bottom = curve zone. COMPACT: a window with no room for both (the
+  // ReaKit FX dock, about 200 px tall) would show the curve as a stamp under a small knob, so the curve goes and
+  // the knob takes the whole body (the user, 2026-10-03: "remove its graph when its a certain size ... when
+  // docked i think it would look better").
+  // The knob's block, top to bottom: its scale out to 1.4 R above its centre (the widest of the knob styles,
+  // knobs_kbsg.jsfx-inc), 1.45 R down to AMOUNT, AMOUNT, 4 px, the value. It is fitted between the DRIVE row and
+  // the bottom of its zone and centred there, the knob made smaller rather than overlap (the user, 2026-10-03:
+  // "Ensure its 12 o'clock position dont overlap drive"; seen too: a window wider than tall grew the knob from
+  // its height and "60%" hid behind the curve -- both older than COMPACT). COMPACT when, on the normal split, the
+  // curve's square is under 100 px at 100 % or the fitted knob under 26 px.
+  sat_top = hdr_h + 13 * ret + max(9, floor(min(body_w * 0.05, 13) * ret)) * 1.25;   // the DRIVE row's bottom + a gap
+  sat_k = 2.85 + 0.58 * ret;                                 // the block per R (its words scale with R * ret)
+  sat_kr = (hdr_h + body_h * 0.48 - 6 * ret - sat_top) / sat_k;   // the normal split's knob, fitted
+  sat_compact = min(body_w - 20 * ret, body_h * 0.52 - 20 * ret) < 100 * ret || sat_kr < 26 * ret;
+  knob_zone_h = sat_compact ? body_h : body_h * 0.48;
   curve_zone_h = body_h - knob_zone_h;
   body_cx = body_w * 0.5;
 
-  knob_r = min(body_w * 0.18, knob_zone_h * 0.34);
-  knob_r = max(knob_r, 22 * ret);
-  knob_cy = hdr_h + knob_zone_h * 0.42;
+  sat_av = hdr_h + knob_zone_h - 2 * ret - sat_top;          // the room for the block
+  knob_r = min(sat_compact ? body_w * 0.22 : body_w * 0.18, (sat_av - 4 * ret) / sat_k);
+  knob_r = max(knob_r, 16 * ret);
+  knob_cy = sat_top + 1.4 * knob_r + max(0, sat_av - (sat_k * knob_r + 4 * ret)) * 0.5;
 
   lbl_font = max(8, floor(knob_r * 0.32 * ret));
   val_font = max(8, floor(knob_r * 0.26 * ret));
@@ -361,6 +375,7 @@ gfx_ext_flags & 1 ? (
   gfx_x = 10 * ret; gfx_y = (hdr_h - 14 * ret) * 0.5 + ret;
   gfx_drawstr("SATURATION");
   sat_tx = gfx_x;   // where the title ends
+  rkth_dock_name(0, 0, sat_tx, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
   // ▸THEME sits in the header after the title, before the link badge, and under the header,
   // as before, only in a window too narrow for it (the user, 2026-10-01; no credit line on
   // the face: LOSER is credited in this file's header and its author tag). Its width is the
@@ -402,6 +417,34 @@ gfx_ext_flags & 1 ? (
   led_r_hdr = max(3, sh_font * 0.35);
   gfx_setfont(1, "Arial", sh_font, 'b');
 
+  // ── CURVE, popped open (COMPACT only) ──────────────────────────────
+  // The user (2026-10-03): "can it be a drop down, kinda like swings mini browser is a pop open kinda thing?"
+  // In COMPACT the curve sits behind a chip at the right of the DRIVE row: a click opens it over the knob; a
+  // click on the chip or anywhere else closes it (a click inside it does nothing). Not saved: it starts closed.
+  // While it is open the knob under it takes no click, drag or wheel. Its clicks are read here, before the DRIVE
+  // LED's, so the click that closes it does nothing else.
+  sat_compact ? (
+    gfx_measurestr("DRIVE", sat_dtw, th);
+    gfx_measurestr("CURVE", tw, th);
+    sat_cvb_h = th + 6 * ret;
+    sat_cvb_w = tw + 14 * ret;
+    sat_cvb_w > body_w - 6 * ret - (body_cx + sat_dtw / 2 + 6 * ret) ? sat_cvb_w = sat_cvb_h;   // no room for the word: an arrow
+    sat_cvb_x = body_w - sat_cvb_w - 6 * ret; sat_cvb_y = sh_y + th * 0.5 - sat_cvb_h * 0.5;
+    sat_pnl_y = sat_cvb_y + sat_cvb_h + 4 * ret;
+    sat_pnl_s = max(20 * ret, min(body_w - 16 * ret, gfx_h - sat_pnl_y - 6 * ret));
+    sat_pnl_x = (body_w - sat_pnl_s) * 0.5;
+    lmb_down ? (
+      mx >= sat_cvb_x && mx < sat_cvb_x + sat_cvb_w && my >= sat_cvb_y && my < sat_cvb_y + sat_cvb_h ? (
+        sat_cv_open = !sat_cv_open; lmb_down = 0;
+      ) : sat_cv_open ? (
+        !(mx >= sat_pnl_x && mx < sat_pnl_x + sat_pnl_s && my >= sat_pnl_y && my < sat_pnl_y + sat_pnl_s) ? sat_cv_open = 0;
+        lmb_down = 0;
+      );
+    );
+  ) : (
+    sat_cv_open = 0;
+  );
+
   mb0 = bm;
   gfx_measurestr("DRIVE", tw, th); sh_cx = body_cx;
   led_cx = sh_cx - tw/2 - led_r_hdr - 5 * ret; led_cy = sh_y + th * 0.5;
@@ -417,13 +460,30 @@ gfx_ext_flags & 1 ? (
   slider2 ? gfx_set(drv_lr, drv_lg, drv_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
   gfx_rect(body_cx - body_w * 0.25, bar_y, body_w * 0.50, 2 * ret);
 
+  // the CURVE chip (COMPACT): lit while the curve is open; the word, or an arrow where it does not fit
+  sat_compact ? (
+    sat_cv_open ? gfx_set(0.90, 0.55, 0.15, 1) : gfx_set(0.20, 0.22, 0.26, 1);   // lit: the curve's own orange
+    gfx_rect(sat_cvb_x, sat_cvb_y, sat_cvb_w, sat_cvb_h);
+    sat_cv_open ? gfx_set(0.08, 0.08, 0.09, 1) : gfx_set(0.80, 0.82, 0.86, 1);
+    sat_cvb_w > sat_cvb_h ? (
+      gfx_setfont(1, "Arial", sh_font, 'b');
+      gfx_measurestr("CURVE", tw, th);
+      gfx_x = sat_cvb_x + (sat_cvb_w - tw) * 0.5; gfx_y = sat_cvb_y + (sat_cvb_h - th) * 0.5;
+      gfx_drawstr("CURVE");
+    ) : (
+      sat_ar = sat_cvb_h * 0.25; sat_acx = sat_cvb_x + sat_cvb_w * 0.5; sat_acy = sat_cvb_y + sat_cvb_h * 0.5;
+      sat_cv_open ? gfx_triangle(sat_acx - sat_ar, sat_acy + sat_ar * 0.5, sat_acx + sat_ar, sat_acy + sat_ar * 0.5, sat_acx, sat_acy - sat_ar * 0.5)
+                  : gfx_triangle(sat_acx - sat_ar, sat_acy - sat_ar * 0.5, sat_acx + sat_ar, sat_acy - sat_ar * 0.5, sat_acx, sat_acy + sat_ar * 0.5);
+    );
+  );
+
   // Meter divider
   gfx_set(0.18, 0.18, 0.20, 0.5);
   gfx_line(body_w, hdr_h + 2 * ret, body_w, gfx_h - 2 * ret);
 
   // ── DRIVE knob ─────────────────────────────────────────────────────
   cx = body_cx; m = km;
-  nv = ssl_knob_interact(m, cx, knob_cy, knob_r, slider1, 0, 100, 0, 101);
+  nv = sat_cv_open ? slider1 : ssl_knob_interact(m, cx, knob_cy, knob_r, slider1, 0, 100, 0, 101);   // the CURVE is over it
   nv = floor(nv + 0.5); nv = clamp(nv, 0, 100);
   nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
   rk_role_col(0, 1, drv_cr, drv_cg, drv_cb);  // DRIVE — drive role
@@ -434,23 +494,32 @@ gfx_ext_flags & 1 ? (
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#dv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#dv);
 
-  // ── Horizontal divider between knob and curve ──
-  div_y = hdr_h + knob_zone_h;
-  gfx_set(0.18, 0.18, 0.20, 0.4);
-  gfx_line(6 * ret, div_y, body_w - 6 * ret, div_y);
+  !sat_compact ? (
+    // ── Horizontal divider between knob and curve ──
+    div_y = hdr_h + knob_zone_h;
+    gfx_set(0.18, 0.18, 0.20, 0.4);
+    gfx_line(6 * ret, div_y, body_w - 6 * ret, div_y);
 
-  // ── Transfer curve ─────────────────────────────────────────────────
-  cv_pad = 10 * ret;
-  cv_s = min(body_w - cv_pad * 2, curve_zone_h - cv_pad * 2);
-  cv_ox = body_cx - cv_s / 2;
-  cv_oy = div_y + (curve_zone_h - cv_s) * 0.5;
-  draw_curve(cv_ox, cv_oy, cv_s);
+    // ── Transfer curve ─────────────────────────────────────────────────
+    cv_pad = 10 * ret;
+    cv_s = min(body_w - cv_pad * 2, curve_zone_h - cv_pad * 2);
+    cv_ox = body_cx - cv_s / 2;
+    cv_oy = div_y + (curve_zone_h - cv_s) * 0.5;
+    draw_curve(cv_ox, cv_oy, cv_s);
+  );
 
   // ── Meter ──────────────────────────────────────────────────────────
   mtr_x = body_w + 5 * ret; mtr_y = hdr_h + 8 * ret;
   mtr_h = gfx_h - hdr_h - 16 * ret;
   mtr_bar_w = mtr_w - 18 * ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── the CURVE, popped open over the knob (COMPACT), last so it is on top ──
+  sat_compact && sat_cv_open ? (
+    gfx_set(0, 0, 0, 0.45);
+    gfx_rect(sat_pnl_x - 3 * ret, sat_pnl_y - 2 * ret, sat_pnl_s + 6 * ret, sat_pnl_s + 6 * ret);   // a shadow
+    draw_curve(sat_pnl_x, sat_pnl_y, sat_pnl_s);
+  );
 );
 
 // ── Options menu overlay ──

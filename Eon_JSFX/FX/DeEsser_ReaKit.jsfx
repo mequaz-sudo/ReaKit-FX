@@ -575,6 +575,7 @@ is_embedded ? (
   gfx_setfont(1, "Arial", floor(13 * ret), 'b');
   gfx_set(0.85, 0.88, 0.90, 1); gfx_x = 10*ret; gfx_y = 7*ret; gfx_drawstr("DE-ESSER");
   de_tx = gfx_x;   // where the title ends: the THEME button follows it (no "ReaKit" label, the user 2026-10-01)
+  rkth_dock_name(0, 0, de_tx, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
 
   // ▸EON appearance cluster (shared lib): THEME · KNOB chips, no VU/SYNC
   // (has_vu = 0). Interaction runs INSIDE rkth_cluster FIRST — an open

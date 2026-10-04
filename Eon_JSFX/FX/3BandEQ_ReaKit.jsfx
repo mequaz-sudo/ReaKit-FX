@@ -459,6 +459,7 @@ gfx_ext_flags & 1 ? (
   gfx_setfont(1, "Arial", floor(max(11*ret, hdr_h * 0.48)), 'b');
   gfx_x = 10*ret; gfx_y = (hdr_h - 14*ret) * 0.5 + 1*ret;
   gfx_drawstr("3-BAND EQ");   // no credit line on the face: LOSER is credited in this file's header and author tag
+  rkth_dock_name(0, 0, gfx_x, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
 
   // ▸EON appearance cluster (shared lib): THEME · KNOB chips, no VU/SYNC
   // (has_vu = 0). Interaction runs INSIDE rkth_cluster FIRST — an open

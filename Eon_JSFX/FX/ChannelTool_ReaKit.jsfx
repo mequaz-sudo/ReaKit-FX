@@ -1469,6 +1469,7 @@ is_embedded ? (
   gk_ink(2, 1, 0.85, 0.88, 0.90);
   gfx_measurestr("GAINKIT", tw, th);
   gfx_x = gk_hx; gfx_y = (hdr_h - th) * 0.5; gfx_drawstr("GAINKIT");
+  rkth_dock_name(0, 0, gfx_x, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
   gk_hx += tw + 10 * ret;   // no "ReaKit" label after it (the user, 2026-10-01)
   // Appearance cluster (THEME · KNOB · VU · SYNC) — interaction runs inside, so
   // an open panel swallows the click before the gear/badge see it. It sits

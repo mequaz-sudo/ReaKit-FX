@@ -53,6 +53,30 @@ local run = math.floor(tonumber(r.GetExtState(EXT, "run")) or 0) + 1
 r.SetExtState(EXT, "run", string.format("%d", run), false)
 local GEN0 = run * 1000000000
 
+-- The ReaKit FX dock opens again with REAPER (the user, 2026-10-03). GainKit Plus and the dock each stamp the
+-- wall clock every few seconds, saved with REAPER's settings. GainKit Plus's first run in a REAPER session
+-- compares last time's two stamps: the dock alive within 10 s of GainKit Plus's last stamp = it was open when
+-- REAPER closed, so it opens again, a few seconds in (the project loaded first). Closing the dock with its tab
+-- clears its stamp; one turned off with its action stays shut unless REAPER closed within 10 s of that.
+local DOCK_EXT = "EON_ReaKitDock"
+local DOCK_FILE = "ReaKit FX - Dock following the selected track.lua"
+local dock_reopen_at
+if run == 1 then
+  local dw = tonumber(r.GetExtState(DOCK_EXT, "wall")) or 0
+  local pw = tonumber(r.GetExtState(EXT, "wall")) or 0
+  if dw > 0 and pw > 0 and dw >= pw - 10 then dock_reopen_at = now0 + 3 end
+end
+local function reopen_dock()
+  if r.time_precise() - (tonumber(r.GetExtState(DOCK_EXT, "alive")) or 0) < 1.0 then return end   -- already up
+  local _, me = r.get_action_context()
+  local p = (me or ""):match("^(.*[/\\])")
+  p = p and (p .. DOCK_FILE)
+  if not (p and r.file_exists(p)) then return end
+  local id = r.AddRemoveReaScript(true, 0, p, true)
+  if id and id ~= 0 then r.Main_OnCommand(id, 0) end
+end
+local wall_t = 0
+
 -- names and icon paths go as UTF-8 bytes, control bytes dropped. They were folded to printable ASCII,
 -- so accents vanished from names and an icon in a folder with one never loaded, REAPER's own icons
 -- included when the Windows user folder has one (outside audit, 2026-10-02).
@@ -351,6 +375,22 @@ local function move(ti, pos, mode)
   r.Undo_EndBlock("ReaKit FX: embed " .. (mode == 1 and "in the mixer" or mode == 2 and "in the track panel" or "off"), -1)
 end
 
+-- DOCK (mode 4): a double-click on one of the six's names (rk_theme's rkth_dock_name; the user, 2026-10-03:
+-- "swing i double click the logo it docks"). Its track and chain position become GUIDs for the ReaKit FX dock,
+-- which takes it in, or pops it out when it is docked already; the dock is opened first when it is closed. The
+-- request is written BEFORE the dock starts (its start leaves this one alone: it carries the time, and the dock
+-- drops one older than 5 s). A track's own chain only (flags 0): the dock shows no take, input or container FX.
+local function dock_request(ti, pos, fl)
+  if fl ~= 0 then return end
+  local tr
+  if ti == -1 then tr = r.GetMasterTrack(0) elseif ti >= 0 then tr = r.GetTrack(0, ti) end
+  if not tr or pos < 0 or pos >= r.TrackFX_GetCount(tr) then return end
+  local fg = r.TrackFX_GetFXGUID(tr, pos)
+  if not fg then return end
+  r.SetExtState(DOCK_EXT, "show_req", r.GetTrackGUID(tr) .. "|" .. fg .. "|" .. string.format("%.3f", r.time_precise()), false)
+  reopen_dock()                              -- returns at once when the dock is up
+end
+
 local served = r.gmem_read(EMB + 12)       -- a request older than this run is not ours to serve
 local hb_last, def_t, paths = 0, -10, nil
 local function embed_tick(now)
@@ -367,6 +407,9 @@ local function embed_tick(now)
       write_default(paths, mode)
       def_t = now
       local d = read_default(paths); if d then r.gmem_write(EMB + 1, d) end   -- before the answer: no flicker
+    elseif mode == 4 then
+      dock_request(math.floor(r.gmem_read(EMB + 9) + 0.5), math.floor(r.gmem_read(EMB + 10) + 0.5),
+                   math.floor(r.gmem_read(EMB + 11) + 0.5))
     end
     r.gmem_write(EMB + 2, g)
   end
@@ -393,6 +436,9 @@ local function loop()
   local now = r.time_precise()
   if (tonumber(r.GetExtState(EXT, "stop")) or 0) > now0 then return end   -- asked to stop: no stamp, atexit cleans up
   r.SetExtState(EXT, "alive", tostring(now), false)          -- the heartbeat a relaunch reads
+  local wall = os.time()
+  if wall - wall_t >= 5 then wall_t = wall; r.SetExtState(EXT, "wall", tostring(wall), true) end   -- the dock's reopen
+  if dock_reopen_at and now >= dock_reopen_at then dock_reopen_at = nil; reopen_dock() end
   embed_tick(now)
   if now - t_last >= 0.3 then t_last = now; tick() end
   r.defer(loop)

@@ -598,6 +598,42 @@ function rkth_em_request(mode) local(_t, _p, _f, _g) (
   rkth_em_pend = mode; rkth_em_pgen = _g; rkth_em_pt = time_precise();
 );
 
+// ── DOCK (opt-in, the free six): double-click the name -> the ReaKit FX dock ──
+// The user (2026-10-03): "swing i double click the logo it docks. can we get that same functionality?" A host
+// calls, every frame, right after drawing its name in its header:
+//   rkth_dock_name(x, y, w, h);   // the name's box in gfx pixels: the header from its left edge to the name's end
+// Two presses inside it within RKTH_DOCK_DBL ask GainKit Plus, in the EMBED band with mode 4, to show this
+// plugin in "ReaKit FX - Dock following the selected track" (Plus opens the dock when it is closed), or, when it
+// is docked already, to pop it out into its own window. In its own window (or the dock) only: an embedded strip
+// is left alone, its clicks open and close the window. Plus 1.0.15 and older serve only modes 1..3, so they
+// mark a mode 4 served and do nothing; with Plus not running nothing listens and the double-click does nothing.
+// ⛔Never sets rkth_em_pend: the EMBED chip would show "..." for a request that is not its own.
+RKTH_DOCK_DBL = 0.5;   // Windows' own double-click time: nothing on the name takes a single click
+function rkth_dock_name(x, y, w, h) local(_in, _now, _p, _f, _t, _g) (
+  !(gfx_ext_flags & 1) ? (
+    (mouse_cap & 1) && !(rkth_dk_cap & 1) ? (
+      _in = mouse_x >= x && mouse_x < x + w && mouse_y >= y && mouse_y < y + h;
+      _now = time_precise();
+      _in && rkth_dk_t > 0 && _now - rkth_dk_t < RKTH_DOCK_DBL ? (
+        rkth_dk_t = 0;
+        rkth_em_alive() ? (
+          _p = 0; _f = 0;
+          _t = get_host_placement(_p, _f);
+          gmem[RKTH_EM_BASE + 8] = 4;
+          gmem[RKTH_EM_BASE + 9] = _t;
+          gmem[RKTH_EM_BASE + 10] = _p;
+          gmem[RKTH_EM_BASE + 11] = _f;
+          _g = (gmem[RKTH_EM_BASE + 12] | 0) + 1;
+          gmem[RKTH_EM_BASE + 12] = _g;
+        );
+      ) : (
+        rkth_dk_t = _in ? _now : 0;
+      );
+    );
+    rkth_dk_cap = mouse_cap;
+  );
+);
+
 // Host hook, called from @serialize so a locked look survives a project
 // reload. ⚠️APPEND-GUARDED: an old project's blob simply ends before this, and
 // file_avail(0) == 0 leaves the instance unlocked, which is the right default.

@@ -350,6 +350,7 @@ gfx_ext_flags & 1 ? (
   gfx_x = 10*ret; gfx_y = (hdr_h - 14*ret) * 0.5 + 1;
   gfx_drawstr("STEREO WIDTH");
   sw_tx = gfx_x;   // where the title ends
+  rkth_dock_name(0, 0, sw_tx, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
   // ▸THEME sits in the header after the title, before the link badge, and under the header,
   // as before, only in a window too narrow for it (the user, 2026-10-01; no credit line on
   // the face). Its width is the cluster's own (rkth_cl_hdr_w; a close guess on the very
