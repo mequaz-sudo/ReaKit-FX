@@ -3,7 +3,9 @@
 Six free effects for REAPER with EON Studios interfaces, drawn by the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) library: Saturation, 3-Band EQ and DDC by
 LOSER, a De-Esser built on Liteon's, and EON's own GainKit and Stereo Width. Every face is
-code, no image files, so it scales to any size and renders at full resolution on HiDPI.
+code, no image files, so it scales to any size and renders at full resolution on HiDPI. The
+GainKit Plus package adds a dock that keeps the selected track's effects in view: see
+[The ReaKit FX dock](#the-reakit-fx-dock).
 
 ![The six free effects in every mixer strip, on the EON theme](screenshots/session/session_eon.png)
 
@@ -128,34 +130,6 @@ window's meter and on top of the strip.
 *The same session on the EON theme. The channels and buses take their names and colours from
 their tracks, through GainKit Plus; the master's name is typed.*
 
-#### The ReaKit FX dock
-
-![The dock across the bottom of the window: all six of a track's ReaKit FX side by side](screenshots/session/dock_strip.png)
-
-*STRIP on: every ReaKit FX on the selected track, side by side in the order of its chain.*
-
-**ReaKit FX - Dock following the selected track** puts the selected track's ReaKit FX in a
-docker tab, whole and working, and follows your selection: click another track and the dock shows
-its effects. A track without any keeps the last ones on view. The bar on top:
-
-- the track's name, and a button for each of the six; a dim one is an effect the track does not
-  have: right-click it to add it to the track (GainKit first in the chain, the others at the end);
-- **STRIP** — every one of the six on the track side by side, as many as fit at a usable width;
-  `<` `>`, an effect's button or the mouse wheel over the bar bring the rest on view. With STRIP
-  off, the effect you pick fills the dock;
-- **PIN** — the dock stays on this track (or the master) whatever you select;
-- **TABS** — the same as the Docker tabs action above.
-
-![The dock beside the mixer, one effect at a time, and three on a track in a wider dock](screenshots/session/dock_keys.png)
-
-*Narrow, it shows one effect at a time; wider, as many as fit.*
-
-Double-click a plugin's name at the top of its own window and it goes into the dock, on its
-track; double-click it in the dock and it comes back out into its own window. Open an effect's
-own window, its mixer strip or the FX chain on it, and the dock steps aside until that window
-closes. Run the action again to close the dock; GainKit Plus, starting with REAPER, opens it again
-if it was open when REAPER closed. The dock runs on Windows and needs js_ReaScriptAPI (ReaPack).
-
 ### Saturation
 
 ![Saturation](screenshots/session/saturation.png)
@@ -199,6 +173,69 @@ One knob, 0 to 200 %: mono at the left end, the recorded width in the middle, wi
 It scales the side signal and leaves the middle alone, so the centre of the mix never moves. A
 correlation meter under the knob shows how the two channels agree. In a mixer strip it is the
 WIDTH knob at the bottom of the channel.
+
+## The ReaKit FX dock
+
+![The REAPER window with the ReaKit FX dock under the tracks: Lead Vox selected, its four effects side by side](screenshots/session/dock_overview.png)
+
+*Select a track (1) and its ReaKit FX open in the dock (2), whole and working: here Lead Vox's
+GainKit, 3-Band EQ, De-Esser and DDC, side by side in the order of its chain. The bar (3) runs
+along the top.*
+
+**ReaKit FX - Dock following the selected track** comes with GainKit Plus. Run it and the
+selected track's ReaKit FX open in a docker tab; run it again to close the dock. GainKit Plus,
+starting with REAPER, opens it again if it was open when REAPER closed. The dock runs on Windows
+and needs js_ReaScriptAPI (ReaPack).
+
+### It follows your selection
+
+![Drum Bus selected, then Keys: the dock shows each track's effects](screenshots/session/dock_follows.png)
+
+Click another track and the dock shows its effects. A track without any keeps the last ones on
+view. **PIN** keeps the dock on one track (or the master) whatever you select.
+
+### Double-click a name
+
+![The 3-Band EQ in its own window, its name double-clicked, then in the dock](screenshots/session/dock_double_click.png)
+
+With GainKit Plus running, double-click a plugin's name at the top of its own window and it goes
+into the dock, on its track (the dock opens if it was closed); double-click it in the dock and it
+comes back out into its own window. Open an effect's
+own window, its mixer strip or the FX chain on it, and the dock steps aside until that window
+closes; its place in the dock says so.
+
+### Right-click to add
+
+![BG Vox has no De-Esser: right-click its button, and it is added and shown](screenshots/session/dock_right_click.png)
+
+A dim button on the bar is an effect the track does not have. Right-click it to add it to the
+track the bar names: GainKit first in the chain, the others at the end.
+
+### The bar
+
+![The bar, each part named](screenshots/session/dock_bar.png)
+
+- the track's name, and a button for each of the six: a lit one is on the track (click it to
+  bring it on view), a dim one is not (right-click it to add it);
+- **STRIP** — every one of the six on the track side by side, as many as fit at a usable width;
+  `<` `>`, an effect's button or the mouse wheel over the bar bring the rest on view. With STRIP
+  off, the effect you pick fills the dock;
+- **PIN** — the dock stays on this track (or the master) whatever you select;
+- **HIDE TABS** / **SHOW TABS** (**TABS** in a narrow dock) — the same as the Docker tabs action
+  below.
+
+![The dock beside the mixer, one effect at a time, and three on a track in a wider dock](screenshots/session/dock_keys.png)
+
+*Narrow, it shows one effect at a time; wider, as many as fit.*
+
+### Docker tabs
+
+![REAPER's tab under the dock, then hidden](screenshots/session/dock_tabs.png)
+
+**HIDE TABS** on the bar, or the action **ReaKit FX - Docker tabs off-on**, turns off REAPER's
+tab bar for every docker holding one window, so the dock gets that room (a docker holding two
+keeps its tabs, to switch between them). Run it again and the tabs are back as they were. It is
+REAPER's own setting, so it holds for every docker and after a restart.
 
 ## Across the plugins
 
