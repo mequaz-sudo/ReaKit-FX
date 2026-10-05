@@ -151,7 +151,8 @@ In the dock the knob stands alone and a CURVE chip pops the curve over it.
 
 LOSER's three-band equalizer: low, mid and high gain with the two crossover frequencies, an output
 level, and a switch per band. The crossovers show their frequencies live, and the filter comes in
-two voices: CLASSIC, LOSER's shelves, and SMOOTH, a gentler pair. The strip along the bottom edge
+two voices: CLASSIC, LOSER's original band split, and SMOOTH, EON's stacked shelves that turn exactly
+on the crossover lines. The strip along the bottom edge
 drops a band display: the curve, a dot per band to drag (up and down for the gain, sideways for the
 crossover; the MID dot slides its whole band, and the wheel over it widens or narrows the band),
 and the two crossover lines to drag. The standalone window draws everything at one scale, so a
