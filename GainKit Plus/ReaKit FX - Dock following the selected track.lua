@@ -3,8 +3,20 @@
 -- and show the whole gainkit", then a PIN, reopening with REAPER, "the same ... dock for the other five effects",
 -- and "Will a wide dock show all the plugins? Or as many can fit?"). A bar across the top: the track's name, a
 -- button for each effect (GainKit, 3-Band EQ, DDC, De-Esser, Saturation, Stereo Width; the ones the track does
--- not have are dim: right-click one to add it to the track), STRIP, PIN (stay on this track, the master say,
--- whatever you click) and TABS (REAPER's docker tabs off or on).
+-- not have are dim: right-click one to add it to the track, a divider between the two groups), two window icons
+-- (close this track's FX windows; close all of them), STRIP, a PIN icon (stay on this track, the master say,
+-- whatever you click), TABS (REAPER's docker tabs off or on), a GEAR (options: the track's number, its colour as a
+-- stripe or a band across the bar, its icon, full or short chip names, double-click pops out, the FOLD), a chevron
+-- (folds the bar) and an X (closes the dock). The gear's menu is a ReaImGui window in the EON palette (as EON
+-- Floatter's panel and the Swing FX picker; REAPER's own menu without ReaImGui). FOLD (the user, 2026-10-05: "make it thin but still able to be seen
+-- so it can drop down"): the bar's chevron folds it to a thin handle, in the track's colour if wanted; a click on the
+-- handle drops it open again, the plugins giving it the row; nothing folds or opens it by itself. Every icon shows a
+-- tooltip
+-- after a moment. The track's effects sit on the bar in the order
+-- they run on the track (a second copy numbered; other plugins as a grey marker, an FX container as one), the
+-- ones it does not have after them: drag one along the bar to move that effect in the track's chain (one undo
+-- step), drag a dim one in to add it there (the user, 2026-10-04: "can the names of each fx be chips we can drag
+-- around for the order?", "Real order", "when a non reakit plugin is there will it say so?").
 -- STRIP off: the chosen effect fills the dock. Click a track without it and the dock keeps the last; a track with
 -- two shows the first.
 -- STRIP on: every one of the six on the track, side by side in chain order, like a channel strip; as many as fit
@@ -68,6 +80,22 @@ local function first_of(tr, k)
   for f = 0, r.TrackFX_GetCount(tr) - 1 do
     if kind_of(tr, f) == (k or kind) then return f end
   end
+end
+-- Every effect in a track's own chain, in order: { { fg, fx, kind } } for the six, { fg, fx, name } for any other
+-- (its name without the "VST3: " kind and the "(maker)" tail; an FX container is one). The bar's chips and markers.
+local function chain_items(tr)
+  local out = {}
+  if not tr then return out end
+  for f = 0, r.TrackFX_GetCount(tr) - 1 do
+    local e = { fg = r.TrackFX_GetFXGUID(tr, f), fx = f, kind = kind_of(tr, f) }
+    if not e.kind then
+      local _, nm = r.TrackFX_GetFXName(tr, f)
+      nm = (nm or ""):gsub("^%w+:%s*", ""):gsub("%s*%b()%s*$", "")
+      e.name = nm ~= "" and nm or "FX"
+    end
+    out[#out + 1] = e
+  end
+  return out
 end
 -- What the dock shows of a track, in chain order: { { fg, fx, kind }, ... }. STRIP off: the first of the chosen
 -- effect, or the copy last asked for on that track by a double-click on its name (prefer, by track GUID). STRIP
@@ -138,7 +166,7 @@ local cur = nil                        -- the track the dock shows: { proj, tg, 
 local slots = {}
 local first = 1                        -- STRIP: the list's first effect on view
 local more_left, more_right = false, false
-local on_view = {}                     -- STRIP: the kinds on view (their buttons light)
+local on_view = {}                     -- STRIP: the effects on view, by FX GUID (their chips light)
 local last_sel_g = false               -- the followed track's GUID last tick (false = never looked)
 local scan_cool = 0
 local chain_t = 0                      -- when the shown track's chain was last looked at (0 = look now)
@@ -151,6 +179,26 @@ local note = nil                       -- why the dock is empty, when it is: "No
 local pin = r.GetExtState(EXT, "pin")  -- "" = follow the selection; "MASTER" or a track's GUID = stay on it
 local BAR = 26                         -- the bar's height at 100 %; times the display scale below
 local sc = 1
+-- The bar's icons (draw_bar's chip() draws them by hand, icon_draw): names that are not words
+local ICON_CLOSE_TRACK, ICON_CLOSE_ALL, ICON_PIN, ICON_GEAR, ICON_FOLD, ICON_X =
+  "\1ctrack", "\1call", "\1pin", "\1gear", "\1fold", "\1x"
+local ICONS = { [ICON_CLOSE_TRACK] = true, [ICON_CLOSE_ALL] = true, [ICON_PIN] = true, [ICON_GEAR] = true,
+                [ICON_FOLD] = true, [ICON_X] = true }
+-- The gear's options, saved like STRIP and PIN (ExtState opt_<key>); tests set one with opt_req = "key=value"
+local opt = {}
+local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", dblclick = "1", fold = "1", fold_color = "1",
+                  menu_stay = "1" }
+local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
+for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
+local FOLD_H = 8                       -- the folded bar's handle, px at 100 %
+local STRIPE_H = 3                     -- the track-colour stripe along the top, px at 100 %
+local fold_open = true                 -- FOLD on: the bar is open (the start), or folded to its handle; a click on the
+                                       -- handle opens it, the bar's chevron folds it; nothing folds or opens it on its
+                                       -- own (the user, 2026-10-05: "i just wanted it to drop down not auto close")
+local hover_act, hover_t = nil, 0      -- the tooltip: what is under the pointer, since when (TIP_DELAY)
+local TIP_DELAY = 0.5
+local want_close = false               -- the X: the dock closes at the end of this tick
+local pub_tip = nil                    -- the tooltip last drawn (ExtState tip, for tests)
 
 local function where(rec)
   local tr = track_by_guid(rec.proj, rec.tg, rec.tr)
@@ -164,13 +212,72 @@ local function track_name(tr)
   return nm
 end
 local function label(rec) return rec.name .. ":" .. KINDS[rec.kind].short end
-local bar_rows = 1                     -- 2 when the dock is too narrow for one row (draw_bar decides)
-local function bar_h() return math.floor(BAR * sc + 0.5) * bar_rows end
+local bar_rows = 1                     -- 2+ when the dock is too narrow for one row (draw_bar decides)
+local bar_chip_rows = 1                -- of those, the rows the chips take (the name and the buttons get the last)
+local function stripe_h() return opt.color == "stripe" and math.floor(STRIPE_H * sc + 0.5) or 0 end
+local function folded() return opt.fold == "1" and not fold_open end
+local function bar_h()
+  if folded() then return math.floor(FOLD_H * sc + 0.5) end
+  return math.floor(BAR * sc + 0.5) * bar_rows + stripe_h()
+end
+-- The shown track's colour (GetTrackColor; 0 = none), looked up about twice a second with the chain.
+local tcol = { tr = nil, t = 0, has = false, r = 0, g = 0, b = 0 }
+local function track_color(tr)
+  local now = r.time_precise()
+  if tr ~= tcol.tr or now - tcol.t > 0.5 then
+    tcol.tr, tcol.t = tr, now
+    local c = tr and r.GetTrackColor(tr) or 0
+    tcol.has = c ~= 0
+    if tcol.has then
+      local cr, cg, cb = r.ColorFromNative(c)
+      tcol.r, tcol.g, tcol.b = cr / 255, cg / 255, cb / 255
+    end
+  end
+  return tcol.has, tcol.r, tcol.g, tcol.b
+end
+-- The shown track's icon (P_ICON: what was set, a bare name or a path; measured 2026-10-05), loaded into gfx image
+-- slot 1 when it changes; a bare or relative name lives in REAPER's Data/track_icons.
+local ticon = { path = nil, ok = false, w = 0, h = 0, tr = nil, t = 0, pth = "" }
+local function track_icon(tr)
+  if opt.icon ~= "1" or not tr then return false end
+  local now = r.time_precise()
+  if tr ~= ticon.tr or now - ticon.t > 0.5 then                   -- the field read twice a second, not every frame
+    ticon.tr, ticon.t = tr, now
+    local _, pth = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
+    ticon.pth = pth
+  end
+  local pth = ticon.pth
+  if pth == "" then ticon.path = ""; ticon.ok = false; return false end
+  if pth ~= ticon.path then
+    ticon.path = pth
+    local full = pth
+    if not (pth:match("^%a:[/\\]") or pth:match("^[/\\]")) then full = r.GetResourcePath() .. "/Data/track_icons/" .. pth end
+    ticon.ok = gfx.loadimg(1, full) >= 0
+    if ticon.ok then ticon.w, ticon.h = gfx.getimgdim(1) end
+  end
+  return ticon.ok
+end
 
--- Put a surface back in its float, where it came from. True when it landed.
+-- Put a surface back in its float, where it came from: INSIDE the float's plugin container (the "#32770" child
+-- that REAPER lays out, measured 2026-10-05: style_probe.lua), not under the float's top window. Handed to the top
+-- window, the surface sat beside that container, and every resize step of the float wiped its whole face bare
+-- until the plugin drew again: the user's "3 band still blinks" after a plugin left the dock (filmed on the user's
+-- screen, then drag_run.py --dockbg: DDC 10 of 47 frames whole-face bare; a never-docked copy 0). The container it
+-- came from when it still exists in this float; else this float's own container (REAPER rebuilt the float); else
+-- the float itself. True when it landed.
+local function container_of(wrapper)
+  local ok, list = r.JS_Window_ListAllChild(wrapper)
+  if not ok or not list or list == "" then return nil end
+  for addr in list:gmatch("[^,]+") do
+    local h = r.JS_Window_HandleFromAddress(tonumber(addr))
+    if h and r.JS_Window_GetParent(h) == wrapper and r.JS_Window_GetClassName(h) == "#32770" then return h end
+  end
+end
 local function give_back(rec, wrapper)
   if not (rec.canvas and wrapper and r.JS_Window_IsWindow(rec.canvas) and r.JS_Window_IsWindow(wrapper)) then return false end
-  r.JS_Window_SetParent(rec.canvas, wrapper)
+  local hp = rec.home and rec.home.parent
+  local target = (hp and r.JS_Window_IsWindow(hp) and r.JS_Window_IsChild(wrapper, hp)) and hp or container_of(wrapper) or wrapper
+  r.JS_Window_SetParent(rec.canvas, target)
   if rec.home then
     r.JS_Window_Move(rec.canvas, rec.home.x, rec.home.y)
     r.JS_Window_Resize(rec.canvas, rec.home.w, rec.home.h)
@@ -235,14 +342,15 @@ local function sweep()
   slots = kept
 end
 
--- A surface fills its place in the dock (the layout below sets x, y, w, h).
+-- A surface fills its place in the dock (the layout below sets x, y, w, h). One move and size together, and no
+-- erase: the erase painted the plugin's place bare until it drew again, a blink on every step of a resize (filmed
+-- 2026-10-05).
 local function fit(rec)
   if not (rec.canvas and rec.w and rec.w >= 2 and rec.h >= 2) then return end
   local key = rec.x .. " " .. rec.y .. " " .. rec.w .. " " .. rec.h
   if key == rec.shown then return end
-  r.JS_Window_Move(rec.canvas, rec.x, rec.y)
-  r.JS_Window_Resize(rec.canvas, rec.w, rec.h)
-  r.JS_Window_InvalidateRect(rec.canvas, 0, 0, rec.w, rec.h, true)
+  r.JS_Window_SetPosition(rec.canvas, rec.x, rec.y, rec.w, rec.h)
+  r.JS_Window_InvalidateRect(rec.canvas, 0, 0, rec.w, rec.h, false)
   rec.shown = key
 end
 
@@ -276,10 +384,11 @@ local function capture(rec)
       return
     end
     dbg("capture: surface " .. tostring(c))
-    local ok, L, T, R, B = r.JS_Window_GetRect(c)   -- its home, saved before it moves
-    if ok then
-      local x, y = r.JS_Window_ScreenToClient(rec.wrapper, L, T)
-      rec.home = { x = x, y = y, w = R - L, h = B - T }
+    local ok, L, T, R, B = r.JS_Window_GetRect(c)   -- its home, saved before it moves: its parent (the float's
+    if ok then                                        -- plugin container) and its place in that parent
+      local hp = r.JS_Window_GetParent(c) or rec.wrapper
+      local x, y = r.JS_Window_ScreenToClient(hp, L, T)
+      rec.home = { parent = hp, x = x, y = y, w = R - L, h = B - T }
     end
     rec.canvas, rec.tries, rec.shown = c, 0, nil
     r.JS_Window_SetParent(c, dock)
@@ -447,6 +556,10 @@ local function check_chain()
   end
   if same then return end
   dbg("its chain changed: " .. #cur.list .. " -> " .. #list)
+  -- a strip keeps the effect that was first on view first on view (an undo, a reorder in REAPER's own FX
+  -- window): by position, the view jumped to another effect and let go of the one on view (2026-10-04)
+  local anchor = strip and slots[1] and slots[1].fg
+  if anchor then for i, e in ipairs(list) do if e.fg == anchor then first = i end end end
   if #list > 0 then cur.list = list
   elseif pin ~= "" then none_note(tr)
   else release_all(); cur = nil end
@@ -480,7 +593,10 @@ local function show_req(req)
   local k = fx and kind_of(tr, fx)
   if not k then dbg("show_req: not in this project"); return end
   for _, s in ipairs(slots) do
-    if s.fg == fg and s.canvas then pop_out(s); return end
+    if s.fg == fg and s.canvas then
+      if opt.dblclick == "1" then pop_out(s) else dbg("show_req: pop-out off (the gear)") end
+      return
+    end
   end
   if k ~= kind then kind = k; r.SetExtState(EXT, "kind", KINDS[k].key, true) end   -- STRIP off later: this one
   prefer[tg] = fg
@@ -552,7 +668,7 @@ local function layout()
         cw = i == last and w - x or math.floor(cw + 0.5)
         want[#want + 1] = { e = e, x = x, w = math.max(2, cw) }
         x = x + cw + gap
-        on_view[e.kind] = true
+        on_view[e.fg] = true
       end
     end
   end
@@ -645,14 +761,19 @@ end
 
 -- ── the bar ──────────────────────────────────────────────────────────────────────────────────────
 local hits = {}                        -- this frame's buttons: { x0, x1, y0, y1, act }
-local has_cache, has_key, has_t = {}, "", 0
--- which of the six the shown track has (the dim buttons), looked up about twice a second
-local function kinds_on(tr)
+local bar_chips = {}                   -- this frame's chips: { kind, fg (nil = dim), long, short, x0, x1, y0, y1 }
+local drag = nil                       -- a chip held down: { i, kind, fg, x0, y0, dx, moved, before, mark, noop, inside }
+local has_cache, has_key, has_t = { list = {}, has = {} }, "", 0
+-- the shown track's chain in order (chain_items) and which of the six it has (the dim chips), looked up about
+-- twice a second and at once after the dock moves or adds one (has_key = "")
+local function bar_chain(tr)
   local key = tr and (r.GetTrackGUID(tr) .. r.TrackFX_GetCount(tr)) or ""
   local now = r.time_precise()
   if key ~= has_key or now - has_t > 0.5 then
     has_key, has_t = key, now
-    for k = 1, #KINDS do has_cache[k] = tr and first_of(tr, k) ~= nil or false end
+    local list, has = chain_items(tr), {}
+    for _, e in ipairs(list) do if e.kind then has[e.kind] = true end end
+    has_cache = { list = list, has = has }
   end
   return has_cache
 end
@@ -663,18 +784,145 @@ local function shown_track()
 end
 
 -- One row when everything fits (long labels, then short); two rows in a narrow dock (seen 2026-10-03: a
--- 255 px dock cut TABS off and dropped the name): the six on top, the track's name with the rest under.
--- STRIP on: the six light for the ones on view, and < > appear when the track has more than fit.
+-- 255 px dock cut TABS off and dropped the name): the chips on top, the track's name with the rest under. A
+-- chain too long for one row of chips even then wraps them onto more rows (Codex delta audit, 2026-10-05: the
+-- chips past the edge could not be reached), the name and the buttons always on the last row.
+-- The chips: the track's chain in the order it runs, the six as chips (a second copy numbered: 3-BAND, 3-BAND 2),
+-- any other plugins as a grey marker, one per run of them (the first one's name, "+2" for two more; the user,
+-- 2026-10-04: "when a non reakit plugin is there will it say so?"), then the kinds it does not have, dim.
+-- STRIP on: the ones on view light, and < > appear when the track has more than fit; STRIP off: the one shown
+-- lights (the chosen kind's dim chip when nothing is shown). A marker is never dragged, only dropped beside.
+-- An icon drawn by hand in the current colour, inside the box x, y, w, h (u = one unit at the display scale).
+local function icon_draw(which, x, y, w, h)
+  local u = math.max(1, math.floor(sc + 0.5))
+  local k = math.max(2, math.floor(2 * sc))
+  if which == ICON_CLOSE_TRACK or which == ICON_CLOSE_ALL then
+    -- a window with a cross; "all": a second window behind it
+    local iw, ih = w - 3 * u, math.floor(9 * sc)
+    local ix, iy = x, y + math.floor((h - ih - 3 * u) / 2)
+    if which == ICON_CLOSE_ALL then
+      gfx.rect(ix + 3 * u, iy, iw, ih, 0)                                       -- the window behind
+      local cr, cg, cb = gfx.r, gfx.g, gfx.b
+      gfx.set(0.11, 0.12, 0.14, 1); gfx.rect(ix, iy + 3 * u, iw, ih, 1)        -- the one in front covers it
+      gfx.set(cr, cg, cb, 1)
+    else
+      ix = ix + math.floor(1.5 * u)
+    end
+    local fy = iy + 3 * u
+    gfx.rect(ix, fy, iw, ih, 0)
+    gfx.rect(ix, fy, iw, 2 * u, 1)                                              -- its title bar
+    local cx, cy = ix + iw / 2, fy + 2 * u + (ih - 2 * u) / 2
+    gfx.line(cx - k, cy - k, cx + k, cy + k); gfx.line(cx - k, cy + k, cx + k, cy - k)
+  elseif which == ICON_PIN then
+    -- a push pin: the head, the collar under it, the needle down the middle
+    local cx = x + w / 2
+    local hw, hh = math.floor(w * 0.45), math.floor(h * 0.3)
+    local top = y + math.floor(h * 0.12)
+    gfx.rect(cx - hw / 2, top, hw, hh, 1)
+    gfx.rect(cx - w * 0.4, top + hh, w * 0.8, 2 * u, 1)
+    gfx.line(cx, top + hh + 2 * u, cx, y + h - math.floor(h * 0.12))
+  elseif which == ICON_GEAR then
+    -- a ring with eight teeth and a hole
+    local cx, cy = x + w / 2, y + h / 2
+    local rr = math.max(3, math.floor(h * 0.26))
+    gfx.circle(cx, cy, rr, 0, 1)
+    gfx.circle(cx, cy, math.max(1, math.floor(rr * 0.35)), 0, 1)
+    for i = 0, 7 do
+      local a = i * math.pi / 4
+      gfx.line(cx + math.cos(a) * rr, cy + math.sin(a) * rr, cx + math.cos(a) * (rr + 2 * u), cy + math.sin(a) * (rr + 2 * u), 1)
+    end
+  elseif which == ICON_FOLD then
+    -- a chevron pointing up: fold the bar
+    local cx, cy = x + w / 2, y + h / 2
+    gfx.line(cx - 2 * k, cy + k, cx, cy - k, 1); gfx.line(cx, cy - k, cx + 2 * k, cy + k, 1)
+  elseif which == ICON_X then
+    local cx, cy = x + w / 2, y + h / 2
+    local kk = k + u
+    gfx.line(cx - kk, cy - kk, cx + kk, cy + kk, 1); gfx.line(cx - kk, cy + kk, cx + kk, cy - kk, 1)
+  end
+end
+
+-- What a button or chip says when the pointer rests on it (TIP_DELAY)
+local TIPS = {
+  closetrack = "Close this track's FX windows", closeall = "Close all FX windows",
+  strip = "STRIP: every effect side by side", pin = "PIN: stay on this track", tabs = "The docker's tabs",
+  gear = "Options", fold = "Fold the bar", close = "Close the dock", left = "Earlier effects", right = "Later effects",
+  handle = "Click: open the bar",
+}
+
+-- The bar folded: a handle in the track's colour (or the bar's grey), a small tab with a chevron at the middle.
+local function draw_handle(tr)
+  local w, hb = gfx.w, bar_h()
+  local has, cr, cg, cb = track_color(tr)
+  -- the track's colour on the handle: only while the track colour is on at all (the user, 2026-10-05, set it Off and
+  -- the handle stayed green: "the menu changes dont take effect")
+  if has and opt.fold_color == "1" and opt.color ~= "0" then gfx.set(cr, cg, cb, 1) else gfx.set(0.25, 0.27, 0.31, 1) end
+  gfx.rect(0, 0, w, hb, 1)
+  local tw = math.floor(26 * sc)
+  local tx = math.floor((w - tw) / 2)
+  gfx.set(0.11, 0.12, 0.14, 0.9); gfx.rect(tx, 0, tw, hb, 1)
+  gfx.set(0.80, 0.82, 0.86, 1)
+  local cx, cy, k = tx + tw / 2, hb / 2, math.max(2, math.floor(1.5 * sc))
+  gfx.line(cx - 2 * k, cy - k, cx, cy + k, 1); gfx.line(cx, cy + k, cx + 2 * k, cy - k, 1)
+  hits = { { 0, w, 0, hb, "handle" } }
+  bar_chips = {}
+  bar_rows, bar_chip_rows = 1, 1
+end
+
 local function draw_bar()
   local w = gfx.w
+  local tr = shown_track()
+  if folded() then draw_handle(tr); return end
   local fs = math.max(9, math.floor(11 * sc + 0.5))
   gfx.setfont(1, "Arial", fs, string.byte("b"))
   local pad, gap = math.floor(7 * sc), math.floor(3 * sc)
+  local ipad = math.floor(4 * sc)                        -- an icon's padding (narrower than a word's)
   local nx = math.floor(8 * sc)
   local th = select(2, gfx.measurestr("Hg"))
+  local bc = bar_chain(tr)
+  local chips, count = {}, {}
+  for _, e in ipairs(bc.list) do
+    if e.kind then
+      count[e.kind] = (count[e.kind] or 0) + 1
+      local n = count[e.kind]
+      chips[#chips + 1] = { kind = e.kind, fg = e.fg, long = KINDS[e.kind].long .. (n > 1 and " " .. n or ""),
+                            short = KINDS[e.kind].short .. (n > 1 and tostring(n) or "") }
+    else
+      local m = chips[#chips]
+      if m and m.other then
+        m.n = m.n + 1                                    -- another one in the same run
+      else
+        chips[#chips + 1] = { other = true, ofg = e.fg, n = 1, name = e.name }
+      end
+    end
+  end
+  local function cut(s, n)                               -- n characters, never half of a UTF-8 one
+    local len = utf8.len(s)
+    if not len then return #s > n and s:sub(1, n) .. ".." or s end
+    return len > n and s:sub(1, utf8.offset(s, n) - 1) .. ".." or s
+  end
+  for _, c in ipairs(chips) do
+    if c.other then
+      local more = c.n > 1 and " +" .. (c.n - 1) or ""
+      c.long, c.short = cut(c.name, 14) .. more, cut(c.name, 5) .. more
+    end
+  end
+  local n_chain = #chips                                 -- the chain's chips; the dim ones follow a divider
+  for k = 1, #KINDS do
+    if not bc.has[k] then chips[#chips + 1] = { kind = k, long = KINDS[k].long, short = KINDS[k].short } end
+  end
+  bar_chips = chips
+  local div_w = (n_chain > 0 and #chips > n_chain) and math.floor(7 * sc) or 0   -- the divider's room
+  local slim = math.floor(6 * sc)                        -- a marker with no words (label false): a thin box
+  local icon_w = math.floor(13 * sc)                     -- every icon's width
   local function width(labels)
     local t = 0
-    for _, s in ipairs(labels) do t = t + gfx.measurestr(type(s) == "table" and s[1] or s) + 2 * pad + gap end
+    for _, s in ipairs(labels) do
+      local s1 = type(s) == "table" and s[1] or s
+      if s == false then t = t + slim + gap
+      elseif ICONS[s1] then t = t + icon_w + 2 * ipad + gap
+      else t = t + gfx.measurestr(s1) + 2 * pad + gap end
+    end
     return t
   end
   local pinned, hidden = pin ~= "", tabs_hidden()
@@ -684,68 +932,209 @@ local function draw_bar()
       t[#t + 1] = { "<", "left", false, not more_left }
       t[#t + 1] = { ">", "right", false, not more_right }
     end
+    t[#t + 1] = { ICON_CLOSE_TRACK, "closetrack", false, false }
+    t[#t + 1] = { ICON_CLOSE_ALL, "closeall", false, false }
     t[#t + 1] = { "STRIP", "strip", strip, false }
-    t[#t + 1] = { "PIN", "pin", pinned, false }
+    t[#t + 1] = { ICON_PIN, "pin", pinned, false }
     t[#t + 1] = { tabs_label, "tabs", false, false }
+    t[#t + 1] = { ICON_GEAR, "gear", false, false }
+    if opt.fold == "1" then t[#t + 1] = { ICON_FOLD, "fold", false, false } end
+    t[#t + 1] = { ICON_X, "close", false, false }
     return t
   end
   local right_long, right_short = right_set(hidden and "SHOW TABS" or "HIDE TABS"), right_set("TABS")
   local long, short = {}, {}
-  for k = 1, #KINDS do long[k], short[k] = KINDS[k].long, KINDS[k].short end
+  for i, c in ipairs(chips) do long[i], short[i] = c.long, c.short end
+  -- "Full effect names" (the gear): on = the full names ALWAYS, the bar wrapping to more rows when they do not fit
+  -- in one (the user, 2026-10-05: it looked dead when the bar quietly fell back to the short ones); off = the short
+  local full = opt.labels == "long"
+  if not full then for i = 1, #long do long[i] = short[i] end end
   local labels, right = long, right_long
   local rows = 1
-  if width(right) + width(labels) + 60 * sc > w then
-    labels, right = short, right_short
-    if width(right) + width(labels) + nx + 4 * sc > w then
-      rows = 2                                           -- each row gets its long labels back where they fit
-      labels = width(long) + nx <= w and long or short
+  if width(right) + width(labels) + div_w + 60 * sc > w then
+    right = right_short
+    if width(right) + width(labels) + div_w + nx + 4 * sc > w then
+      rows = 2                                           -- the chips on their own row(s), the rest under them
       right = width(right_long) + nx + 40 * sc <= w and right_long or right_short
+      if not full and width(labels) + div_w + nx > w then   -- a long chain in a narrow dock: markers lose their words
+        local tiny = {}
+        for i, c in ipairs(chips) do tiny[i] = (not c.other) and c.short end
+        labels = tiny
+      end
     end
   end
-  bar_rows = rows
+  -- each chip's row: one row unless even the narrow layout's labels run past the edge; then they wrap
   local row = math.floor(BAR * sc + 0.5)
+  local sy = stripe_h()                                  -- the rows start under the stripe
+  local function cwidth(i)
+    local c = chips[i]
+    if c.other then return labels[i] and gfx.measurestr(labels[i]) + 2 * pad or slim end
+    return gfx.measurestr(labels[i]) + 2 * pad
+  end
+  local crows = 1
+  do
+    local x0 = nx - pad
+    local x = x0
+    for i, c in ipairs(chips) do
+      local cw = cwidth(i) + (i == n_chain + 1 and div_w or 0)
+      if rows > 1 and x > x0 and x + cw > w then crows = crows + 1; x = x0 end
+      c.row = crows - 1
+      x = x + cw + gap
+    end
+  end
+  if rows > 1 then rows = crows + 1 end
+  bar_rows, bar_chip_rows = rows, crows
   local b = bar_h()
-  gfx.set(0.11, 0.12, 0.14, 1); gfx.rect(0, 0, w, b, 1)
+  -- the bar's face: its grey, or the track's colour as a band across it; the stripe along the top
+  local has, cr, cg, cb = track_color(tr)
+  if opt.color == "band" and has then gfx.set(0.11 * 0.55 + cr * 0.45, 0.12 * 0.55 + cg * 0.45, 0.14 * 0.55 + cb * 0.45, 1)
+  else gfx.set(0.11, 0.12, 0.14, 1) end
+  gfx.rect(0, 0, w, b, 1)
+  if sy > 0 then
+    if has then gfx.set(cr, cg, cb, 1) else gfx.set(0.25, 0.27, 0.31, 1) end
+    gfx.rect(0, 0, w, sy, 1)
+  end
   gfx.set(0.25, 0.27, 0.31, 1); gfx.line(0, b - 1, w, b - 1)
   hits = {}
   local function chip(x, y, text, lit, dim, act)
-    local cw = gfx.measurestr(text) + 2 * pad
+    local icon = ICONS[text]
+    local cw = icon and (icon_w + 2 * ipad) or (gfx.measurestr(text) + 2 * pad)
     local y0, ch = y + math.floor(4 * sc), row - math.floor(8 * sc)
-    if lit then gfx.set(0.84, 0.44, 0.14, 1); gfx.rect(x, y0, cw, ch, 1) end
-    if lit then gfx.set(0.08, 0.08, 0.09, 1) elseif dim then gfx.set(0.38, 0.40, 0.44, 1) else gfx.set(0.80, 0.82, 0.86, 1) end
-    gfx.x, gfx.y = x + pad, y0 + (ch - th) / 2
-    gfx.drawstr(text)
+    local hot = hover_act == act and not drag
+    if lit then gfx.set(0.84, 0.44, 0.14, 1); gfx.rect(x, y0, cw, ch, 1)
+    elseif hot and not dim then gfx.set(1, 1, 1, 0.07); gfx.rect(x, y0, cw, ch, 1) end
+    if lit then gfx.set(0.08, 0.08, 0.09, 1) elseif dim then gfx.set(0.38, 0.40, 0.44, 1)
+    elseif hot then gfx.set(0.96, 0.97, 0.99, 1) else gfx.set(0.80, 0.82, 0.86, 1) end
+    if icon then
+      icon_draw(text, x + ipad, y0, icon_w, ch)
+    else
+      gfx.x, gfx.y = x + pad, y0 + (ch - th) / 2
+      gfx.drawstr(text)
+    end
     hits[#hits + 1] = { x, x + cw, y, y + row, act }
     return x + cw + gap
   end
-  local tr = shown_track()
   local name = tr and track_name(tr) or ""
-  local function name_at(y, room)                        -- the name, cut with ".." to its room; false if none
+  local master = tr and tr == r.GetMasterTrack(0)
+  local num = (tr and not master and opt.trackno == "1") and tostring(math.floor(r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER"))) or nil
+  local has_icon = track_icon(tr)
+  local function name_at(y, room)                        -- icon, number, the name cut with ".." to its room
     if room <= 20 * sc or name == "" then return false end
+    local x = nx
+    local ih = row - math.floor(8 * sc)
+    if has_icon and ticon.w > 0 and ticon.h > 0 then
+      local iw = math.floor(ih * ticon.w / ticon.h + 0.5)
+      gfx.blit(1, 1, 0, 0, 0, ticon.w, ticon.h, x, y + math.floor(4 * sc), iw, ih)
+      x = x + iw + math.floor(5 * sc)
+    end
+    if num then
+      gfx.set(0.55, 0.58, 0.63, 1)
+      gfx.x, gfx.y = x, y + (row - th) / 2
+      gfx.drawstr(num)
+      x = x + gfx.measurestr(num) + math.floor(5 * sc)
+    end
+    local left = room - (x - nx)
+    if left <= 10 * sc then return true end
     local s = name
-    while gfx.measurestr(s) > room and #s > 1 do s = s:sub(1, -2) end
+    while gfx.measurestr(s) > left and #s > 1 do s = s:sub(1, -2) end
     if s ~= name then s = s:sub(1, math.max(1, #s - 2)) .. ".." end
     gfx.set(0.92, 0.93, 0.95, 1)
-    gfx.x, gfx.y = nx, y + (row - th) / 2
+    gfx.x, gfx.y = x, y + (row - th) / 2
     gfx.drawstr(s)
     return true
   end
-  local on = kinds_on(tr)
-  local function lit(k) if strip then return on_view[k] == true end; return k == kind end
+  local shown_fg = not strip and cur and cur.list[1] and cur.list[1].fg
+  local function lit(c)
+    if strip then return c.fg ~= nil and on_view[c.fg] == true end
+    if c.fg then return c.fg == shown_fg end
+    return c.kind == kind and not shown_fg               -- STRIP off and nothing shown: the chosen kind, as before
+  end
+  local function chips_from(x)                           -- each chip's box kept for the drag (bar_mouse)
+    local xs, cr_ = x, 0
+    for i, c in ipairs(chips) do
+      if c.row ~= cr_ then cr_, x = c.row, xs end        -- the next row (draw_bar wrapped it)
+      local yr = sy + cr_ * row
+      if i == n_chain + 1 and div_w > 0 then             -- the divider: the chain's chips end, the dim ones begin
+        gfx.set(0.36, 0.39, 0.44, 1)
+        gfx.rect(x + math.floor(div_w / 2), yr + math.floor(6 * sc), math.max(1, math.floor(sc)), row - math.floor(12 * sc), 1)
+        x = x + div_w
+      end
+      local x0 = x
+      if c.other then                                    -- a marker: grey words in a thin box, never lit
+        local cw = cwidth(i)
+        local y0, ch = yr + math.floor(4 * sc), row - math.floor(8 * sc)
+        gfx.set(0.30, 0.32, 0.36, 1); gfx.rect(x, y0, cw, ch, 0)
+        if labels[i] then
+          gfx.set(0.58, 0.60, 0.64, 1)
+          gfx.x, gfx.y = x + pad, y0 + (ch - th) / 2
+          gfx.drawstr(labels[i])
+        end
+        hits[#hits + 1] = { x, x + cw, yr, yr + row, "chip" .. i }
+        x = x + cw + gap
+      else
+        x = chip(x, yr, labels[i], lit(c), not c.fg, "chip" .. i)
+      end
+      c.x0, c.x1, c.y0, c.y1 = x0, x - gap, yr, yr + row
+    end
+    return x
+  end
   local rw = width(right)
   local x
   if rows == 1 then
-    local room = w - rw - width(labels) - nx - math.floor(8 * sc)
-    x = nx + (name_at(0, room) and room or 0) + math.floor(4 * sc)
-    for k = 1, #KINDS do x = chip(x, 0, labels[k], lit(k), not on[k], "kind" .. k) end
+    local room = w - rw - width(labels) - div_w - nx - math.floor(8 * sc)
+    x = nx + (name_at(sy, room) and room or 0) + math.floor(4 * sc)
+    x = chips_from(x)
     x = math.max(x, w - rw)
-    for _, c in ipairs(right) do x = chip(x, 0, c[1], c[3], c[4], c[2]) end
+    for _, c in ipairs(right) do x = chip(x, sy, c[1], c[3], c[4], c[2]) end
   else
-    x = nx - pad
-    for k = 1, #KINDS do x = chip(x, 0, labels[k], lit(k), not on[k], "kind" .. k) end
-    name_at(row, w - rw - nx - math.floor(8 * sc))
+    x = chips_from(nx - pad)
+    local ly = sy + row * crows                          -- the last row: the name and the buttons
+    name_at(ly, w - rw - nx - math.floor(8 * sc))
     x = math.max(nx, w - rw)
-    for _, c in ipairs(right) do x = chip(x, row, c[1], c[3], c[4], c[2]) end
+    for _, c in ipairs(right) do x = chip(x, ly, c[1], c[3], c[4], c[2]) end
+  end
+  -- a chip being dragged: its own place faded, a line where it would land, the chip under the pointer
+  if drag and drag.moved then
+    local c = chips[drag.i]
+    if c then
+      gfx.set(0.11, 0.12, 0.14, 0.75); gfx.rect(c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0, 1)
+      local my_ = sy + (drag.inside and drag.mrow or c.row or 0) * row   -- the row it would land on, else its own
+      if drag.inside and drag.mark and not drag.noop then
+        gfx.set(0.95, 0.55, 0.15, 1)
+        gfx.rect(math.floor(drag.mark - sc), my_ + math.floor(3 * sc), math.max(2, math.floor(2 * sc)), row - math.floor(6 * sc), 1)
+      end
+      local gx = math.floor(gfx.mouse_x - drag.dx)
+      local y0, ch = my_ + math.floor(4 * sc), row - math.floor(8 * sc)
+      gfx.set(0.84, 0.44, 0.14, drag.inside and 0.9 or 0.45); gfx.rect(gx, y0, c.x1 - c.x0, ch, 1)
+      gfx.set(0.08, 0.08, 0.09, 1)
+      gfx.x, gfx.y = gx + pad, y0 + (ch - th) / 2
+      gfx.drawstr(labels[drag.i])
+    end
+  end
+  -- the tooltip: the pointer at rest on a button or chip for TIP_DELAY, a label beside it, inside the bar
+  if hover_act and not drag and r.time_precise() - hover_t >= TIP_DELAY then
+    local tip = TIPS[hover_act]
+    local ci = hover_act:sub(1, 4) == "chip" and tonumber(hover_act:sub(5))
+    local c = ci and chips[ci]
+    if c then
+      if c.other then tip = "Not a ReaKit effect; drop a chip beside it"
+      elseif not c.fg then tip = "Not on this track: right-click or drag in to add"
+      else tip = KINDS[c.kind].name .. ": click to show, drag to move it in the chain" end
+    end
+    if tip then
+      gfx.setfont(1, "Arial", math.max(9, math.floor(10 * sc + 0.5)))
+      local tw2, th2 = gfx.measurestr(tip)
+      local bw, bh = tw2 + math.floor(12 * sc), th2 + math.floor(6 * sc)
+      local mx, my = gfx.mouse_x, gfx.mouse_y
+      local hr = math.max(0, math.min(math.floor((my - sy) / row), rows - 1))   -- the pointer's row
+      local ty = sy + hr * row + math.floor((row - bh) / 2)
+      local tx = math.max(0, math.min(mx + math.floor(14 * sc), w - bw))
+      gfx.set(0.95, 0.95, 0.96, 1); gfx.rect(tx, ty, bw, bh, 1)
+      gfx.set(0.10, 0.10, 0.12, 1)
+      gfx.x, gfx.y = tx + math.floor(6 * sc), ty + math.floor(3 * sc)
+      gfx.drawstr(tip)
+      if tip ~= pub_tip then pub_tip = tip; r.SetExtState(EXT, "tip", tip, false) end   -- for tests
+    end
   end
 end
 
@@ -799,36 +1188,655 @@ local function set_pin(on)
   last_sel_g = false
   follow(true)
 end
+-- A chip clicked (not dragged): that copy. STRIP on: brought on view; STRIP off: the one the dock shows, on the
+-- shown track (the chips are that track's).
+local function show_copy(fg, k)
+  if k ~= kind then kind = k; r.SetExtState(EXT, "kind", KINDS[k].key, true) end
+  if strip then
+    if not cur then return end
+    for i, e in ipairs(cur.list) do
+      if e.fg == fg then
+        for _, s in ipairs(slots) do if s.fg == fg then return end end   -- on view already
+        first = i
+        return
+      end
+    end
+    return
+  end
+  local tr = shown_track()
+  if not tr then return end
+  prefer[r.GetTrackGUID(tr)] = fg
+  local list = wanted(tr)
+  if #list > 0 then show_track(tr, list) end
+end
+
+-- After the dock changed the shown track's chain: the chips and the strip look again at once, and a strip keeps
+-- the effect that was first on view first on view (anchor = its FX GUID), so a drop never makes the view jump.
+-- ⚠ Not a nicety: an effect the dock lets go of closes its float, and REAPER adds its own "Close FX config" undo
+-- point the first time any FX window closes (measured 2026-10-03). Scrolling to the moved effect let go of the one
+-- on view in a narrow dock, that point landed on top, and Ctrl+Z undid it instead of the move (dockmove_probe.lua,
+-- 2026-10-04, a narrow run). Anchored, a drop lets go of nothing unless the moved one itself leaves the view.
+local function chain_changed(tr, anchor)
+  has_key = ""
+  if not (cur and cur.tg == r.GetTrackGUID(tr)) then return end
+  cur.list = wanted(tr)
+  chain_t = r.time_precise()                             -- just read: check_chain need not
+  if not (strip and anchor) then return end
+  for i, e in ipairs(cur.list) do if e.fg == anchor then first = i end end
+end
+
+-- A chip dragged along the bar: that effect moved in the track's own chain, right before the effect or plugin it
+-- was dropped on (before = its FX GUID), or to the end (before = false). Everything else keeps its order; an FX
+-- container moves nothing in or out of it. TrackFX_CopyToTrack's dest is the index in the FINAL chain, up or down
+-- (measured 2026-10-04, fxmove_probe.lua: 0 -> 2 gives BCADE, 3 -> 1 gives ADBCE). One undo step.
+local function move_fx(fg, before)
+  local tr = shown_track()
+  local s = tr and fx_by_guid(tr, fg)
+  if not s then return end
+  local dest
+  if before then
+    local t = fx_by_guid(tr, before)
+    if not t then return end
+    dest = s < t and t - 1 or t
+  else
+    dest = r.TrackFX_GetCount(tr) - 1
+  end
+  if dest == s then return end
+  local k = kind_of(tr, s)
+  local anchor = slots[1] and slots[1].fg                -- the first on view, kept first on view
+  r.Undo_BeginBlock()
+  r.TrackFX_CopyToTrack(tr, s, tr, dest, true)
+  -- laid out NOW, inside the undo step: an effect the move pushes out of view (not only the moved one: a neighbour
+  -- can leave a wide strip) is let go of here, so REAPER's "Close FX config" point joins this step instead of
+  -- landing on top of it (Codex delta audit, 2026-10-05)
+  chain_changed(tr, anchor)
+  layout()
+  r.Undo_EndBlock("ReaKit FX dock: move " .. KINDS[k].name .. " on " .. track_name(tr), -1)
+  dbg("moved " .. KINDS[k].name .. " on " .. track_name(tr) .. ": " .. s .. " -> " .. dest)
+end
 
 -- Right-click a dim effect button (the shown track has none of it): add it to that track (the user, 2026-10-03:
 -- "when the track does not have the fx can we right click add it"). Found as "Add a track with all six" finds
 -- them: by its listed name (any install), then the ReaPack package's path, then the EON install's; the right FILE
 -- only, a namesake is taken out again. GainKit goes first in the chain (where the GainKit Plus actions put it),
 -- the others at the end. Then it is the effect shown (STRIP off), or brought on view (STRIP on).
-local function add_kind(k)
+-- Dragged in from a dim chip (before ~= nil): where it was dropped, as move_fx places one (right before that
+-- effect or plugin, or at the end of the chain).
+local function add_kind(k, before)
   local tr = shown_track()
   if not tr or first_of(tr, k) then return end
+  local at = k == 1 and -1000 or -1                      -- -1000 = position 0; -1 = a new one at the end
+  if before then
+    local t = fx_by_guid(tr, before)
+    if not t then return end
+    at = -1000 - t
+  elseif before == false then
+    at = -1
+  end
+  local anchor = slots[1] and slots[1].fg                -- a drop keeps the view where it was (chain_changed)
   r.Undo_BeginBlock()
   local fx = -1
   for _, n in ipairs({ "JS: EON: " .. KINDS[k].name, "ReaKit FX/FX/Eon_JSFX/FX/" .. KINDS[k].src, "EON/Eon_JSFX/FX/" .. KINDS[k].src }) do
-    fx = r.TrackFX_AddByName(tr, n, false, k == 1 and -1000 or -1)   -- -1000 = position 0; -1 = a new one at the end
+    fx = r.TrackFX_AddByName(tr, n, false, at)
     if fx >= 0 then
       if kind_of(tr, fx) == k then break end
       r.TrackFX_Delete(tr, fx); fx = -1
     end
   end
+  local fg, list
+  if fx >= 0 and before ~= nil then
+    -- dragged in: laid out now, inside the undo step, as move_fx does (an effect pushed out of view is let go of
+    -- within it); the strip stays where it was
+    if k ~= kind then kind = k; r.SetExtState(EXT, "kind", KINDS[k].key, true) end
+    list = wanted(tr)
+    show_track(tr, list)
+    chain_changed(tr, anchor)
+    layout()
+  end
   r.Undo_EndBlock("ReaKit FX dock: add " .. KINDS[k].name .. " to " .. track_name(tr), -1)
   if fx < 0 then dbg("add " .. KINDS[k].name .. ": not found"); return end
   dbg("added " .. KINDS[k].name .. " to " .. track_name(tr) .. " at " .. fx)
+  if before ~= nil then return end                       -- dragged in: done above
   if k ~= kind then kind = k; r.SetExtState(EXT, "kind", KINDS[k].key, true) end
-  local fg = r.TrackFX_GetFXGUID(tr, fx)
-  local list = wanted(tr)
+  fg = r.TrackFX_GetFXGUID(tr, fx)
+  list = wanted(tr)
   show_track(tr, list)
   for i, e in ipairs(list) do if e.fg == fg then first = i end end
   has_key = ""                                           -- the buttons look again at once
 end
 
+-- Where a dragged chip would land: the gap the pointer is in, among everything else on the track's chain (the
+-- chips and the markers, in the order they run). before = the FX GUID it would sit right before (a marker: the
+-- first plugin of its run), false = the end of the chain; mark = the line's x; noop = a move that changes nothing
+-- (dropped back where it sits, or nothing else on the track).
+local function drop_at(x, y)
+  local others, me = {}, nil
+  for _, c in ipairs(bar_chips) do
+    if c.fg or c.ofg then
+      if c.fg and c.fg == drag.fg then me = #others + 1 else others[#others + 1] = c end
+    end
+  end
+  if drag.fg and #others == 0 then return nil, nil, true, 0 end
+  -- the chips run in reading order over their rows: one counts as before the pointer on an earlier row, or on the
+  -- pointer's row left of it (the row under the pointer, kept to the chip rows)
+  local row = math.floor(BAR * sc + 0.5)
+  local pr = math.max(0, math.min(math.floor((y - stripe_h()) / row), bar_chip_rows - 1))   -- under the stripe
+  local j = 0
+  for _, c in ipairs(others) do
+    local cr = c.row or 0
+    if cr < pr or (cr == pr and x > (c.x0 + c.x1) / 2) then j = j + 1 end
+  end
+  local nxt = others[j + 1]
+  local mark, mrow
+  if nxt and ((nxt.row or 0) == pr or j == 0) then mark, mrow = nxt.x0 - math.floor(2 * sc), nxt.row or 0
+  elseif j > 0 then mark, mrow = others[j].x1 + math.floor(2 * sc), others[j].row or 0 end
+  return nxt and (nxt.fg or nxt.ofg) or false, mark, drag.fg ~= nil and me == j + 1, mrow
+end
+
+-- The bar's mouse. A chip acts when it is let go: not moved, a click (that copy on view, or shown; a dim one: the
+-- kind chosen, as before); moved, a drag (drop_at says where; let go off the bar, nothing happens). A right-click on
+-- a dim chip adds that effect. The other buttons act on the press.
 local last_cap = 0
+-- ── the bar's window icon: close the FX windows ─────────────────────────────────────────────────────
+-- The user, 2026-10-05: "i want a close all floating fx windows options in the dock. Maybe just an icon for like
+-- close this tracks floating windows and all floating fx windows options." A click opens a menu with both. A float
+-- the dock keeps hidden (it holds that plugin's surface, here or in EON Swing's dock) is not a window the user sees
+-- and stays; one the user opened from the dock closes, and the dock takes that plugin back as it always does.
+-- Each counts the windows it closed (for tests: ExtState "closed").
+local function close_track_floats(tr)
+  local n = 0
+  if not (tr and r.ValidatePtr2(0, tr, "MediaTrack*")) then return 0 end
+  local function walk(fx)
+    local fw = r.TrackFX_GetFloatingWindow(tr, fx)
+    if fw and r.JS_Window_IsVisible(fw) then r.TrackFX_Show(tr, fx, 2); n = n + 1 end
+    local ok, cc = r.TrackFX_GetNamedConfigParm(tr, fx, "container_count")   -- inside an FX container too
+    cc = ok and tonumber(cc)
+    for i = 0, (cc or 0) - 1 do
+      local ok2, id = r.TrackFX_GetNamedConfigParm(tr, fx, "container_item." .. i)
+      if ok2 and tonumber(id) then walk(tonumber(id)) end
+    end
+  end
+  for fx = 0, r.TrackFX_GetCount(tr) - 1 do walk(fx) end
+  for fx = 0, r.TrackFX_GetRecCount(tr) - 1 do walk(0x1000000 + fx) end   -- input FX (the master's: monitoring)
+  return n
+end
+local function close_all_floats()
+  local n = close_track_floats(r.GetMasterTrack(0))
+  for i = 0, r.CountTracks(0) - 1 do n = n + close_track_floats(r.GetTrack(0, i)) end
+  for i = 0, r.CountMediaItems(0) - 1 do                -- take FX
+    local it = r.GetMediaItem(0, i)
+    for t = 0, r.CountTakes(it) - 1 do
+      local tk = r.GetTake(it, t)
+      for fx = 0, (tk and r.TakeFX_GetCount(tk) or 0) - 1 do
+        local fw = r.TakeFX_GetFloatingWindow(tk, fx)
+        if fw and r.JS_Window_IsVisible(fw) then r.TakeFX_Show(tk, fx, 2); n = n + 1 end
+      end
+    end
+  end
+  return n
+end
+local function close_floats(which)
+  local n = which == "all" and close_all_floats() or close_track_floats(shown_track() or r.GetSelectedTrack2(0, 0, true))
+  r.SetExtState(EXT, "closed", tostring(n), false)
+  dbg("close floats (" .. which .. "): " .. n)
+end
+-- The gear: the options (gfx.showmenu; "!" = on). A FLAT menu, no separators and no submenu, so the number the menu
+-- returns is the item's position and nothing else (how separators count is not documented). Tests: gear_req = that
+-- number.
+local picker_open                       -- the track icon picker, defined with the menu below
+local function gear_pick(pick)
+  if pick == 1 then opt_set("trackno", opt.trackno == "1" and "0" or "1")
+  elseif pick == 2 then opt_set("color", "0")
+  elseif pick == 3 then opt_set("color", "stripe")
+  elseif pick == 4 then opt_set("color", "band")
+  elseif pick == 5 then opt_set("icon", opt.icon == "1" and "0" or "1")
+  elseif pick == 6 then opt_set("labels", opt.labels == "long" and "short" or "long")
+  elseif pick == 7 then opt_set("dblclick", opt.dblclick == "1" and "0" or "1")
+  elseif pick == 8 then opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true
+  elseif pick == 9 then opt_set("fold_color", opt.fold_color == "1" and "0" or "1")
+  elseif pick == 10 then picker_open() end
+  has_key = ""
+end
+-- The EON palette (EON Floatter's P; the Swing FX picker's slate): 0xRRGGBBAA
+local MP = { bg = 0x1C2732FF, line = 0x34465AFF, text = 0xDBE3EAFF, muted = 0x8B95A1FF, dim = 0x5B6773FF, accent = 0xD67024FF }
+local MP_BLUE = 0x3A86D0FF
+local function mp_rgba(cr, cg, cb) return (math.floor(cr * 255 + 0.5) << 24) | (math.floor(cg * 255 + 0.5) << 16) | (math.floor(cb * 255 + 0.5) << 8) | 0xFF end
+local function mp_alpha(col, a) return (col & 0xFFFFFF00) | a end
+local MENU = { on = false, ImGui = nil, ctx = nil, font = nil, font_b = nil, x = 0, y = 0, armed = false }
+local function menu_imgui()
+  if MENU.ImGui then return MENU.ImGui end
+  if not r.ImGui_GetBuiltinPath then return nil end
+  package.path = r.ImGui_GetBuiltinPath() .. "/?.lua;" .. package.path
+  local ok, mod = pcall(function() return require("imgui")("0.10") end)
+  if not ok or type(mod) ~= "table" then return nil end
+  MENU.ImGui = mod
+  return mod
+end
+local function menu_open(sx, sy)
+  local ImGui = menu_imgui()
+  if not ImGui then return false end
+  MENU.ctx = ImGui.CreateContext("ReaKit FX Dock menu")
+  local okf, f = pcall(ImGui.CreateFont, "sans-serif", 0)                      -- ReaImGui 0.10: the size at PushFont
+  MENU.font = okf and f or nil
+  local okb, fb = pcall(ImGui.CreateFont, "sans-serif", ImGui.FontFlags_Bold)
+  MENU.font_b = okb and fb or nil
+  if MENU.font then pcall(ImGui.Attach, MENU.ctx, MENU.font) end
+  if MENU.font_b then pcall(ImGui.Attach, MENU.ctx, MENU.font_b) end
+  -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
+  if r.JS_Window_GetViewportFromRect then
+    local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
+    local mh, mw = math.floor(300 * sc), math.floor(300 * sc)   -- about the menu's size
+    if vb and sy + mh > vb then sy = sy - bar_h() - mh end
+    if vr and sx + mw > vr then sx = vr - mw end
+    if vl and sx < vl then sx = vl end
+  end
+  MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing = true, sx, sy, false, false
+  dbg("menu: open at " .. sx .. "," .. sy)
+  return true
+end
+local function menu_close()
+  MENU.on, MENU.ctx = false, nil              -- the context is dropped: ReaImGui frees one that gets no more frames
+  MENU.rows_pub = nil; r.SetExtState(EXT, "menu_rows", "", false)
+end
+
+-- ── the track icon picker ─────────────────────────────────────────────────────────────────────────
+-- Our own picker (the spec's later step, built 2026-10-05): REAPER's icons (<resource>/Data/track_icons, its
+-- subfolders = categories) in a grid, a search box, a click sets the shown track's icon in one undo step; "No icon"
+-- clears it. A ReaImGui window of its own (movable, sized by hand; its X or Escape closes it). Without ReaImGui the
+-- menu row runs REAPER's own dialog (action 40899, "Track: Set track icon...") on the shown track. An icon from the
+-- root folder is stored by its bare name, as REAPER's dialog does (a project then travels between machines); one
+-- from a subfolder by its full path; the bar reads both. Images load the first time their cell is in view, and
+-- live as long as the picker's context. Test hooks: pick_req = "open" | "close" | "none" | an icon's name (as a
+-- click on its cell); published picker ("1" / "0") and picker_cells ("name:x,y,w,h;..." of the cells drawn).
+local PICK = { on = false, ctx = nil, font = nil, font_b = nil, list = {}, cats = {}, cat = "", q = "", img = {},
+               x = 0, y = 0, first = false, cells_pub = nil }
+local function picker_scan()
+  local root = (r.GetResourcePath() .. "/Data/track_icons"):gsub("[\\]", "/")   -- one slash style (the compare below)
+  r.EnumerateFiles(root, -1)                                      -- REAPER caches listings: a fresh one
+  local list, cats = {}, {}
+  local function scan(dir, cat)
+    local i = 0
+    while true do
+      local f = r.EnumerateFiles(dir, i)
+      if not f or f == "" then break end
+      if f:lower():match("%.png$") then
+        list[#list + 1] = { name = (f:gsub("%.[Pp][Nn][Gg]$", "")), file = f, full = dir .. "/" .. f, cat = cat,
+                            store = cat == "" and f or dir .. "/" .. f }
+      end
+      i = i + 1
+    end
+    i = 0
+    while true do
+      local d = r.EnumerateSubdirectories(dir, i)
+      if not d or d == "" then break end
+      local c = cat == "" and d or cat .. "/" .. d
+      cats[#cats + 1] = c
+      scan(dir .. "/" .. d, c)
+      i = i + 1
+    end
+  end
+  scan(root, "")
+  table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
+  table.sort(cats, function(a, b) return a:lower() < b:lower() end)
+  PICK.list, PICK.cats = list, cats
+end
+local function picker_set(e)                                      -- e = an entry, nil = no icon
+  local tr = shown_track()
+  if not tr then return end
+  r.Undo_BeginBlock()
+  r.GetSetMediaTrackInfo_String(tr, "P_ICON", e and e.store or "", true)
+  r.Undo_EndBlock(e and ("ReaKit FX dock: track icon " .. e.name) or "ReaKit FX dock: track icon removed", -1)
+  ticon.t = 0                                                     -- the bar reads the field again at once
+  r.TrackList_AdjustWindows(false)
+  dbg("picker: " .. (e and e.store or "none") .. " on " .. track_name(tr))
+end
+local function picker_close()
+  PICK.on, PICK.ctx, PICK.img = false, nil, {}
+  PICK.cells_pub = nil; r.SetExtState(EXT, "picker_cells", "", false)
+end
+picker_open = function()
+  local ImGui = menu_imgui()
+  if not ImGui then                                               -- REAPER's own dialog, on the shown track
+    local tr = shown_track()
+    if not tr then return false end
+    r.SetOnlyTrackSelected(tr); r.Main_OnCommand(40899, 0)
+    return false
+  end
+  if PICK.on then return true end
+  picker_scan()
+  PICK.ctx = ImGui.CreateContext("ReaKit FX Dock icons")
+  local okf, f = pcall(ImGui.CreateFont, "sans-serif", 0); PICK.font = okf and f or nil
+  local okb, fb = pcall(ImGui.CreateFont, "sans-serif", ImGui.FontFlags_Bold); PICK.font_b = okb and fb or nil
+  if PICK.font then pcall(ImGui.Attach, PICK.ctx, PICK.font) end
+  if PICK.font_b then pcall(ImGui.Attach, PICK.ctx, PICK.font_b) end
+  PICK.img, PICK.q, PICK.cat = {}, "", ""
+  -- under the bar, around the dock's middle; kept on the screen as the menu is
+  local pw, ph = math.floor(380 * sc), math.floor(420 * sc)
+  local sx, sy = r.JS_Window_ClientToScreen(dock, math.floor(gfx.w / 2) - math.floor(pw / 2), bar_h())
+  if r.JS_Window_GetViewportFromRect then
+    local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)
+    if vb and sy + ph > vb then sy = math.max(vt or 0, vb - ph) end
+    if vr and sx + pw > vr then sx = vr - pw end
+    if vl and sx < vl then sx = vl end
+  end
+  PICK.x, PICK.y, PICK.w, PICK.h = sx, sy, pw, ph
+  PICK.on, PICK.first = true, true
+  dbg("picker: open, " .. #PICK.list .. " icons, " .. #PICK.cats .. " categories")
+  return true
+end
+local function picker_frame()
+  local ImGui, ctx = MENU.ImGui, PICK.ctx
+  if not (ImGui and ctx) then PICK.on = false; return end
+  local tr = shown_track()
+  local has, cr, cg, cb = track_color(tr)
+  local hue = has and mp_rgba(cr, cg, cb) or MP.accent
+  local CELL = math.floor(44 * sc)
+  if PICK.first then ImGui.SetNextWindowPos(ctx, PICK.x, PICK.y); ImGui.SetNextWindowSize(ctx, PICK.w, PICK.h) end
+  ImGui.SetNextWindowSizeConstraints(ctx, CELL * 4 + 30, CELL * 3 + 90, 4000, 4000)
+  ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
+  ImGui.PushStyleColor(ctx, ImGui.Col_ChildBg, 0x161F28FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Border, MP.line)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, MP.text)
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBg, 0x141B23FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_TitleBgActive, 0x1A2630FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_FrameBg, 0x283644FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0x283644FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0x34465AFF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, mp_alpha(hue, 0x80))
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowRounding, 5)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowBorderSize, 1)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 10, 8)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 6, 5)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameRounding, 4)
+  local flags = ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoSavedSettings | ImGui.WindowFlags_NoCollapse
+  if PICK.font then ImGui.PushFont(ctx, PICK.font, 13) end
+  local visible, open = ImGui.Begin(ctx, "Track icon##rkdock_picker", true, flags)
+  if visible then
+    local dl = ImGui.GetWindowDrawList(ctx)
+    local wx, wy = ImGui.GetWindowPos(ctx)
+    local ww = ImGui.GetWindowSize(ctx)
+    ImGui.DrawList_AddRectFilled(dl, wx, wy, wx + ww, wy + 3, hue)             -- the track's stripe
+    local cur = ""                                                   -- the track's icon field (an "and" would keep one value)
+    if tr then local _; _, cur = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false) end
+    -- REAPER writes the field back as a full path with backslashes even when given a bare name (measured
+    -- 2026-10-05, picker_run.py): compared slash-blind and case-blind, by the full path or the bare name
+    local curn = cur:lower():gsub("[\\]", "/")
+    -- the track's line: its name in its colour, "No icon" at the right
+    if PICK.font_b then ImGui.PushFont(ctx, PICK.font_b, 12) end
+    ImGui.TextColored(ctx, hue, tr and track_name(tr) or "no track")
+    if PICK.font_b then ImGui.PopFont(ctx) end
+    ImGui.SameLine(ctx, ww - 72)
+    if ImGui.SmallButton(ctx, cur == "" and "No icon" or "Remove") and cur ~= "" then picker_set(nil) end
+    -- the search box
+    if PICK.first then ImGui.SetKeyboardFocusHere(ctx) end
+    ImGui.SetNextItemWidth(ctx, -1)
+    local chg, q = ImGui.InputTextWithHint(ctx, "##q", "Search the icons", PICK.q)
+    if chg then PICK.q = q end
+    -- the categories (REAPER's subfolders), when there are any
+    if #PICK.cats > 0 then
+      local function cat_pill(label, key)
+        local on = PICK.cat == key
+        ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
+        ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or MP.text)
+        if ImGui.SmallButton(ctx, label) then PICK.cat = key end
+        ImGui.PopStyleColor(ctx, 2)
+        ImGui.SameLine(ctx)
+      end
+      cat_pill("All", "")
+      for _, c in ipairs(PICK.cats) do cat_pill(c, c) end
+      ImGui.NewLine(ctx)
+    end
+    -- the grid
+    if ImGui.BeginChild(ctx, "##grid", 0, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
+      local cdl = ImGui.GetWindowDrawList(ctx)
+      local x0, y0 = ImGui.GetCursorScreenPos(ctx)
+      local avail = ImGui.GetContentRegionAvail(ctx)
+      local cols = math.max(1, math.floor(avail / CELL))
+      local needle = PICK.q:lower():gsub("[%s_%-]", "")
+      local n, cells = 0, {}
+      local pad = math.floor(6 * sc)
+      for _, e in ipairs(PICK.list) do
+        if (PICK.cat == "" or e.cat == PICK.cat) and (needle == "" or e.name:lower():gsub("[%s_%-]", ""):find(needle, 1, true)) then
+          local cx, cy = x0 + (n % cols) * CELL, y0 + (n // cols) * CELL
+          ImGui.SetCursorScreenPos(ctx, cx, cy)
+          ImGui.InvisibleButton(ctx, "##i" .. n, CELL, CELL)
+          if ImGui.IsRectVisibleEx(ctx, cx, cy, cx + CELL, cy + CELL) then
+            local hov = ImGui.IsItemHovered(ctx)
+            local is_cur = cur ~= "" and (curn == e.full:lower() or curn == e.file:lower())
+            if hov or is_cur then
+              ImGui.DrawList_AddRectFilled(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CELL - 2, is_cur and mp_alpha(hue, 0x50) or 0x34465AFF, 4)
+            end
+            if is_cur then ImGui.DrawList_AddRect(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CELL - 2, hue, 4, 0, 1.5) end
+            local img = PICK.img[e.full]
+            if img == nil then
+              local ok, im = pcall(ImGui.CreateImage, e.full)
+              img = ok and im or false
+              if img then pcall(ImGui.Attach, ctx, img) end
+              PICK.img[e.full] = img
+            end
+            if img then ImGui.DrawList_AddImage(cdl, img, cx + pad, cy + pad, cx + CELL - pad, cy + CELL - pad)
+            else ImGui.DrawList_AddText(cdl, cx + CELL * 0.5 - 4, cy + CELL * 0.5 - 7, MP.dim, "?") end
+            if hov then ImGui.SetTooltip(ctx, e.name) end
+            if #cells < 60 then cells[#cells + 1] = string.format("%s:%d,%d,%d,%d", e.name, math.floor(cx), math.floor(cy), CELL, CELL) end
+          end
+          if ImGui.IsItemClicked(ctx, 0) then picker_set(e) end
+          n = n + 1
+        end
+      end
+      ImGui.SetCursorScreenPos(ctx, x0, y0 + math.ceil(n / cols) * CELL)
+      ImGui.Dummy(ctx, 1, 1)                                     -- so the child scrolls to the last row
+      if n == 0 then
+        ImGui.SetCursorScreenPos(ctx, x0 + 4, y0 + 4)
+        ImGui.TextColored(ctx, MP.muted, #PICK.list == 0 and "No icons in Data/track_icons" or "No icon matches")
+      end
+      local cp = table.concat(cells, ";")
+      if cp ~= PICK.cells_pub then PICK.cells_pub = cp; r.SetExtState(EXT, "picker_cells", cp, false) end
+      ImGui.EndChild(ctx)
+    end
+    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then open = false end
+    ImGui.End(ctx)                                       -- only after a true Begin (ReaImGui ends a hidden window itself)
+  end
+  if PICK.font then ImGui.PopFont(ctx) end
+  ImGui.PopStyleVar(ctx, 5)
+  ImGui.PopStyleColor(ctx, 10)
+  PICK.first = false
+  if not open then picker_close() end
+end
+-- One frame of the open menu (every tick while it is open). Three groups, each in its own hue (the user,
+-- 2026-10-05: "everything in our menu is one color basically"): TRACK in the track's own colour, CHIPS in EON
+-- orange (the chips' lit colour on the bar), BAR in Floatter's blue. A stripe in the track's colour along the top,
+-- as the bar wears. A row: a dot (filled in the hue when on, a hollow ring when off), a small glyph, the label; a
+-- hovered row glows in its hue. The colour row's pills preview themselves (a line for Stripe, a block for Band);
+-- the names row shows a long and a short chip. A pick closes it, as does Escape or a click outside it.
+local function menu_frame()
+  local ImGui, ctx = MENU.ImGui, MENU.ctx
+  if not (ImGui and ctx) then MENU.on = false; return end
+  local has, cr, cg, cb = track_color(shown_track())
+  local hue_t = has and mp_rgba(cr, cg, cb) or MP.muted          -- TRACK: the track's colour (its grey when none)
+  local hue_c, hue_b = MP.accent, MP_BLUE                           -- CHIPS: EON orange; BAR: Floatter's blue
+  ImGui.SetNextWindowPos(ctx, MENU.x, MENU.y)
+  ImGui.SetNextWindowFocus(ctx)
+  ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Border, MP.line)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, MP.text)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Separator, 0x283644FF)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowRounding, 5)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowBorderSize, 1)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 10, 9)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 6, 3)
+  local flags = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoResize | ImGui.WindowFlags_NoMove
+    | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_AlwaysAutoResize | ImGui.WindowFlags_NoDocking
+    | ImGui.WindowFlags_NoSavedSettings | ImGui.WindowFlags_TopMost
+  if MENU.font then ImGui.PushFont(ctx, MENU.font, 13) end
+  local visible = ImGui.Begin(ctx, "##rkdock_menu", nil, flags)
+  local picked = false
+  if visible then
+    local dl = ImGui.GetWindowDrawList(ctx)
+    local wx, wy = ImGui.GetWindowPos(ctx)
+    local ww = ImGui.GetWindowSize(ctx)
+    ImGui.DrawList_AddRectFilled(dl, wx, wy, wx + ww, wy + 3, hue_t, 5, ImGui.DrawFlags_RoundCornersTop)   -- the stripe
+    local ROW_W, lh = 272, ImGui.GetTextLineHeight(ctx)
+    -- a cross in the top-right corner closes it
+    do
+      local cx, cy = wx + ww - 18, wy + 8
+      ImGui.SetCursorScreenPos(ctx, cx - 4, cy - 2)
+      ImGui.InvisibleButton(ctx, "##close", 16, 14)
+      local hot = ImGui.IsItemHovered(ctx)
+      local col = hot and MP.text or MP.dim
+      ImGui.DrawList_AddLine(dl, cx, cy, cx + 8, cy + 8, col, 1.5); ImGui.DrawList_AddLine(dl, cx, cy + 8, cx + 8, cy, col, 1.5)
+      if ImGui.IsItemClicked(ctx, 0) then MENU.closing = true end
+      ImGui.SetCursorScreenPos(ctx, wx + 10, wy + 9)
+    end
+    local function heading(t, hue)
+      if MENU.font_b then ImGui.PushFont(ctx, MENU.font_b, 11) end
+      ImGui.TextColored(ctx, hue, t)
+      if MENU.font_b then ImGui.PopFont(ctx) end
+    end
+    -- the small glyphs, drawn with lines at (gx, gy): the row's left, its middle line
+    local function glyph(kind, gx, gy)
+      local c = MP.muted
+      if kind == "number" then ImGui.DrawList_AddText(dl, gx + 2, gy - lh * 0.5, c, "#")
+      elseif kind == "icon" then
+        ImGui.DrawList_AddRect(dl, gx, gy - 5, gx + 12, gy + 5, c, 1, 0, 1)
+        ImGui.DrawList_AddCircleFilled(dl, gx + 4, gy - 1, 1.5, c)
+        ImGui.DrawList_AddLine(dl, gx + 2, gy + 4, gx + 6, gy, c, 1); ImGui.DrawList_AddLine(dl, gx + 6, gy, gx + 10, gy + 4, c, 1)
+      elseif kind == "names" then ImGui.DrawList_AddText(dl, gx, gy - lh * 0.5, c, "Aa")
+      elseif kind == "pop" then
+        ImGui.DrawList_AddRect(dl, gx, gy - 3, gx + 9, gy + 6, c, 1, 0, 1)
+        ImGui.DrawList_AddLine(dl, gx + 5, gy + 1, gx + 12, gy - 6, c, 1.5)
+        ImGui.DrawList_AddLine(dl, gx + 8, gy - 6, gx + 12, gy - 6, c, 1.5); ImGui.DrawList_AddLine(dl, gx + 12, gy - 6, gx + 12, gy - 2, c, 1.5)
+      elseif kind == "fold" then
+        ImGui.DrawList_AddLine(dl, gx + 1, gy + 3, gx + 6, gy - 2, c, 1.5); ImGui.DrawList_AddLine(dl, gx + 6, gy - 2, gx + 11, gy + 3, c, 1.5)
+      elseif kind == "handle" then ImGui.DrawList_AddRectFilled(dl, gx, gy - 1, gx + 12, gy + 2, c, 1)
+      elseif kind == "stay" then
+        ImGui.DrawList_AddRect(dl, gx, gy - 5, gx + 12, gy + 5, c, 1, 0, 1)
+        ImGui.DrawList_AddLine(dl, gx + 3, gy - 1, gx + 9, gy - 1, c, 1); ImGui.DrawList_AddLine(dl, gx + 3, gy + 2, gx + 9, gy + 2, c, 1)
+      elseif kind == "pick" then                                   -- a small grid: the picker
+        for i = 0, 1 do for j = 0, 1 do ImGui.DrawList_AddRectFilled(dl, gx + i * 7, gy - 5 + j * 7, gx + i * 7 + 5, gy + j * 7, c, 1) end end
+      end
+    end
+    local rows_pub = {}                                  -- for tests: each row's screen box (ExtState menu_rows)
+    local function row(label, on, act, hue, kind, extra)
+      local x, y = ImGui.GetCursorScreenPos(ctx)
+      rows_pub[#rows_pub + 1] = string.format("%s:%d,%d,%d,%d", label, math.floor(x), math.floor(y), ROW_W, math.floor(lh))
+      ImGui.PushStyleColor(ctx, ImGui.Col_HeaderHovered, mp_alpha(hue, 0x2A))
+      ImGui.PushStyleColor(ctx, ImGui.Col_HeaderActive, mp_alpha(hue, 0x40))
+      if ImGui.Selectable(ctx, "##" .. label, false, ImGui.SelectableFlags_None, ROW_W, 0) then act(); picked = true end
+      ImGui.PopStyleColor(ctx, 2)
+      ImGui.DrawList_AddText(dl, x + 42, y, MP.text, label)   -- the label past the dot and the glyph
+      local cy = y + lh * 0.5
+      if on then
+        ImGui.DrawList_AddCircleFilled(dl, x + 8, cy, 4, hue)
+        ImGui.DrawList_AddCircle(dl, x + 8, cy, 6.5, hue, 0, 1)
+      elseif on == false then
+        ImGui.DrawList_AddCircle(dl, x + 8, cy, 4.5, MP.dim, 0, 1.5)
+      else                                                        -- nil: an action, not a switch
+        ImGui.DrawList_AddText(dl, x + 5, y, MP.dim, "\u{203A}")
+      end
+      glyph(kind, x + 22, cy)
+      if extra then extra(x, y) end
+    end
+    local function chip_preview(x, y)                     -- the names row: a long chip and a short one
+      local cy = y + lh * 0.5
+      local function chip(cx, text, w)
+        ImGui.DrawList_AddRectFilled(dl, cx, cy - 7, cx + w, cy + 7, hue_c, 2)
+        if MENU.font_b then ImGui.DrawList_AddTextEx(dl, MENU.font_b, 9, cx + 4, cy - 5.5, 0x141415FF, text)
+        else ImGui.DrawList_AddText(dl, cx + 4, cy - 6, 0x141415FF, text) end
+      end
+      chip(x + ROW_W - 78, "GAINKIT", 46)
+      ImGui.DrawList_AddText(dl, x + ROW_W - 29, cy - lh * 0.5, MP.dim, "vs")
+      chip(x + ROW_W - 14, "GK", 20)
+    end
+    -- the colour pills: drawn by hand so each previews its own look
+    local function pill(id, text, cur_on, w, draw_preview)
+      local x, y = ImGui.GetCursorScreenPos(ctx)
+      local h = lh + 4
+      rows_pub[#rows_pub + 1] = string.format("colour %s:%d,%d,%d,%d", text, math.floor(x), math.floor(y), w, math.floor(h))
+      ImGui.InvisibleButton(ctx, id, w, h)
+      local hov = ImGui.IsItemHovered(ctx)
+      local bg = cur_on and hue_t or (hov and 0x34465AFF or 0x283644FF)
+      local fg = cur_on and 0x14191EFF or (text == "Off" and MP.muted or MP.text)
+      ImGui.DrawList_AddRectFilled(dl, x, y, x + w, y + h, bg, h * 0.5)
+      local tx = x + 9
+      if draw_preview then tx = tx + draw_preview(x + 9, y + h * 0.5, cur_on) + 5 end
+      ImGui.DrawList_AddText(dl, tx, y + 2, fg, text)
+      if ImGui.IsItemClicked(ctx, 0) then return true end
+      return false
+    end
+    local function prev_stripe(px, py, lit)
+      ImGui.DrawList_AddRectFilled(dl, px, py - 1.5, px + 16, py + 1.5, lit and 0x14191EFF or hue_t); return 16
+    end
+    local function prev_band(px, py, lit)
+      ImGui.DrawList_AddRectFilled(dl, px, py - 4.5, px + 16, py + 4.5, lit and 0x14191EFF or hue_t, 2); return 16
+    end
+
+    heading("TRACK", hue_t)
+    row("Track number", opt.trackno == "1", function() opt_set("trackno", opt.trackno == "1" and "0" or "1") end, hue_t, "number")
+    row("Track icon", opt.icon == "1", function() opt_set("icon", opt.icon == "1" and "0" or "1") end, hue_t, "icon")
+    row("Pick a track icon...", nil, function() picker_open(); MENU.closing = true end, hue_t, "pick")
+    ImGui.Dummy(ctx, 0, 1)
+    ImGui.AlignTextToFramePadding(ctx)
+    ImGui.TextColored(ctx, MP.muted, "    Track colour"); ImGui.SameLine(ctx, 0, 8)
+    if pill("##col_off", "Off", opt.color == "0", 38, nil) then opt_set("color", "0"); picked = true end
+    ImGui.SameLine(ctx, 0, 4)
+    if pill("##col_stripe", "Stripe", opt.color == "stripe", 76, prev_stripe) then opt_set("color", "stripe"); picked = true end
+    ImGui.SameLine(ctx, 0, 4)
+    if pill("##col_band", "Band", opt.color == "band", 68, prev_band) then opt_set("color", "band"); picked = true end
+    ImGui.Dummy(ctx, 0, 2)
+    ImGui.Separator(ctx)
+    ImGui.Dummy(ctx, 0, 1)
+    heading("CHIPS", hue_c)
+    row("Full effect names", opt.labels == "long", function() opt_set("labels", opt.labels == "long" and "short" or "long") end, hue_c, "names", chip_preview)
+    row("Double-click pops an effect out", opt.dblclick == "1", function() opt_set("dblclick", opt.dblclick == "1" and "0" or "1") end, hue_c, "pop")
+    ImGui.Dummy(ctx, 0, 2)
+    ImGui.Separator(ctx)
+    ImGui.Dummy(ctx, 0, 1)
+    heading("BAR", hue_b)
+    row("Fold the bar to a handle", opt.fold == "1", function() opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true end, hue_b, "fold")
+    row("Track colour on the folded handle", opt.fold_color == "1", function() opt_set("fold_color", opt.fold_color == "1" and "0" or "1") end, hue_b, "handle")
+    row("Menu stays open until closed", opt.menu_stay == "1", function() opt_set("menu_stay", opt.menu_stay == "1" and "0" or "1") end, hue_b, "stay")
+    local rp = table.concat(rows_pub, ";")
+    if rp ~= MENU.rows_pub then MENU.rows_pub = rp; r.SetExtState(EXT, "menu_rows", rp, false) end
+    -- a click anywhere else, or Escape, closes it (the first frame is skipped: the opening click is still down)
+    -- a pick closes it unless the menu stays open; a click anywhere else, Escape or the cross always close it (the
+    -- first frame is skipped: the opening click is still down)
+    -- "outside" by the window's own rectangle, not by ImGui's hover (which reads false while REAPER is not the
+    -- foreground window: the first click then closed the menu and picked nothing; measured 2026-10-05)
+    local mxs, mys = ImGui.GetMousePos(ctx)
+    local wh = select(2, ImGui.GetWindowSize(ctx))
+    local inside = mxs >= wx and mxs < wx + ww and mys >= wy and mys < wy + wh
+    if MENU.armed and ImGui.IsMouseClicked(ctx, 0) and not inside then MENU.closing = true end
+    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then MENU.closing = true end
+    if not ImGui.IsMouseDown(ctx, 0) then MENU.armed = true end
+    ImGui.End(ctx)                                       -- only after a true Begin (ReaImGui ends a hidden window itself)
+  end
+  if MENU.font then ImGui.PopFont(ctx) end
+  ImGui.PopStyleVar(ctx, 4)
+  ImGui.PopStyleColor(ctx, 4)
+  if picked then has_key = "" end
+  if MENU.closing or (picked and opt.menu_stay ~= "1") then MENU.closing = false; menu_close() end
+end
+local function gear_menu(mx, my)
+  -- the gear's row, in screen coordinates: the menu hangs under the bar at the gear's x
+  local sx, sy = r.JS_Window_ClientToScreen(dock, mx - math.floor(60 * sc), bar_h())
+  if menu_open(sx, sy) then return end
+  -- no ReaImGui: REAPER's own menu, flat
+  local function on(b) return b and "!" or "" end
+  local m = on(opt.trackno == "1") .. "Track number|"
+    .. on(opt.color == "0") .. "Track colour: off|"
+    .. on(opt.color == "stripe") .. "Track colour: a stripe along the top|"
+    .. on(opt.color == "band") .. "Track colour: a band across the bar|"
+    .. on(opt.icon == "1") .. "Track icon|"
+    .. on(opt.labels == "long") .. "Full effect names|"
+    .. on(opt.dblclick == "1") .. "Double-click pops an effect out|"
+    .. on(opt.fold == "1") .. "Fold the bar to a handle|"
+    .. on(opt.fold_color == "1") .. "Track colour on the folded handle|"
+    .. "Pick a track icon..."
+  gfx.x, gfx.y = mx, my
+  local pick = gfx.showmenu(m)
+  if pick and pick > 0 then gear_pick(pick) end
+end
+
 local function bar_mouse()
   local cap = gfx.mouse_cap
   local down = (cap & 1) == 1 and (last_cap & 1) == 0
@@ -836,20 +1844,64 @@ local function bar_mouse()
   last_cap = cap
   local wheel = gfx.mouse_wheel
   gfx.mouse_wheel = 0
-  local in_bar = gfx.mouse_x >= 0 and gfx.mouse_x < gfx.w and gfx.mouse_y >= 0 and gfx.mouse_y < bar_h()
+  local mx, my = gfx.mouse_x, gfx.mouse_y
+  local in_bar = mx >= 0 and mx < gfx.w and my >= 0 and my < bar_h()
+  local now = r.time_precise()
+  -- what the pointer rests on (the tooltip, the hover light)
+  local under = nil
+  if in_bar then
+    for _, h in ipairs(hits) do
+      if mx >= h[1] and mx < h[2] and my >= h[3] and my < h[4] then under = h[5]; break end
+    end
+  end
+  if under ~= hover_act then hover_act, hover_t = under, now end
+  if drag then
+    local c = bar_chips[drag.i]
+    if not c or c.fg ~= drag.fg or c.kind ~= drag.kind then drag = nil; return end   -- the bar changed under it
+    -- where the pointer is NOW, before a let-go acts: a flick out of the bar between two frames is let go off the
+    -- bar, and a last move lands where it ends (it acted on the frame before's; Codex delta audit, 2026-10-05)
+    if not drag.moved and (math.abs(mx - drag.x0) > 4 * sc or math.abs(my - drag.y0) > 4 * sc) then drag.moved = true end
+    if drag.moved then
+      drag.inside = mx >= 0 and mx < gfx.w and my >= -12 * sc and my < bar_h() + 12 * sc
+      drag.before, drag.mark, drag.noop, drag.mrow = drop_at(mx, my)
+    end
+    if (cap & 1) == 0 then                               -- let go
+      local d = drag
+      drag = nil
+      if not d.moved then
+        if d.fg then show_copy(d.fg, d.kind) else set_kind(d.kind) end
+      elseif d.inside and not d.noop and d.before ~= nil then
+        if d.fg then move_fx(d.fg, d.before) else add_kind(d.kind, d.before) end
+      end
+      return
+    end
+    return
+  end
   if wheel ~= 0 and in_bar then scroll(wheel > 0 and -1 or 1) end
   if not (down or rdown) or not in_bar then return end
   for _, h in ipairs(hits) do
-    if gfx.mouse_x >= h[1] and gfx.mouse_x < h[2] and gfx.mouse_y >= h[3] and gfx.mouse_y < h[4] then
+    if mx >= h[1] and mx < h[2] and my >= h[3] and my < h[4] then
       local a = h[5]
+      local ci = a:sub(1, 4) == "chip" and tonumber(a:sub(5))
+      local c = ci and bar_chips[ci]
+      if c and c.other then return end                    -- a marker: only ever dropped beside
       if rdown then
-        if a:sub(1, 4) == "kind" then add_kind(tonumber(a:sub(5))) end   -- does nothing when the track has it
+        if c and not c.fg then add_kind(c.kind) end      -- a dim one: GainKit first, the others at the end
+      elseif c then
+        drag = { i = ci, kind = c.kind, fg = c.fg, x0 = mx, y0 = my, dx = mx - c.x0 }
+      elseif a == "closetrack" then close_floats("track")
+      elseif a == "closeall" then close_floats("all")
+      elseif a == "gear" then
+        local ok, err = pcall(gear_menu, mx, my)         -- never the dock's end
+        if not ok then dbg("menu open error: " .. tostring(err)); menu_close() end
+      elseif a == "fold" then fold_open = false
+      elseif a == "close" then want_close = true
+      elseif a == "handle" then fold_open = true
       elseif a == "pin" then set_pin(pin == "")
       elseif a == "tabs" then set_tabs_hidden(not tabs_hidden())
       elseif a == "strip" then set_strip(not strip)
       elseif a == "left" then scroll(-1)
-      elseif a == "right" then scroll(1)
-      else set_kind(tonumber(a:sub(5))) end
+      elseif a == "right" then scroll(1) end
       return
     end
   end
@@ -908,8 +1960,35 @@ local function draw_body()
   end
 end
 
+-- For the plugins: what the dock holds, in gmem band EON_RKFX_DRAWER (.refs/gmem_regions_supplement.tsv, the
+-- bundle). A plugin with a drawer (Saturation's CURVE, rk_drawer.jsfx-inc) finds itself there and shows its own
+-- pop-over at once, instead of asking EON Floatter for room a docked surface cannot get. +8 the heartbeat
+-- (os.time, the clock a JSFX time() reads; 0 = closed), +9 how many, +16.. (track: 0-based, -1 = the master;
+-- chain position) pairs, 64 at most, the count written last.
+local DRW = 31365520
+local DRW_MAX = 64
+r.gmem_attach("Swing_Media_Transfer")
+local pub_drw, drw_beat = nil, -1
+local function publish_drawer()
+  local t = {}
+  for _, s in ipairs(slots) do
+    if s.canvas and s.tr and s.fx and #t < DRW_MAX * 2 and r.ValidatePtr2(0, s.tr, "MediaTrack*") then
+      local n = r.GetMediaTrackInfo_Value(s.tr, "IP_TRACKNUMBER")   -- 1-based, -1 = the master, 0 = not found
+      if n ~= 0 then t[#t + 1] = n < 0 and -1 or n - 1; t[#t + 1] = s.fx end
+    end
+  end
+  local v = table.concat(t, " ")
+  if v ~= pub_drw then
+    pub_drw = v
+    for i, x in ipairs(t) do r.gmem_write(DRW + 16 + i - 1, x) end
+    r.gmem_write(DRW + 9, #t // 2)
+  end
+  local now = os.time()
+  if now ~= drw_beat then drw_beat = now; r.gmem_write(DRW + 8, now) end
+end
+
 -- for tests: what the dock holds, left to right ("track GUID|FX GUID", comma between), and the strip's view
-local pub_held, pub_view = nil, nil
+local pub_held, pub_view, pub_bar, pub_hover, pub_menu, pub_pick = nil, nil, nil, nil, nil, nil
 local function publish()
   local t = {}
   for _, s in ipairs(slots) do if s.canvas then t[#t + 1] = s.tg .. "|" .. s.fg end end
@@ -917,6 +1996,15 @@ local function publish()
   if v ~= pub_held then pub_held = v; r.SetExtState(EXT, "held", v, false) end
   v = string.format("%d %d %d", first, #slots, cur and #cur.list or 0)   -- first on view, on view, on the track
   if v ~= pub_view then pub_view = v; r.SetExtState(EXT, "view", v, false) end
+  v = string.format("%d %d %d", bar_h(), folded() and 1 or 0, bar_rows)    -- the bar: height, folded, rows
+  if v ~= pub_bar then pub_bar = v; r.SetExtState(EXT, "bar", v, false) end
+  v = hover_act or ""                                                        -- what the pointer rests on
+  if v ~= pub_hover then pub_hover = v; r.SetExtState(EXT, "hover", v, false) end
+  v = MENU.on and "1" or "0"                                                 -- the gear's menu open
+  if v ~= pub_menu then pub_menu = v; r.SetExtState(EXT, "menu", v, false) end
+  v = PICK.on and "1" or "0"                                                 -- the icon picker open
+  if v ~= pub_pick then pub_pick = v; r.SetExtState(EXT, "picker", v, false) end
+  publish_drawer()
 end
 
 -- ── open with REAPER again ────────────────────────────────────────────────────────────────────────
@@ -941,7 +2029,13 @@ local function quit()
   release_all()
   r.SetExtState(EXT, "held", "", false)
   r.SetExtState(EXT, "view", "", false)
+  r.SetExtState(EXT, "bar", "", false)
   r.SetExtState(EXT, "alive", "", false)
+  MENU.on, MENU.ctx = false, nil
+  PICK.on, PICK.ctx = false, nil
+  for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "hover", "tip" }) do r.SetExtState(EXT, k, "", false) end
+  r.gmem_write(DRW + 9, 0)                                         -- holds nothing now (the drawer band)
+  r.gmem_write(DRW + 8, 0)
   pcall(function() r.set_action_options(8) end)                    -- the toolbar button goes dark
 end
 local function closed_by_user()
@@ -1002,15 +2096,76 @@ local function loop()
     r.SetExtState(EXT, "add_req", "", false)
     for k, v in ipairs(KINDS) do if v.key == req then add_kind(k) end end
   end
+  -- tests: a chip dragged and let go: "FX GUID|FX GUID it lands before" or "...|END" (after the last of the six);
+  -- a dim chip dragged in: "kind key|FX GUID" or "kind key|END"
+  req = r.GetExtState(EXT, "move_req")
+  if req ~= "" then
+    r.SetExtState(EXT, "move_req", "", false)
+    local fg, to = req:match("^([^|]+)|(.+)$")
+    if fg then move_fx(fg, to ~= "END" and to) end
+  end
+  req = r.GetExtState(EXT, "addat_req")
+  if req ~= "" then
+    r.SetExtState(EXT, "addat_req", "", false)
+    local key, to = req:match("^([^|]+)|(.+)$")
+    for k, v in ipairs(KINDS) do if v.key == key then add_kind(k, to ~= "END" and to) end end
+  end
   req = r.GetExtState(EXT, "show_req")                             -- GainKit Plus: a double-click on a name
   if req ~= "" then r.SetExtState(EXT, "show_req", "", false); show_req(req) end
+  req = r.GetExtState(EXT, "closefx_req")                          -- tests: the two close buttons, "track" or "all"
+  if req ~= "" then r.SetExtState(EXT, "closefx_req", "", false); close_floats(req) end
+  req = r.GetExtState(EXT, "opt_req")                              -- tests: an option, "key=value"
+  if req ~= "" then
+    r.SetExtState(EXT, "opt_req", "", false)
+    local k, v = req:match("^(%w+)=(.*)$")
+    if k and OPT_DEF[k] then opt_set(k, v); if k == "fold" then fold_open = true end; has_key = "" end
+  end
+  req = r.GetExtState(EXT, "gear_req")                             -- tests: the gear's menu, picked by number
+  if req ~= "" then r.SetExtState(EXT, "gear_req", "", false); gear_pick(tonumber(req) or 0) end
+  req = r.GetExtState(EXT, "menu_req")                             -- tests: the gear's menu, "open" at the bar's middle | "close"
+  if req ~= "" then
+    r.SetExtState(EXT, "menu_req", "", false)
+    if req == "open" then
+      local sx, sy = r.JS_Window_ClientToScreen(dock, math.floor(gfx.w / 2), bar_h())
+      local ok, res = pcall(menu_open, sx, sy)
+      if not ok then dbg("menu_req error: " .. tostring(res)); menu_close() elseif not res then dbg("menu_req: no ReaImGui") end
+    else menu_close() end
+  end
+  req = r.GetExtState(EXT, "pick_req")                             -- tests: the icon picker, "open" | "close" | "none" | an icon's name
+  if req ~= "" then
+    r.SetExtState(EXT, "pick_req", "", false)
+    if req == "open" then
+      local ok, res = pcall(picker_open)
+      if not ok then dbg("pick_req error: " .. tostring(res)); picker_close() end
+    elseif req == "close" then picker_close()
+    elseif req == "none" then picker_set(nil)
+    else
+      if #PICK.list == 0 then picker_scan() end
+      for _, e in ipairs(PICK.list) do if e.name == req then picker_set(e); break end end
+    end
+  end
+  req = r.GetExtState(EXT, "fold_req")                             -- tests: "open" drops the folded bar, "close" folds it
+  if req ~= "" then
+    r.SetExtState(EXT, "fold_req", "", false)
+    fold_open = req == "open"
+  end
 
   for _, s in ipairs(slots) do watch(s) end
   sweep()
   follow(false)
   check_chain()
   draw_bar()
-  bar_mouse()
+  if MENU.on then
+    local ok, err = pcall(menu_frame)                    -- an error in the menu never takes the dock down
+    if not ok then dbg("menu error: " .. tostring(err)); menu_close() end
+  else
+    bar_mouse()
+  end
+  if PICK.on then
+    local ok, err = pcall(picker_frame)                  -- nor one in the picker
+    if not ok then dbg("picker error: " .. tostring(err)); picker_close() end
+  end
+  if want_close then closed_by_user(); quit(); gfx.quit(); return end   -- the bar's X
   layout()
   sweep()
   draw_body()
@@ -1063,7 +2218,8 @@ end
 local style = r.JS_Window_GetLong(dock, "STYLE")
 if style then r.JS_Window_SetLong(dock, "STYLE", math.floor(style) | 0x02000000) end
 pcall(function() r.set_action_options(1 | 4) end)                   -- run again = close it; the button lights
-for _, k in ipairs({ "close", "kind_req", "pin_req", "tabs_req", "strip_req", "scroll_req", "add_req" }) do
+for _, k in ipairs({ "close", "kind_req", "pin_req", "tabs_req", "strip_req", "scroll_req", "add_req", "move_req", "addat_req",
+                     "closefx_req", "opt_req", "gear_req", "fold_req", "menu_req", "pick_req" }) do
   r.SetExtState(EXT, k, "", false)                                  -- old requests must not reach this run
 end
 r.atexit(quit)

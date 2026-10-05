@@ -137,7 +137,8 @@ their tracks, through GainKit Plus; the master's name is typed.*
 LOSER's saturation: one DRIVE knob, a transfer display that shows what the drive is doing to the
 signal, and an output meter. The LED bypasses it. In a short window, as in the dock, the display
 steps aside and the knob takes the room; the CURVE button opens the display over the knob, and a
-click anywhere else closes it.
+click anywhere else closes it. In its own window, the strip along the bottom edge drops a CURVE
+drawer under the knob: the window grows for it (EON Floatter running) and the knob keeps its place.
 
 ![Saturation in the dock, the CURVE button, and its window at four sizes](screenshots/session/saturation_compact.png)
 
@@ -146,8 +147,12 @@ click anywhere else closes it.
 ![3-Band EQ](screenshots/session/3bandeq.png)
 
 LOSER's three-band equalizer: low, mid and high gain with the two crossover frequencies, an output
-level, and a switch per band. The standalone window draws everything at one scale, so a wider
-window gets bigger knobs, not more empty space.
+level, and a switch per band. The crossovers show their frequencies live, and the filter comes in
+two voices: CLASSIC, LOSER's shelves, and SMOOTH, a gentler pair. The strip along the bottom edge
+drops a band display: the curve, a dot per band to drag (up and down for the gain, sideways for the
+crossover; the MID dot slides its whole band, and the wheel over it widens or narrows the band),
+and the two crossover lines to drag. The standalone window draws everything at one scale, so a
+wider window gets bigger knobs, not more empty space.
 
 ### DDC
 
@@ -171,8 +176,9 @@ The display shows the band it is listening to.
 
 One knob, 0 to 200 %: mono at the left end, the recorded width in the middle, wider to the right.
 It scales the side signal and leaves the middle alone, so the centre of the mix never moves. A
-correlation meter under the knob shows how the two channels agree. In a mixer strip it is the
-WIDTH knob at the bottom of the channel.
+correlation meter under the knob shows how the two channels agree. The strip along the bottom edge
+drops a STEREO FIELD drawer: the stereo picture of the signal, live, with the correlation meter
+above it. In a mixer strip it is the WIDTH knob at the bottom of the channel.
 
 ## The ReaKit FX dock
 
@@ -213,16 +219,32 @@ track the bar names: GainKit first in the chain, the others at the end.
 
 ### The bar
 
-![The bar, each part named](screenshots/session/dock_bar.png)
+![The bar with its gear menu open](screenshots/session/dock_bar_menu.png)
 
-- the track's name, and a button for each of the six: a lit one is on the track (click it to
-  bring it on view), a dim one is not (right-click it to add it);
+- the track's number, icon and name, with its colour as a stripe along the top (or a band across
+  the bar, or none: the gear);
+- a chip for each effect, in the order of the track's chain: a lit one is on the track (click it
+  to bring it on view), a dim one is not (right-click it to add it). Drag a chip to move the effect
+  in the chain; drag a dim one in to add the effect at that spot. A grey marker stands for another
+  plugin in the chain;
+- two close icons: this track's floating effect windows, or every track's;
 - **STRIP** — every one of the six on the track side by side, as many as fit at a usable width;
-  `<` `>`, an effect's button or the mouse wheel over the bar bring the rest on view. With STRIP
-  off, the effect you pick fills the dock;
-- **PIN** — the dock stays on this track (or the master) whatever you select;
+  `<` `>`, an effect's chip or the mouse wheel over the bar bring the rest on view. With STRIP off,
+  the effect you pick fills the dock;
+- the pin — the dock stays on this track (or the master) whatever you select;
 - **HIDE TABS** / **SHOW TABS** (**TABS** in a narrow dock) — the same as the Docker tabs action
-  below.
+  below;
+- the gear — the bar's options: the track number, the track icon, the colour (off, a stripe, a
+  band), full or short effect names, whether a double-click pops an effect out, whether the bar
+  folds to a thin handle (the chevron folds it, a click on the handle drops it back down), the
+  track colour on that handle, and whether the menu stays open until you close it. **Pick a track
+  icon...** opens our own picker: REAPER's icons in a grid, a search box, a click sets the shown
+  track's icon (one undo step), and the current one is marked. The menu and the picker need
+  ReaImGui; without it, the gear shows a plain menu and the picker row opens REAPER's own icon
+  dialog;
+- the chevron at the far left folds the bar; the X at the far right closes the dock.
+
+![The track icon picker](screenshots/session/dock_icon_picker.png)
 
 ![The dock beside the mixer, one effect at a time, and three on a track in a wider dock](screenshots/session/dock_keys.png)
 
@@ -242,7 +264,7 @@ REAPER's own setting, so it holds for every docker and after a restart.
 - **Presets** — each of the six has factory presets in REAPER's preset menu at the top of its
   window, named for the job: Vocal Smooth, Kick Punch and Drum Bus Glue on DDC, Vocal Standard and
   Hi-Hat Tame on the De-Esser, Warmth, De-Mud and Telephone on the 3-Band EQ, and more on
-  Saturation, Stereo Width and GainKit (62 in all). The DDC and De-Esser presets are tuned to a set
+  Saturation, Stereo Width and GainKit (64 in all). The DDC and De-Esser presets are tuned to a set
   amount of reduction. A preset sets the sound and leaves the look, the link group and GainKit's
   name as they are.
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the

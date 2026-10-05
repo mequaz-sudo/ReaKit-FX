@@ -1181,6 +1181,7 @@ is_embedded ? (
   // ════════════════════════════════════════════════════════════════════════
   gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
   emb_widget_active = 0;
+  gk_cur = 0;                          // the pointer the meter asks for this frame (0 = the arrow), set at the branch's end
   gk_ne_on ? gk_ne_commit();           // the window closed mid-name: keep what was typed
   gk_w = gfx_w; gk_h = gfx_h;
   gk_bg(0, 1, 0.22, 0.24, 0.27); gfx_rect(0, 0, gk_w, gk_h);
@@ -1316,7 +1317,8 @@ is_embedded ? (
     // Shift 4000), the wheel steps it (0.02 of the range a notch, Ctrl 0.005,
     // Shift 0.002), double-click and right-click return it to 0 dB. mx/my are
     // the cached cursor on a wheel frame (above). The vertical-arrows cursor
-    // says the meter can be dragged; the value shows under a VU-only meter a
+    // says the meter can be dragged (asked for in gk_cur, set at the branch's
+    // end: no strip shows it on REAPER 7.81); the value shows under a VU-only meter a
     // moment (gk_gain_set). All of it only with the THEME panel's VU DRAG on;
     // off, the default, the meter only reads and a click on it opens the
     // window like any dead space (the user, 2026-10-01: "not every user may
@@ -1324,7 +1326,7 @@ is_embedded ? (
     !ct_vu_drag ? gk_mdrag = 0;
     gk_mrx = gk_fl ? gk_s : gk_x(gk_vx); gk_mrw = gk_fl ? gk_w - 2 * gk_s : gk_vw * gk_s;
     gk_mhov = ct_vu_drag && mx >= gk_mrx && mx < gk_mrx + gk_mrw && my >= gk_y(gk_vy) && my < gk_y(gk_vy) + gk_vh * gk_s;
-    gk_mhov ? ( emb_widget_active = 1; gfx_setcursor(32645); );
+    gk_mhov ? ( emb_widget_active = 1; gk_cur = 32645; );
     gk_mhov && rmb_down ? ( gk_gain_set(0); rmb_down = 0; );
     gk_mhov && lmb_down ? (
       timer - gk_mclk < RK_DBLCLICK_T ? ( gk_gain_set(0); gk_mdrag = 0; gk_mclk = 0; )
@@ -1333,7 +1335,7 @@ is_embedded ? (
     );
     gk_mdrag ? (
       LMB ? (
-        emb_widget_active = 1;
+        emb_widget_active = 1; gk_cur = 32645;   // a drag keeps the arrows off the meter too
         gk_gain_set(slider7 + (gk_mdy - my) * 48 / (CTRL ? 1000 : SHIFT ? 4000 : 100));
         gk_mdy = my;
       ) : gk_mdrag = 0;
@@ -1427,6 +1429,13 @@ is_embedded ? (
   );
 
   !emb_widget_active ? gfx_ext_flags |= 0x200;
+
+  // The pointer: the arrow unless the meter asked for its own this frame (gk_cur). A JSFX keeps the last cursor
+  // set until another is set, so one never set back would stay over the whole face (the 3-Band's bug, 2026-10-04).
+  // Measured the same day (REAPER 7.81/Win, .dev_tests/rk_vu_audit/gk_cursor_run.ps1 -Control): a TCP or MCP strip
+  // ignores gfx_setcursor altogether, so no strip shows either arrow today and nothing reaches the window; this
+  // keeps the request right for a host that honours it. Set while the pointer is over the strip or a drag holds it.
+  (mx >= 0 && mx < gk_w && my >= 0 && my < gk_h) || gk_mdrag ? gfx_setcursor(gk_cur > 0 ? gk_cur : 32512);
 
   );   // !gk_skip (rk_embed_idle)
 ) : (

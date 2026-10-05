@@ -31,6 +31,7 @@ in the plugins' own interfaces. EON Studios added the interfaces.
 The libraries in `ReaKit/` are EON Studios code under the MIT licence — see
 `LICENSE` at the root of this repository. Five of them are also published in the
 ReaKit library package (`buttons_kbsg`, `knobs_kbsg`, `meters_kbsg`,
-`sliders_kbsg`, `rk_vu`); the other six ship only here (`rk_theme`,
-`rk_gmem_link`, `rk_playstate`, `oversample_kbsg`, `smooth_kbsg`, `utils_kbsg`).
+`sliders_kbsg`, `rk_vu`); the other eight ship only here (`rk_theme`,
+`rk_gmem_link`, `rk_playstate`, `rk_curve`, `rk_drawer`, `oversample_kbsg`,
+`smooth_kbsg`, `utils_kbsg`).
 The style credits for them are in `THIRD_PARTY_CREDITS.md`.

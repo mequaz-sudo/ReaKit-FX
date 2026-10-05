@@ -1,0 +1,208 @@
+// rk_drawer.jsfx-inc -- the drawer of the free ReaKit FX: a panel under the plugin's face, opened and closed by a
+// strip along the window's bottom edge (Saturation's CURVE first; the 3-Band EQ's band display later).
+// Design: .docs/specs/Design_Saturation_Curve_Drawer_2026-10-04.md in the bundle (the user, 2026-10-03/04: "could
+// it be a drop down like swings mini browser does?", "new saturations open with the meter open", the strip says
+// CURVE).
+//
+// Where the plugin is decides what the drawer does (rkdr_mode):
+//   0 GROW   a floating window EON Floatter serves: opening grows the window DOWN by the drawer, closing gives it
+//            back, so nothing above the drawer moves (Swing's mini browser, turned on its side). Floatter does the
+//            resizing; a JSFX cannot resize its own window.
+//   1 INWIN  any other window (Floatter off or older, the FX chain window, an FX container): the strip still works
+//            and the drawer takes its room from the face inside the window.
+//   2 POP    the ReaKit FX dock, or embedded in a mixer strip / track panel: no strip; the host shows its own
+//            pop-over. The saved state is left alone there.
+//
+// The state is the plugin's OWN hidden slider (1 = open), which Floatter reads with TrackFX_GetParam. Written BARE
+// (no sliderchange / slider_automate): measured 2026-10-04 (drawerstate_probe), Floatter reads it the same tick, it
+// is saved with the project and comes back, it makes no undo point and does not mark the project changed. The
+// catch, same run: an undo of ANOTHER edit of the plugin puts that slider back too (the undo step holds the whole FX
+// chunk). So while the window shows, the face's own state wins and is written back over it; after a gap (a new
+// instance, a reopened project, the window was closed) the face adopts the slider instead.
+//
+// Band EON_RKFX_DRAWER (.refs/gmem_regions_supplement.tsv), only READ here:
+//   +0 Floatter's heartbeat (os.time seconds, the clock a JSFX time() reads; 0 = stopped), +1 its drawer version,
+//   +2 how many windows it serves, +144.. those windows as (track, chain position) pairs;
+//   +3 / +4 / +5 a toggle request from any script: (track, chain position), then a counter bumped LAST;
+//   +8 the dock's heartbeat, +9 how many effects it holds, +16.. those as (track, chain position) pairs.
+//   Track: 0-based, -1 = the master (get_host_placement); chain position: the API's index.
+//
+// The drawer GROWS WITH THE WINDOW (the user, 2026-10-04: the 3-Band's graph stayed the same height while the knobs
+// grew): an open window is shared between the face and the drawer in the proportions of the design, closed face
+// (closed_px less the strip) to drawer, never less than the drawer's own size (rkdr_share). EON Floatter grows and
+// shrinks a window by the same rule (its DRAWERS rows carry the same three numbers), so a toggle still moves nothing
+// above the drawer.
+//
+// The host, in its STANDALONE @gfx only (never the embedded branch, which is POP by nature):
+//   @init:        rkdr_init(drawer_px, strip_px, closed_min_px, closed_px);   // at 100 %; closed_min = the least
+//                 header + face + strip; closed_px = the plugin's closed design height (EON Floatter's SIZES row)
+//   every frame, before its layout, after its frame state (mx, my, lmb_down) and after its ret:
+//                 rkdr_frame(<its slider>); <its slider> != rkdr_open ? <its slider> = rkdr_open;   // BARE
+//   then reads:   rkdr_mode; rkdr_sh (the strip's height, 0 in POP); in GROW rkdr_B (the closed face's height:
+//                 header + face + strip) and rkdr_G (the drawer's room that has ARRIVED: draw the drawer in it, and
+//                 nothing when it is 0); in INWIN rkdr_open (give the drawer room inside the window, or not).
+//   where it handles clicks, after its own pop-overs had theirs:
+//                 rkdr_strip(y, w, "LABEL", text r g b, dim r g b, bg r g b);   // draws it; a click toggles and
+//                 clears the host's lmb_down. Not while the host's link menu is open (rk_menu_open, rk_gmem_link).
+// Every variable here is @gfx-only (rkdr_*): nothing crosses to @block / @sample.
+
+@init
+
+RKDR_BASE = 31365520;   // EON_RKFX_DRAWER
+RKDR_FL = 144;          // Floatter's served windows: pairs from +144
+RKDR_DK = 16;           // the dock's held effects: pairs from +16
+RKDR_MAXP = 64;         // pairs at most, each list
+RKDR_TXN = 1.2;         // seconds a toggle waits for Floatter's grow or shrink (it answers within ~0.4 s)
+RKDR_LEAVE = 0.5;       // seconds unlisted before GROW is left (a moment between a reorder and Floatter's next look)
+RKDR_CORNER = 24;       // px at 100 % at each end of the strip where a press does NOT toggle (the window's corners)
+
+// dh the drawer, sh the strip, minh the closed face's least height (header + face + strip), ch the closed design
+// height (header + face + strip), all px at 100 %
+function rkdr_init(dh, sh, minh, ch) (
+  rkdr_dh = dh;
+  rkdr_sh1 = sh;
+  rkdr_minh = minh;
+  rkdr_ch = ch;
+);
+
+// The drawer's share of a window hh px tall (with its strip): the design's proportions, never under the drawer's own
+// size. EON Floatter's room_in() is the same sum (keep the two in step): what it gives back when the drawer closes.
+function rkdr_share(hh) (
+  max(rkdr_D, floor((hh - rkdr_sh) * rkdr_dh / (rkdr_ch - rkdr_sh1 + rkdr_dh) + 0.5));
+);
+
+// a heartbeat that moves: stamped within the last 3 s (0 = stopped)
+function rkdr_alive(cell) (
+  gmem[cell] > 0 && abs(time() - gmem[cell]) <= 3;
+);
+
+// is (t, p) among the n pairs from gmem[base]?
+function rkdr_listed(base, n, t, p) local(i, hit) (
+  n = min(n | 0, RKDR_MAXP); i = 0; hit = 0;
+  n > 0 ? (
+    while (
+      gmem[base + 2 * i] == t && gmem[base + 2 * i + 1] == p ? hit = 1;
+      i += 1;
+      i < n && !hit;
+    );
+  );
+  hit;
+);
+
+function rkdr_toggle() (
+  rkdr_open = !rkdr_open;
+  rkdr_fail = 0;
+  rkdr_where == 0 ? rkdr_tt = time_precise();   // GROW (a failed open retried): wait for Floatter from the next frame
+);
+
+function rkdr_frame(sv) local(now, rt, t, p, f, md, h) (
+  now = time_precise();
+  rt = max(1, gfx_ext_retina);
+  rkdr_D = floor(rkdr_dh * rt + 0.5);
+  // after a gap the slider is the truth; while the window shows, the face's state is (the host writes it back)
+  now - rkdr_last > 0.5 || !rkdr_seen ? (
+    rkdr_open = sv >= 0.5; rkdr_seen = 1; rkdr_tt = 0; rkdr_fail = 0; rkdr_cg = 0;
+    rkdr_rq_seen = gmem[RKDR_BASE + 5];   // a toggle request from before this never fires (below)
+  );
+  rkdr_last = now;
+
+  // where am I
+  (gfx_ext_flags & 1) ? (
+    md = 2;
+  ) : (
+    p = 0; f = 0;
+    t = get_host_placement(p, f);
+    md = rkdr_alive(RKDR_BASE + 8) && rkdr_listed(RKDR_BASE + RKDR_DK, gmem[RKDR_BASE + 9], t, p) ? 2
+       : rkdr_alive(RKDR_BASE) && rkdr_listed(RKDR_BASE + RKDR_FL, gmem[RKDR_BASE + 2], t, p) ? 0
+       : 1;
+  );
+  md == 0 ? rkdr_gt = now;
+  md == 1 && rkdr_where == 0 && now - rkdr_gt < RKDR_LEAVE ? md = 0;   // a moment unlisted: stay
+  md != rkdr_where ? ( rkdr_where = md; rkdr_tt = 0; rkdr_fail = 0; rkdr_cg = 0; );
+  rkdr_mode = rkdr_where == 0 && rkdr_fail ? 1 : rkdr_where;
+  rkdr_sh = rkdr_mode < 2 ? floor(rkdr_sh1 * rt + 0.5) : 0;
+
+  // GROW's own state: rkdr_cb the closed face's height, rkdr_cg the drawer's room that has arrived
+  rkdr_mode == 0 ? (
+    rkdr_tt > 0 && now - rkdr_tt < RKDR_TXN ? (
+      // a toggle in flight: rkdr_cb is frozen, and the room below it is the drawer's once it is at least half of
+      // it (closing: until it goes)
+      h = gfx_h - rkdr_cb;
+      rkdr_cg = h >= rkdr_D * 0.5 ? h : 0;
+    ) : (
+      rkdr_tt > 0 ? (
+        rkdr_tt = 0;
+        // asked to open and the room never came: INWIN until the next toggle. Asked to close and the room
+        // stayed: the closed face takes the window (below).
+        rkdr_open && gfx_h - rkdr_cb < rkdr_D * 0.5 ? ( rkdr_fail = 1; rkdr_mode = 1; rkdr_cg = 0; );
+      );
+      // settled: the room a toggle brought is kept while the window keeps its height; a window that changes height
+      // with the drawer open (a hand resize, Floatter's dial) is shared again in the design's proportions, so the
+      // drawer grows with the face (rkdr_share). First sight with the drawer open: the window is taken to HOLD the
+      // drawer, as Floatter takes it at its first sight.
+      rkdr_mode == 0 ? (
+        rkdr_open ? (
+          rkdr_cg <= 0 || gfx_h != rkdr_hh ? rkdr_cg = rkdr_share(gfx_h);
+        ) : rkdr_cg = 0;
+        rkdr_cb = gfx_h - rkdr_cg;
+      );
+    );
+  ) : (
+    rkdr_cg = 0; rkdr_cb = gfx_h;
+  );
+  rkdr_hh = gfx_h;   // the height this frame was laid out for
+  // what the host draws: GROW's split, unless the closed face would be under its least height (a window shrunk
+  // by hand with the drawer open): then this frame is laid out as INWIN, the toggles still go to Floatter
+  rkdr_mode == 0 && rkdr_cb >= rkdr_minh * rt ? (
+    rkdr_B = rkdr_cb; rkdr_G = rkdr_cg;
+  ) : (
+    rkdr_mode == 0 ? rkdr_mode = 1;
+    rkdr_B = gfx_h; rkdr_G = 0;
+  );
+
+  // A script asks (the rigs; an action later): the plugin at (+3 track, +4 chain position) toggles its drawer, once
+  // per change of +5, a counter bumped LAST. One sent while the window was shut never fires. Taken after the state
+  // above has settled this frame, as a click on the strip is.
+  rkdr_rq = gmem[RKDR_BASE + 5];
+  rkdr_rq != rkdr_rq_seen ? (
+    rkdr_rq_seen = rkdr_rq;
+    md < 2 && t == gmem[RKDR_BASE + 3] && p == gmem[RKDR_BASE + 4] ? rkdr_toggle();
+  );
+);
+
+// The strip along the bottom: the label, a chevron pointing the way the bottom edge will move (down while closed,
+// up while open), grip marks at both ends, lighter under the pointer. A click toggles, except within RKDR_CORNER of
+// either end: that is where a hand aims for the window's corner to resize it, and on Windows 11 the sizing border
+// lies a few px OUTSIDE the visible edge, so a press on the visible corner lands here (seen on the user's screen,
+// 2026-10-05: the 3-Band's display popped open instead of the window resizing).
+function rkdr_strip(y, w, label, tr, tg, tb, dr, dg, db, br, bg, bb)
+  local(sh, rt, hv, tw, th, a, gap, x0, cx, cy, gx, i) (
+  rkdr_mode < 2 && rkdr_sh > 0 ? (
+    sh = rkdr_sh; rt = max(1, gfx_ext_retina);
+    hv = mouse_x >= RKDR_CORNER * rt && mouse_x < w - RKDR_CORNER * rt && mouse_y >= y && mouse_y < y + sh && !rk_menu_open;
+    hv && lmb_down ? ( rkdr_toggle(); lmb_down = 0; );
+    gfx_set(br, bg, bb, 1); gfx_rect(0, y, w, sh);
+    gfx_set(1, 1, 1, hv ? 0.09 : 0.035); gfx_rect(0, y, w, sh);
+    gfx_set(0, 0, 0, 0.35); gfx_rect(0, y, w, rt);
+    gfx_setfont(1, "Arial", max(8, floor(sh * 0.5)), 'b');
+    gfx_measurestr(label, tw, th);
+    a = max(2, floor(sh * 0.16));
+    gap = 5 * rt;
+    x0 = floor((w - (2 * a + gap + tw)) * 0.5);
+    cx = x0 + a; cy = y + sh * 0.5;
+    hv ? gfx_set(tr, tg, tb, 1) : gfx_set(dr, dg, db, 1);
+    rkdr_open ? gfx_triangle(cx - a, cy + a * 0.5, cx + a, cy + a * 0.5, cx, cy - a * 0.5)
+              : gfx_triangle(cx - a, cy - a * 0.5, cx + a, cy - a * 0.5, cx, cy + a * 0.5);
+    gfx_x = x0 + 2 * a + gap; gfx_y = y + (sh - th) * 0.5 + rt * 0.5;
+    gfx_drawstr(label);
+    // grip marks: three short lines at each end
+    gfx_set(dr, dg, db, hv ? 0.7 : 0.45);
+    i = 0;
+    loop(3,
+      gx = 10 * rt + i * 3 * rt;
+      gfx_rect(gx, y + sh * 0.3, rt, sh * 0.4);
+      gfx_rect(w - gx - rt, y + sh * 0.3, rt, sh * 0.4);
+      i += 1;
+    );
+  );
+);

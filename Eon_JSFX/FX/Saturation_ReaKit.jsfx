@@ -24,12 +24,14 @@ import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_drawer.jsfx-inc
 
 slider1:0<0,100,1>-Drive (%)
 slider2:1<0,1,1>-Drive Enable
 slider3:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider4:sat_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
 slider5:sat_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
+slider6:sat_drawer=1<0,1,1>-Curve drawer (internal; 1 = open, new copies and old projects open; written BARE by the face, read by EON Floatter; persists via FX chunk; rk_drawer)
 
 in_pin:left input
 in_pin:right input
@@ -63,6 +65,8 @@ rk_ps_init(-1);
 rk_link_init(3, 2, freemem);   // group in slider3, sliders 1-2 linked
 rk_link_set_base(31361100);   // EON_RKFX_LINK
 freemem += 64;
+rkdr_init(200, 20, 120, 306);   // the CURVE drawer: 200 px, its strip 20 px, the closed face 120 px at least, 306 as
+                                // designed (EON Floatter's SIZES row), at 100 % (rk_drawer: it grows with the window)
 
 function recalc_dsp() (
   // the window's transfer curve
@@ -339,7 +343,22 @@ gfx_ext_flags & 1 ? (
   hdr_h = 34 * ret;
   mtr_w = 44 * ret;
   body_w = gfx_w - mtr_w;
-  body_h = gfx_h - hdr_h;
+
+  // ── the CURVE drawer (rk_drawer; the user, 2026-10-04: "a drop down like swings mini browser", the strip says
+  // CURVE) ── GROW (a float EON Floatter serves): the face lives in the closed height rkdr_B and the curve opens
+  // in the room the window gains below it, so the knob and the meter never move. INWIN (any other window): the
+  // strip still works and an open curve takes its room from the knob, as the split always did. POP (the ReaKit FX
+  // dock): no strip, today's face: the curve under the knob when there is room, else behind the CURVE chip.
+  rkdr_frame(sat_drawer);
+  sat_drawer != rkdr_open ? sat_drawer = rkdr_open;   // BARE: no undo point, the project not marked (rk_drawer)
+  sat_sh = rkdr_sh;
+  rkdr_mode == 0 ? (
+    body_h = rkdr_B - hdr_h - sat_sh;   // the knob zone: the closed face, whatever the drawer does
+    sat_split = 0;
+  ) : (
+    body_h = gfx_h - hdr_h - sat_sh;
+    sat_split = rkdr_mode == 2 || rkdr_open;   // INWIN closed: the knob alone, the strip opens the curve
+  );
 
   // Split body vertically: top = knob zone, bottom = curve zone. COMPACT: a window with no room for both (the
   // ReaKit FX dock, about 200 px tall) would show the curve as a stamp under a small knob, so the curve goes and
@@ -354,13 +373,16 @@ gfx_ext_flags & 1 ? (
   sat_top = hdr_h + 13 * ret + max(9, floor(min(body_w * 0.05, 13) * ret)) * 1.25;   // the DRIVE row's bottom + a gap
   sat_k = 2.85 + 0.58 * ret;                                 // the block per R (its words scale with R * ret)
   sat_kr = (hdr_h + body_h * 0.48 - 6 * ret - sat_top) / sat_k;   // the normal split's knob, fitted
-  sat_compact = min(body_w - 20 * ret, body_h * 0.52 - 20 * ret) < 100 * ret || sat_kr < 26 * ret;
-  knob_zone_h = sat_compact ? body_h : body_h * 0.48;
+  sat_compact = sat_split && (min(body_w - 20 * ret, body_h * 0.52 - 20 * ret) < 100 * ret || sat_kr < 26 * ret);
+  knob_zone_h = sat_split && !sat_compact ? body_h * 0.48 : body_h;
   curve_zone_h = body_h - knob_zone_h;
   body_cx = body_w * 0.5;
 
   sat_av = hdr_h + knob_zone_h - 2 * ret - sat_top;          // the room for the block
-  knob_r = min(sat_compact ? body_w * 0.22 : body_w * 0.18, (sat_av - 4 * ret) / sat_k);
+  // the knob alone in its zone is drawn bigger (COMPACT), except in GROW: there it keeps the size it had over
+  // the curve, so a project from before the drawer opens with today's knob
+  sat_kw = curve_zone_h > 0 || rkdr_mode == 0 ? 0.18 : 0.22;
+  knob_r = min(body_w * sat_kw, (sat_av - 4 * ret) / sat_k);
   knob_r = max(knob_r, 16 * ret);
   knob_cy = sat_top + 1.4 * knob_r + max(0, sat_av - (sat_k * knob_r + 4 * ret)) * 0.5;
 
@@ -477,9 +499,10 @@ gfx_ext_flags & 1 ? (
     );
   );
 
-  // Meter divider
+  // Meter divider: down to the knob zone's bottom (GROW: the drawer runs under the meter too), or to the strip
+  sat_zb = rkdr_mode == 0 ? hdr_h + knob_zone_h : gfx_h - sat_sh;
   gfx_set(0.18, 0.18, 0.20, 0.5);
-  gfx_line(body_w, hdr_h + 2 * ret, body_w, gfx_h - 2 * ret);
+  gfx_line(body_w, hdr_h + 2 * ret, body_w, sat_zb - 2 * ret);
 
   // ── DRIVE knob ─────────────────────────────────────────────────────
   cx = body_cx; m = km;
@@ -494,7 +517,7 @@ gfx_ext_flags & 1 ? (
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#dv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#dv);
 
-  !sat_compact ? (
+  curve_zone_h > 0 ? (
     // ── Horizontal divider between knob and curve ──
     div_y = hdr_h + knob_zone_h;
     gfx_set(0.18, 0.18, 0.20, 0.4);
@@ -508,11 +531,27 @@ gfx_ext_flags & 1 ? (
     draw_curve(cv_ox, cv_oy, cv_s);
   );
 
-  // ── Meter ──────────────────────────────────────────────────────────
+  // ── the CURVE drawer (GROW): in the room that has arrived below the closed face, across the whole width, the
+  // curve centred under the knob. Nothing is drawn there before the room arrives, and no curve work is done while
+  // the drawer is shut.
+  rkdr_mode == 0 && rkdr_G > 0 ? (
+    div_y = hdr_h + knob_zone_h;
+    gfx_set(0.18, 0.18, 0.20, 0.5);
+    gfx_line(6 * ret, div_y, gfx_w - 6 * ret, div_y);
+    cv_pad = 10 * ret;
+    cv_s = min(body_w - cv_pad * 2, rkdr_G - cv_pad * 2);
+    cv_s >= 20 * ret ? draw_curve(body_cx - cv_s / 2, div_y + (rkdr_G - cv_s) * 0.5, cv_s);
+  );
+
+  // ── Meter: the knob zone's height (GROW) or down to the strip ────────
   mtr_x = body_w + 5 * ret; mtr_y = hdr_h + 8 * ret;
-  mtr_h = gfx_h - hdr_h - 16 * ret;
+  mtr_h = sat_zb - hdr_h - 16 * ret;
   mtr_bar_w = mtr_w - 18 * ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── the CURVE strip along the bottom edge (GROW / INWIN; not in the dock): a click opens or closes the drawer ──
+  rkdr_strip(gfx_h - sat_sh, gfx_w, "CURVE", _th_tx_r, _th_tx_g, _th_tx_b, _th_td_r, _th_td_g, _th_td_b,
+             _th_bg_r, _th_bg_g, _th_bg_b);
 
   // ── the CURVE, popped open over the knob (COMPACT), last so it is on top ──
   sat_compact && sat_cv_open ? (

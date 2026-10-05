@@ -68,7 +68,7 @@ de_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_f
 cDenorm = pow(10,-30);
 
 KS = 16; BS = 8;
-LA_MAX = 2048;  // a power of two (masked); 5 ms fits up to 409.6 kHz
+LA_MAX = 4096;  // a power of two (masked); 5 ms (the slider's most) fits up to 819 kHz, its tap LA_MAX - 1 at most
 
 // ── Memory layout ──────────────────────────────────────────────────────────
 freemem = 0;
@@ -928,6 +928,7 @@ rkth_cluster_overlay();
 );
 
 rk_link_on_gfx_change();
+
 
 @serialize
 file_var(0, rk_ps_en_play);

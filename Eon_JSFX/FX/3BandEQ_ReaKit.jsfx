@@ -12,8 +12,11 @@
 // ENTRUST SOMEBODY ELSE WITH DOING SO.
 //
 // GUI by EON Studios (ReaKit Libraries)
-// DSP: LOSER's one-pole crossover tone-stack, unchanged (its perfect-reconstruction split is the EQ).
-// Version: 1.3.0
+// DSP: LOSER's one-pole crossover tone-stack, unchanged (its perfect-reconstruction split is the EQ): CLASSIC.
+// SMOOTH (1.4.0, EON): the bands as shelves -- the MID level on the whole signal, a low and a high shelf at the
+// crossovers taking LOW and HIGH to their own levels, two shelves in series at each, so the bands sit flat at their
+// knobs' values and turn exactly on their lines (the user, 2026-10-04, after Airwindows' SmoothEQ3 was tried).
+// Version: 1.4.0
 desc:EON: 3-Band EQ
 //tags: equalizer
 //author: LOSER
@@ -25,6 +28,8 @@ import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_drawer.jsfx-inc
+import ../../ReaKit/rk_curve.jsfx-inc
 
 slider1:0<-24,24,0.1>-Low (dB)
 slider2:200<0,22000,1>-Frequency (Hz)
@@ -39,6 +44,8 @@ slider10:1<0,1,1>-Output Enable
 slider11:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider12:eq3_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
 slider13:eq3_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row: 1 = this instance ignores the suite theme; persists via FX chunk, rk_theme's hidden-slider pattern)
+slider14:eq3_filter=0<0,1,1{CLASSIC,SMOOTH}>-Filter (CLASSIC = LOSER's one-pole split, SMOOTH = EON's stacked shelves; presets set it; linked)
+slider15:eq3_display=0<0,1,1>-Band display (internal; 1 = open; written BARE by the face, read by EON Floatter; persists via FX chunk; rk_drawer)
 
 in_pin:left input
 in_pin:right input
@@ -67,16 +74,428 @@ bm = freemem; freemem += BS * 4;   // 4 buttons (band enables)
 meter_init(freemem); freemem += 1380;
 
 rk_ps_init(0);
-rk_link_init(11, 10, freemem); freemem += 64;   // group in slider11, sliders 1-10 linked
+rk_link_init(11, 14, freemem); freemem += 64;   // group in slider11; sliders 1-10 and the FILTER (14) linked
+rk_link_exclude(12); rk_link_exclude(13);        // the look (NAME BAR, NATIVE) stays per copy; 15 (the display) is past the range
 rk_link_set_base(31362200);   // EON_RKFX_LINK
+rkdr_init(118, 20, 150, 228);   // the band display: 118 px, its strip 20 px, the closed face 150 px at least, 228 as
+                                // designed (EON Floatter's SIZES row), at 100 % (rk_drawer: it grows with the window)
+eq3_cv = freemem; freemem += 1024;   // the display's curves: sum, LOW, MID, HIGH alone, 256 points each, in dB
+eq3_ckm = freemem; freemem += 16;    // the settings the curves were computed from
+eq3_cc = freemem; freemem += 16;     // the painter's per-band blocks (rk_curve): colours (9), on (3), hover ramps (3)
+eq3_ce = eq3_cc + 9; eq3_chv = eq3_cc + 12;
+eq3_nh = freemem; freemem += 4;      // the band dots' hover ramps
 
 function kf(s, base_r) ( max(11*ret, floor(s * base_r / 38)); );
+
+// ── the crossovers on the face (@gfx only) ──────────────────────────────────
+// The user's spec (2026-10-03): the labels over the knobs read the LIVE crossovers (they always said 200 Hz and
+// 2 kHz) and set them: drag right or up = higher, 40 px an octave (Shift: a fifth of that), wheel 1 semitone,
+// double-click the default; the MID label moves both, its wheel widens or narrows them. 20 Hz to 20 kHz, never
+// above 0.49 x the rate, the low one at least a semitone under the high one; 1 Hz steps under 1 kHz, 10 Hz above.
+// Every move goes through sliders 2 / 4 and slider_automate (undo, automation, link groups), and glides 5 ms.
+EQ3_SEMI = 2^(1/12);
+function eq3_round_hz(f) ( f < 1000 ? floor(f + 0.5) : floor(f / 10 + 0.5) * 10; );
+function eq3_fmt_hz(f, s) local(k) (
+  f = eq3_round_hz(f);
+  f < 1000 ? sprintf(s, "%d", f) : (
+    k = f / 1000;
+    abs(k - floor(k + 0.5)) < 0.001 ? sprintf(s, "%dk", floor(k + 0.5))
+    : abs(k * 10 - floor(k * 10 + 0.5)) < 0.001 ? sprintf(s, "%.1fk", k) : sprintf(s, "%.2fk", k);
+  );
+  s;
+);
+// the low and the high crossover as the face sees them (the plugin itself swaps a crossed pair)
+function eq3_lo() ( min(slider2, slider4); );
+function eq3_hi() ( max(slider2, slider4); );
+// set both, kept apart and in range, into whichever slider holds each now
+function eq3_set_xo(lo, hi) local(top) (
+  top = min(20000, srate > 0 ? srate * 0.49 : 20000);
+  lo = eq3_round_hz(max(20, min(lo, top / EQ3_SEMI)));
+  hi = eq3_round_hz(max(lo * EQ3_SEMI, min(hi, top)));
+  lo = eq3_round_hz(min(lo, hi / EQ3_SEMI));
+  slider2 <= slider4 ? (
+    lo != slider2 ? ( slider2 = lo; slider_automate(slider2); );
+    hi != slider4 ? ( slider4 = hi; slider_automate(slider4); );
+  ) : (
+    lo != slider4 ? ( slider4 = lo; slider_automate(slider4); );
+    hi != slider2 ? ( slider2 = hi; slider_automate(slider2); );
+  );
+);
+// One label: k 0 LOW, 1 MID, 2 HIGH; drawn centred on cx with its top at y. Returns 1 while it holds the mouse.
+// Handled before the knobs, so its click and wheel never reach them.
+function eq3_xo_label(k, cx, y, s) local(tw, th, x, hv, pad, oct, a, b, dbl) (
+  gfx_measurestr(s, tw, th);
+  x = cx - tw / 2; pad = 3 * ret;
+  hv = mx >= x - pad && mx < x + tw + pad && my >= y - pad && my < y + th + pad;
+  (hv && eq3_xd < 0) || eq3_xd == k ? (
+    eq3_cur = 32644;   // sideways (set at the end of the frame)
+    gfx_set(1, 1, 1, eq3_xd == k ? 0.14 : 0.08); gfx_rect(x - pad, y - pad, tw + 2 * pad, th + 2 * pad);
+    lmb_down && eq3_xd < 0 ? (
+      dbl = eq3_xc_k == k && timer - eq3_xc_t < 0.3;
+      eq3_xc_k = k; eq3_xc_t = timer;
+      dbl ? (
+        k == 0 ? eq3_set_xo(200, eq3_hi()) : k == 2 ? eq3_set_xo(eq3_lo(), 2000) : eq3_set_xo(200, 2000);
+        eq3_xc_k = -1;
+      ) : (
+        eq3_xd = k; eq3_xmx = mx; eq3_xmy = my; eq3_xlo = eq3_lo(); eq3_xhi = eq3_hi();
+      );
+      lmb_down = 0;
+    );
+    hv && frame_wheel != 0 && eq3_xd < 0 ? (
+      a = EQ3_SEMI ^ frame_wheel;
+      k == 0 ? eq3_set_xo(eq3_lo() * a, eq3_hi())
+      : k == 2 ? eq3_set_xo(eq3_lo(), eq3_hi() * a)
+      : eq3_set_xo(eq3_lo() / a, eq3_hi() * a);   // MID: wider (up) or narrower, a semitone each side
+      frame_wheel = 0;
+    );
+  );
+  eq3_xd == k ? (
+    LMB ? (
+      oct = ((mx - eq3_xmx) - (my - eq3_xmy)) / (40 * ret) * (SHIFT ? 0.2 : 1);
+      a = 2 ^ oct;
+      k == 0 ? eq3_set_xo(eq3_xlo * a, eq3_xhi)
+      : k == 2 ? eq3_set_xo(eq3_xlo, eq3_xhi * a)
+      : (   // MID slides both, the width kept (stops where either end would leave the range)
+        b = max(20 / eq3_xlo, min(a, min(20000, srate * 0.49) / eq3_xhi));
+        eq3_set_xo(eq3_xlo * b, eq3_xhi * b);
+      );
+    ) : eq3_xd = -1;
+  );
+  // the text, with a dotted underline so it reads as a control
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  gfx_x = x; gfx_y = y; gfx_drawstr(s);
+  a = x; loop(max(0, floor(tw / (3 * ret))), gfx_rect(a, y + th, ret, ret); a += 3 * ret; );
+  eq3_xd == k;
+);
+eq3_xd = -1; eq3_xc_k = -1;   // no label held, no click to pair
+
+// The FILTER switch in the header (the spec: right of THEME): CLASSIC | SMOOTH, the one on lit. A click on the
+// other one switches (slider14 + slider_automate: undo, automation, link groups); the sound crossfades in @sample.
+// The words shorten to CL | SM where the header is short of room, and the switch goes where even that does not fit.
+function eq3_filter_switch(x, y, h, room) local(w0, w1, tw, th, pad, hv0, hv1, short) (
+  gfx_setfont(1, "Arial", (RKTH_F_CHIP * rkth_scale) | 0, 'b');
+  pad = 7 * rkth_scale;
+  gfx_measurestr("CLASSIC", w0, th); gfx_measurestr("SMOOTH", w1, th);
+  short = w0 + w1 + 4 * pad > room;
+  short ? ( gfx_measurestr("CL", w0, th); gfx_measurestr("SM", w1, th); );
+  w0 += 2 * pad; w1 += 2 * pad;
+  w0 + w1 <= room ? (
+    hv0 = mx >= x && mx < x + w0 && my >= y && my < y + h;
+    hv1 = mx >= x + w0 && mx < x + w0 + w1 && my >= y && my < y + h;
+    lmb_down && (hv0 || hv1) ? (
+      (hv1 ? 1 : 0) != (eq3_filter >= 0.5 ? 1 : 0) ? ( eq3_filter = hv1 ? 1 : 0; slider_automate(eq3_filter); );
+      lmb_down = 0;
+    );
+    eq3_filter < 0.5 ? gfx_set(0.20, 0.40, 0.90, 1) : rkth_setcol(1, 0.16, 0.18, 0.22, 1); gfx_rect(x, y, w0, h);
+    eq3_filter >= 0.5 ? gfx_set(0.20, 0.40, 0.90, 1) : rkth_setcol(1, 0.16, 0.18, 0.22, 1); gfx_rect(x + w0, y, w1, h);
+    rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(x, y, w0 + w1, h, 0); gfx_line(x + w0, y, x + w0, y + h - 1);
+    eq3_filter < 0.5 ? gfx_set(1, 1, 1, 1) : hv0 ? gfx_set(0.95, 0.97, 1.0, 1) : rkth_setcol(2, 0.85, 0.87, 0.90, 0.75);
+    gfx_x = x + pad; gfx_y = y + 3 * rkth_scale; gfx_drawstr(short ? "CL" : "CLASSIC");
+    eq3_filter >= 0.5 ? gfx_set(1, 1, 1, 1) : hv1 ? gfx_set(0.95, 0.97, 1.0, 1) : rkth_setcol(2, 0.85, 0.87, 0.90, 0.75);
+    gfx_x = x + w0 + pad; gfx_y = y + 3 * rkth_scale; gfx_drawstr(short ? "SM" : "SMOOTH");
+  );
+);
+
+// ── the BAND DISPLAY (@gfx only; the spec's "Band display") ─────────────────
+// A drawer under the knobs (rk_drawer: Floatter grows the window, elsewhere it takes its room from the knobs, in the
+// ReaKit FX dock it pops over them). A dark graph, 20 Hz to 20 kHz on a log axis: the three band zones (LOW blue,
+// MID green, HIGH red; brighter under the pointer, grey when the band is off), each band alone (a shade of its colour
+// to 0 dB), the sum you hear (OUTPUT included) from the filter that is ON at the project's rate -- both drawn by the
+// house painter, rk_curve, as the 4-Band's are -- the band rings at their knobs' settings, the crossover lines with
+// their frequencies, the band levels along the bottom, and the range chip (±12 / ±24 dB). The curves are computed
+// only when a setting or the rate changes, and only while the display shows. It grows with the window (rk_drawer).
+EQ3_DISP_H = 118;   // the display's height at 100 % (it grows with the window: rk_drawer's rkdr_share)
+EQ3_N = 256;    // curve points: the four curves sit 256 apart in eq3_cv, one after another, as rk_curve reads bands
+eq3_rng = 12;
+eq3_dd = 0;     // what the display's mouse holds: 1 low line, 2 high line, 3 mid zone, 4/5/6 the LOW/MID/HIGH dot
+eq3_xd = -1;    // what a crossover label holds (eq3_xo_label): -1 none
+
+// The display's own copy of the settings' targets (recalc_gains / recalc_freq, keep the two in step): @gfx must
+// not call those, which @block runs on the audio thread (shared scratch = clicks, wiki 4.1).
+function eq3_gtargets() local(f2, f4, fl, fh) (
+  eq3g_l = slider7 ? exp(slider1 / cAmpDB) : 1; eq3g_m = slider8 ? exp(slider3 / cAmpDB) : 1;
+  eq3g_h = slider9 ? exp(slider5 / cAmpDB) : 1; eq3g_o = slider10 ? exp(slider6 / cAmpDB) : 1;
+  f2 = min(max(slider2, 1), srate * 0.49); f4 = min(max(slider4, 1), srate * 0.49);
+  fl = min(f2, f4); fh = max(f2, f4);
+  eq3g_xL = exp(-2 * $pi * fl / srate); eq3g_xH = exp(-2 * $pi * fh / srate);
+  eq3g_tL = tan($pi * fl / srate); eq3g_tH = tan($pi * fh / srate);
+  eq3g_dm = slider8 ? slider3 : 0; eq3g_dl = slider7 ? slider1 : 0; eq3g_dh = slider9 ? slider5 : 0;
+);
+
+// one stacked shelf edge's level in dB at the warped frequency om: two stages of A = 10^(db / 80) each; lo = 1 a
+// low shelf (its corner tc = tan(pi f / srate)), 0 a high one. The stages are the trapezoidal form of the analog
+// A (s^2 + k sqrt(A) s + A) / (A s^2 + k sqrt(A) s + 1) and A (A s^2 + k sqrt(A) s + 1) / (s^2 + k sqrt(A) s + A).
+function eq3_shelf_db(om, tc, db, lo) local(A, x2, kk, n, d) (
+  A = 10 ^ (db / 80); x2 = sqr(om / tc); kk = SQ_K * SQ_K * A * x2;
+  lo ? ( n = sqr(A - x2) + kk; d = sqr(1 - A * x2) + kk; ) : ( n = sqr(1 - A * x2) + kk; d = sqr(A - x2) + kk; );
+  2 * 10 * log10(max(A * A * n / d, 10^-20));   // two stages
+);
+
+// the response of one setting at f: fills eq3_r_sum, eq3_r_lo, eq3_r_md, eq3_r_hi (dB)
+function eq3_resp(f) local(w, cw, sw, x, dr, di, d2, hlr, hli, hhr, hhi, lr, li, mr, mi, br, bi, sr_, si, g, om) (
+  w = 2 * $pi * f / srate; cw = cos(w); sw = sin(w);
+  eq3_filter < 0.5 ? (
+    // CLASSIC: LOSER's one-poles, (1 - x) / (1 - x z^-1); bands LOW = LP(lo), HIGH = 1 - LP(hi), MID = the rest
+    x = eq3g_xL; dr = 1 - x * cw; di = x * sw; d2 = dr * dr + di * di; hlr = (1 - x) * dr / d2; hli = -(1 - x) * di / d2;
+    x = eq3g_xH; dr = 1 - x * cw; di = x * sw; d2 = dr * dr + di * di; hhr = (1 - x) * dr / d2; hhi = -(1 - x) * di / d2;
+    lr = hlr; li = hli; mr = hhr - hlr; mi = hhi - hli; br = 1 - hhr; bi = -hhi;   // br/bi: the HIGH band
+    sr_ = eq3g_l * lr + eq3g_m * mr + eq3g_h * br; si = eq3g_l * li + eq3g_m * mi + eq3g_h * bi;
+    eq3_r_sum = 10 * log10(max(sr_ * sr_ + si * si, 10^-20)) + 20 * log10(eq3g_o);
+    g = eq3g_l - 1; eq3_r_lo = 10 * log10(max(sqr(1 + g * lr) + sqr(g * li), 10^-20));
+    g = eq3g_m - 1; eq3_r_md = 10 * log10(max(sqr(1 + g * mr) + sqr(g * mi), 10^-20));
+    g = eq3g_h - 1; eq3_r_hi = 10 * log10(max(sqr(1 + g * br) + sqr(g * bi), 10^-20));
+  ) : (
+    // SMOOTH: the MID level, the stacked low and high shelves (eq3_shelf_db), on the trapezoidal frequency axis
+    om = tan(w / 2);
+    eq3_r_lo = eq3_shelf_db(om, eq3g_tL, eq3g_dl, 1);
+    eq3_r_hi = eq3_shelf_db(om, eq3g_tH, eq3g_dh, 0);
+    eq3_r_md = eq3g_dm + eq3_shelf_db(om, eq3g_tL, -eq3g_dm, 1) + eq3_shelf_db(om, eq3g_tH, -eq3g_dm, 0);
+    eq3_r_sum = eq3g_dm + eq3_shelf_db(om, eq3g_tL, eq3g_dl - eq3g_dm, 1) + eq3_shelf_db(om, eq3g_tH, eq3g_dh - eq3g_dm, 0)
+              + 20 * log10(eq3g_o);
+  );
+);
+
+// the curves, again only when something they depend on changed
+function eq3_curves() local(i, ch, v) (
+  ch = 0; i = 0;
+  loop(12,
+    v = i == 0 ? slider1 : i == 1 ? slider2 : i == 2 ? slider3 : i == 3 ? slider4 : i == 4 ? slider5 : i == 5 ? slider6
+      : i == 6 ? slider7 : i == 7 ? slider8 : i == 8 ? slider9 : i == 9 ? slider10 : i == 10 ? eq3_filter : srate;
+    eq3_ckm[i] !== v ? ( eq3_ckm[i] = v; ch = 1; );
+    i += 1;
+  );
+  ch || !eq3_cv_ok ? (
+    eq3_cv_ok = 1; i = 0;
+    eq3_gtargets();
+    loop(EQ3_N,
+      eq3_resp(min(20 * 1000 ^ (i / (EQ3_N - 1)), srate * 0.49));
+      eq3_cv[i] = eq3_r_sum; eq3_cv[256 + i] = eq3_r_lo; eq3_cv[512 + i] = eq3_r_md; eq3_cv[768 + i] = eq3_r_hi;
+      i += 1;
+    );
+  );
+);
+
+function eq3_fx(f) ( eq3_gx + eq3_gw * log(max(f, 1) / 20) / log(1000); );
+function eq3_fat(px) ( 20 * 1000 ^ ((px - eq3_gx) / eq3_gw); );
+function eq3_dby(db) ( eq3_gy + eq3_gh / 2 - max(-eq3_rng, min(eq3_rng, db)) / eq3_rng * (eq3_gh / 2 - 3 * eq3_s); );
+// the sum curve at f (interpolated from the points)
+function eq3_sum_at(f) local(p, i) (
+  p = max(0, min(EQ3_N - 1.001, log(max(f, 20) / 20) / log(1000) * (EQ3_N - 1)));
+  i = p | 0; eq3_cv[i] + (eq3_cv[i + 1] - eq3_cv[i]) * (p - i);
+);
+
+// is band i (0 LOW, 1 MID, 2 HIGH) under the pointer this frame (its zone, its dot, its line)
+function eq3_zh(i, hov) (
+  (i == 0 && (hov == 7 || hov == 4 || hov == 1)) || (i == 1 && (hov == 3 || hov == 5))
+  || (i == 2 && (hov == 8 || hov == 6 || hov == 2));
+);
+
+// the band levels, from @sample's followers (eq3_lv*): -30..0 dB over 12 px along the bottom of each zone
+function eq3_level_bar(x0, x1, lv, r, g, b) local(db, hh) (
+  db = 20 * log10(max(lv, 10^-6));
+  hh = max(0, min(1, (db + 30) / 30)) * 12 * eq3_s;
+  hh > 0 ? ( gfx_set(r, g, b, 0.55); gfx_rect(x0 + 2 * eq3_s, eq3_gy + eq3_gh - hh, max(1, x1 - x0 - 4 * eq3_s), hh); );
+);
+
+// The display in (x, y, w, h). ev_lmb / ev_wheel: the frame's click and wheel, taken from the knobs by the caller.
+function eq3_display(x, y, w, h, ev_lmb, ev_wheel)
+  local(lo, hi, xl, xh, fcl, fcm, fch, dl, dm, dh, hov, i, a, tw, th, cx, dbv, cr, cg, cb, on, dbl, k, rx, ry, rw, rh, step)
+(
+  // the display's scale: the face's (ret, the knobs' factor), as far as the display's own height has grown with the
+  // window; at the designed size exactly the HiDPI factor
+  eq3_s = max(max(1, gfx_ext_retina), min(ret, h / EQ3_DISP_H));
+  eq3_nr = 7 * eq3_s;   // the band dots: rk_curve's ring at this radius
+  eq3_gx = x + 8 * eq3_s; eq3_gw = w - 16 * eq3_s; eq3_gy = y + 6 * eq3_s; eq3_gh = h - 12 * eq3_s;
+  // a band that goes past 12 dB (a preset, a knob) switches the range to 24 -- once, as it crosses, so the chip can
+  // still pick 12; and never during a drag here, whose scale would double under the hand (applied on release)
+  eq3_bmax = max(abs(slider1) * slider7, max(abs(slider3) * slider8, abs(slider5) * slider9));
+  !eq3_dd ? (
+    eq3_bmax > 12 && eq3_bmax_was <= 12 ? eq3_rng = 24;
+    eq3_bmax_was = eq3_bmax;
+  );
+  eq3_curves();
+  lo = eq3_lo(); hi = eq3_hi();
+  xl = eq3_fx(lo); xh = eq3_fx(hi);
+  fcl = sqrt(20 * lo); fcm = sqrt(lo * hi); fch = sqrt(hi * 20000);   // the bands' centres (geometric)
+  dl = eq3_fx(fcl); dm = eq3_fx(fcm); dh = eq3_fx(fch);
+
+  // ── what the pointer is over: the range chip, a dot, a line, the mid zone ──
+  gfx_setfont(1, "Arial", 9 * eq3_s, 'b');
+  gfx_measurestr("±24", tw, th);
+  rx = eq3_gx + 3 * eq3_s; ry = eq3_gy + 3 * eq3_s; rw = tw + 8 * eq3_s; rh = th + 2 * eq3_s;
+  hov = mx >= eq3_gx && mx < eq3_gx + eq3_gw && my >= eq3_gy && my < eq3_gy + eq3_gh ? (
+    mx >= rx && mx < rx + rw && my >= ry && my < ry + rh ? 9
+    : sqr(mx - dl) + sqr(my - eq3_dby(slider1)) <= sqr(eq3_nr + 2 * eq3_s) ? 4
+    : sqr(mx - dm) + sqr(my - eq3_dby(slider3)) <= sqr(eq3_nr + 2 * eq3_s) ? 5
+    : sqr(mx - dh) + sqr(my - eq3_dby(slider5)) <= sqr(eq3_nr + 2 * eq3_s) ? 6
+    : abs(mx - xl) <= 4 * eq3_s ? 1
+    : abs(mx - xh) <= 4 * eq3_s ? 2
+    : mx > xl && mx < xh ? 3
+    : mx <= xl ? 7 : 8;   // the LOW / HIGH zone: only lit
+  ) : 0;
+  eq3_dd ? hov = eq3_dd;
+  eq3_cur = hov >= 1 && hov <= 3 ? 32644 : hov >= 4 && hov <= 6 ? 32646 : eq3_cur;   // sideways / every way (frame end)
+
+  // ── the mouse ──
+  ev_lmb && hov >= 1 && hov <= 6 && !eq3_dd ? (
+    dbl = eq3_dc_k == hov && timer - eq3_dc_t < 0.3;
+    eq3_dc_k = hov; eq3_dc_t = timer;
+    dbl ? (
+      hov == 1 ? eq3_set_xo(200, hi) : hov == 2 ? eq3_set_xo(lo, 2000) : hov == 3 ? eq3_set_xo(200, 2000)
+      : hov == 4 ? ( slider1 = 0; slider_automate(slider1); ) : hov == 5 ? ( slider3 = 0; slider_automate(slider3); )
+      : ( slider5 = 0; slider_automate(slider5); );
+      eq3_dc_k = 0;
+    ) : (
+      eq3_dd = hov; eq3_dmx = mx; eq3_dmy = my; eq3_dlo = lo; eq3_dhi = hi; eq3_dmv = 0;
+      eq3_dg = hov == 4 ? slider1 : hov == 5 ? slider3 : slider5;
+    );
+  );
+  ev_lmb && hov == 9 ? ( eq3_rng = eq3_rng < 24 ? 24 : 12; );
+  eq3_dd ? (
+    LMB ? (
+      a = (mx - eq3_dmx) / eq3_gw * (SHIFT ? 0.2 : 1);   // decades of 1000: the axis is 3 of them wide
+      eq3_dd == 1 ? eq3_set_xo(eq3_dlo * 1000 ^ a, eq3_dhi)
+      : eq3_dd == 2 ? eq3_set_xo(eq3_dlo, eq3_dhi * 1000 ^ a)
+      : eq3_dd == 3 ? (
+        k = max(20 / eq3_dlo, min(1000 ^ a, min(20000, srate * 0.49) / eq3_dhi));
+        eq3_set_xo(eq3_dlo * k, eq3_dhi * k);
+      ) : (
+        // a dot: up / down its band's gain; sideways its frequency, as a node in any EQ (the user, 2026-10-05:
+        // "drag it with a mouse up and down and across"): LOW's dot moves the low crossover, HIGH's the high one,
+        // MID's slides the whole band (both crossovers, their ratio kept). A few px of dead zone sideways, so a
+        // straight pull on the gain leaves the frequencies alone.
+        dbv = eq3_dg + (eq3_dmy - my) * eq3_rng / (eq3_gh / 2 - 3 * eq3_s) * (SHIFT ? 0.2 : 1);
+        dbv = max(-24, min(24, floor(dbv * 10 + 0.5) / 10));
+        eq3_dd == 4 ? ( dbv != slider1 ? ( slider1 = dbv; slider_automate(slider1); ); )
+        : eq3_dd == 5 ? ( dbv != slider3 ? ( slider3 = dbv; slider_automate(slider3); ); )
+        : ( dbv != slider5 ? ( slider5 = dbv; slider_automate(slider5); ); );
+        abs(mx - eq3_dmx) > 3 * eq3_s ? (
+          // past the dead zone the travel counts from its edge, so nothing jumps as it is crossed
+          eq3_dmv = 1;
+          a = (mx - eq3_dmx - (mx > eq3_dmx ? 3 : -3) * eq3_s) / eq3_gw * (SHIFT ? 0.2 : 1);
+          eq3_dd == 4 ? eq3_set_xo(eq3_dlo * 1000 ^ a, eq3_dhi)
+          : eq3_dd == 6 ? eq3_set_xo(eq3_dlo, eq3_dhi * 1000 ^ a)
+          : (
+            k = max(20 / eq3_dlo, min(1000 ^ a, min(20000, srate * 0.49) / eq3_dhi));
+            eq3_set_xo(eq3_dlo * k, eq3_dhi * k);
+          );
+        ) : eq3_dmv ? (
+          // back inside the dead zone after a sideways move: the start frequencies again (Codex delta audit, 2026-10-05)
+          eq3_dmv = 0; eq3_set_xo(eq3_dlo, eq3_dhi);
+        );
+      );
+    ) : eq3_dd = 0;
+  );
+  ev_wheel != 0 && !eq3_dd ? (
+    a = EQ3_SEMI ^ ev_wheel;
+    // the MID zone and the MID dot: wider (up) or narrower, a semitone each side -- the band's width is its Q here
+    // (the user, 2026-10-04: "the middle dot should change the width"); the LOW / HIGH dots: their gain
+    hov == 1 ? eq3_set_xo(lo * a, hi) : hov == 2 ? eq3_set_xo(lo, hi * a) : hov == 3 || hov == 5 ? eq3_set_xo(lo / a, hi * a)
+    : hov == 4 || hov == 6 ? (
+      step = (SHIFT ? 0.1 : 0.5) * ev_wheel;
+      hov == 4 ? ( slider1 = max(-24, min(24, floor((slider1 + step) * 10 + 0.5) / 10)); slider_automate(slider1); )
+      : ( slider5 = max(-24, min(24, floor((slider5 + step) * 10 + 0.5) / 10)); slider_automate(slider5); );
+    );
+  );
+  // after a move, the curves of this frame follow the sliders at once
+  eq3_curves();
+  lo = eq3_lo(); hi = eq3_hi(); xl = eq3_fx(lo); xh = eq3_fx(hi);
+  fcl = sqrt(20 * lo); fcm = sqrt(lo * hi); fch = sqrt(hi * 20000);
+  dl = eq3_fx(fcl); dm = eq3_fx(fcm); dh = eq3_fx(fch);
+
+  // ── the panel ──
+  gfx_set(0.07, 0.08, 0.10, 1); gfx_rect(eq3_gx, eq3_gy, eq3_gw, eq3_gh);
+  // the zones
+  i = 0;
+  loop(3,
+    on = i == 0 ? slider7 : i == 1 ? slider8 : slider9;
+    on ? ( i == 0 ? ( cr = lo_lr; cg = lo_lg; cb = lo_lb; ) : i == 1 ? ( cr = md_lr; cg = md_lg; cb = md_lb; ) : ( cr = hi_lr; cg = hi_lg; cb = hi_lb; ); )
+       : ( cr = cg = cb = 0.45; );
+    gfx_set(cr, cg, cb, eq3_zh(i, hov) ? 0.16 : 0.08);
+    i == 0 ? gfx_rect(eq3_gx, eq3_gy, xl - eq3_gx, eq3_gh) : i == 1 ? gfx_rect(xl, eq3_gy, xh - xl, eq3_gh)
+           : gfx_rect(xh, eq3_gy, eq3_gx + eq3_gw - xh, eq3_gh);
+    i += 1;
+  );
+  // the grid: 100, 1k, 10k with their labels, 0 dB and half the range
+  gfx_set(1, 1, 1, 0.10);
+  gfx_line(eq3_fx(100), eq3_gy, eq3_fx(100), eq3_gy + eq3_gh); gfx_line(eq3_fx(1000), eq3_gy, eq3_fx(1000), eq3_gy + eq3_gh);
+  gfx_line(eq3_fx(10000), eq3_gy, eq3_fx(10000), eq3_gy + eq3_gh);
+  gfx_line(eq3_gx, eq3_dby(eq3_rng / 2), eq3_gx + eq3_gw, eq3_dby(eq3_rng / 2));
+  gfx_line(eq3_gx, eq3_dby(-eq3_rng / 2), eq3_gx + eq3_gw, eq3_dby(-eq3_rng / 2));
+  gfx_set(1, 1, 1, 0.22); gfx_line(eq3_gx, eq3_dby(0), eq3_gx + eq3_gw, eq3_dby(0));
+  gfx_setfont(1, "Arial", 9 * eq3_s);
+  gfx_set(1, 1, 1, 0.40);
+  gfx_x = eq3_fx(100) + 2 * eq3_s; gfx_y = eq3_gy + eq3_gh - th - 14 * eq3_s; gfx_drawstr("100");
+  gfx_x = eq3_fx(1000) + 2 * eq3_s; gfx_drawstr("1k");
+  gfx_x = eq3_fx(10000) + 2 * eq3_s; gfx_drawstr("10k");
+  // the band levels along the bottom
+  eq3_level_bar(eq3_gx, xl, eq3_lvl, lo_lr, lo_lg, lo_lb);
+  eq3_level_bar(xl, xh, eq3_lvm, md_lr, md_lg, md_lb);
+  eq3_level_bar(xh, eq3_gx + eq3_gw, eq3_lvh, hi_lr, hi_lg, hi_lb);
+  // each band alone, a shade of its colour to 0 dB, then the sum over them: the house painter (rk_curve_draw, as the
+  // 4-Band draws), one pixel column at a time, so the shade has no seams (the user, 2026-10-04: the old triangles
+  // left a hairline between every pair, "lines"; it should be solid like the 4-Band). Its rect is the graph less
+  // 3 px top and bottom, which makes its dB scale eq3_dby's. The alphas, the off-band ghost and the order are its.
+  eq3_ce[0] = slider7; eq3_ce[1] = slider8; eq3_ce[2] = slider9;
+  i = 0;
+  loop(3,
+    eq3_chv[i] = eq3_zh(i, hov) || eq3_dd == i + 4 ? min(1, eq3_chv[i] + dt * hv_speed) : max(0, eq3_chv[i] - dt * hv_speed);
+    i += 1;
+  );
+  rk_curve_draw(eq3_gx, eq3_gy + 3 * eq3_s, eq3_gw, eq3_gh - 6 * eq3_s, eq3_cv + 256, EQ3_N, 3, eq3_rng,
+                eq3_cc, eq3_ce, eq3_chv, -1, 0, eq3_cv, 0.95, 0.95, 0.92, 1);
+  // the crossover lines, dashed, a frequency tag at the top
+  i = 0;
+  loop(2,
+    cx = i == 0 ? xl : xh;
+    gfx_set(1, 1, 1, (eq3_dd == i + 1 || hov == i + 1) ? 0.85 : 0.45);
+    a = eq3_gy; loop(max(0, floor(eq3_gh / (6 * eq3_s))), gfx_line(cx, a, cx, min(a + 3 * eq3_s, eq3_gy + eq3_gh)); a += 6 * eq3_s; );
+    eq3_fmt_hz(i == 0 ? lo : hi, #eq3_tag);
+    gfx_measurestr(#eq3_tag, tw, th);
+    gfx_set(0.07, 0.08, 0.10, 0.85); gfx_rect(cx - tw / 2 - 2 * eq3_s, eq3_gy + 1 * eq3_s, tw + 4 * eq3_s, th);
+    gfx_set(1, 1, 1, 0.85); gfx_x = cx - tw / 2; gfx_y = eq3_gy + 1 * eq3_s; gfx_drawstr(#eq3_tag);
+    i += 1;
+  );
+  // the band dots at their knobs' settings: the house ring (rk_curve's node look, the 4-Band's), the band's letter in
+  // it, dimmed while the band is off; a dotted line to the curve when they differ by more than 0.5 dB
+  i = 0;
+  loop(3,
+    cx = i == 0 ? dl : i == 1 ? dm : dh;
+    dbv = i == 0 ? slider1 : i == 1 ? slider3 : slider5;
+    on = i == 0 ? slider7 : i == 1 ? slider8 : slider9;
+    cr = eq3_cc[i * 3]; cg = eq3_cc[i * 3 + 1]; cb = eq3_cc[i * 3 + 2];
+    a = eq3_sum_at(i == 0 ? fcl : i == 1 ? fcm : fch);
+    abs(a - dbv) > 0.5 ? (
+      gfx_set(cr, cg, cb, on ? 0.6 : 0.25);
+      k = min(eq3_dby(a), eq3_dby(dbv)); loop(max(0, floor(abs(eq3_dby(a) - eq3_dby(dbv)) / (4 * eq3_s))), gfx_rect(cx, k, 1, 2 * eq3_s); k += 4 * eq3_s; );
+    );
+    eq3_nh[i] = hov == i + 4 ? min(1, eq3_nh[i] + dt * hv_speed) : max(0, eq3_nh[i] - dt * hv_speed);
+    rk_curve_node_paint_ex(cx, eq3_dby(dbv), eq3_nr, eq3_nh[i], eq3_dd == i + 4, on ? 1 : 0.30, cr, cg, cb,
+                           i == 0 ? "L" : i == 1 ? "M" : "H");
+    i += 1;
+  );
+  // the range chip
+  gfx_setfont(1, "Arial", 9 * eq3_s, 'b');
+  gfx_set(1, 1, 1, hov == 9 ? 0.22 : 0.12); gfx_rect(rx, ry, rw, rh);
+  gfx_set(1, 1, 1, 0.85); sprintf(#eq3_rg, "±%d", eq3_rng);
+  gfx_measurestr(#eq3_rg, tw, th); gfx_x = rx + (rw - tw) / 2; gfx_y = ry + 1 * eq3_s; gfx_drawstr(#eq3_rg);
+  gfx_set(1, 1, 1, 0.18); gfx_rect(eq3_gx, eq3_gy, eq3_gw, eq3_gh, 0);
+);
 
 function recalc_gains() (
   slider7 ? lVol = exp(slider1/cAmpDB) : lVol = 1;
   slider8 ? mVol = exp(slider3/cAmpDB) : mVol = 1;
   slider9 ? hVol = exp(slider5/cAmpDB) : hVol = 1;
   slider10 ? outVol = exp(slider6/cAmpDB) : outVol = 1;
+  // SMOOTH: the MID level on the whole signal; the low shelf takes LOW from there to its own level, the high
+  // shelf HIGH; each edge is two shelves in series with half its dB, so each stage's A = 10^(dB / 4 / 20)
+  sq_dm = slider8 ? slider3 : 0;
+  sq_gm_t = exp(sq_dm / cAmpDB);
+  sq_AL_t = exp(((slider7 ? slider1 : 0) - sq_dm) / (4 * cAmpDB));
+  sq_AH_t = exp(((slider9 ? slider5 : 0) - sq_dm) / (4 * cAmpDB));
+  sq_gL_t = sq_tL / sqrt(sq_AL_t);   // the shelves' state-variable cutoffs (a low shelf: tan / sqrt(A), a high one:
+  sq_gH_t = sq_tH * sqrt(sq_AH_t);   // tan * sqrt(A)), so each turns half way exactly on its line
+  eq3_fm_t = eq3_filter >= 0.5 ? 1 : 0;   // the FILTER switch: 0 CLASSIC, 1 SMOOTH (crossfaded in @sample)
 );
 
 function recalc_freq() (
@@ -87,12 +506,36 @@ function recalc_freq() (
     xLP_t = exp(-2.0*$pi*freqLP/srate);
     freqHP = max(f2, f4);
     xHP_t = exp(-2.0*$pi*freqHP/srate);
+    // SMOOTH's shelves at the same two crossovers (their cutoffs also follow the gains: recalc_gains)
+    sq_tL = tan($pi * freqLP / srate); sq_tH = tan($pi * freqHP / srate);
+    sq_gL_t = sq_tL / sqrt(sq_AL_t); sq_gH_t = sq_tH * sqrt(sq_AH_t);
   );
 );
 
+SQ_K = sqrt(2);     // the shelves' damping, 1/Q at Q 0.707: the steepest shelf with no bump past its level
+sq_snap = 10^-9;    // a gain this close to its target lands on it, so unity is exact (EEL2 has no 1e-9 literal)
+sq_AL_t = sq_AH_t = 1;
 recalc_freq();
 xLP = xLP_t; xHP = xHP_t;   // the crossovers start where they are set; later moves glide (@sample)
 recalc_gains();
+sq_gL = sq_gL_t; sq_gH = sq_gH_t;   // SMOOTH's shelves start where they are set
+sq_gm = sq_AL = sq_AH = 1;          // and its levels ease in from unity, as CLASSIC's do
+sq_live = 1;                        // the first samples compute the coefficients (@sample)
+EQ3_KEEP_T = 0.3;   // the FILTER keeper's watch before a join (s): longer than REAPER's anticipative render-ahead (@block)
+
+// one shelf stage (Andrew Simper's state-variable shelf: trapezoidal, so it stays clean while it moves); x out of
+// it exactly when its A is 1. Each stage keeps its own state (the sq_l1L ... instances in @sample).
+function sq_shelf_lo(x) instance(ic1, ic2) local(v1, v2, v3) (
+  v3 = x + cDenorm - ic2; v1 = sq_a1L * ic1 + sq_a2L * v3; v2 = ic2 + sq_a2L * ic1 + sq_a3L * v3;
+  ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+  x + sq_m1L * v1 + sq_m2L * v2;
+);
+function sq_shelf_hi(x) instance(ic1, ic2) local(v1, v2, v3) (
+  v3 = x + cDenorm - ic2; v1 = sq_a1H * ic1 + sq_a2H * v3; v2 = ic2 + sq_a2H * ic1 + sq_a3H * v3;
+  ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+  sq_m0H * x + sq_m1H * v1 + sq_m2H * v2;
+);
+eq3_fm = eq3_fm_t;           // the filter a copy is loaded on plays at once; a later switch crossfades
 cf_last2 = slider2; cf_last4 = slider4;   // @block recomputes the crossovers when these move
 
 // the GUI only notifies the host; @block recomputes from the sliders
@@ -103,6 +546,8 @@ function mark_dirty(mask) ( slider_automate(mask); );
 // inserted with a band already set clicked (popcheck rig, 2026-10-01). ──
 eq3_ps_mix = 1;
 srate > 0 ? sm_coeff = 1 - exp(-1 / (srate * 0.005));
+eq3_fm_step = 1 / (max(srate, 8000) * 0.010);   // the FILTER crossfade: 10 ms
+eq3_rel = exp(-1 / (max(srate, 8000) * 0.3));   // the band levels' release
 eq3_sr_seen = srate;
 sm_lVol = sm_mVol = sm_hVol = sm_outVol = 1;
 
@@ -115,6 +560,11 @@ lo_lr = 0.20; lo_lg = 0.40; lo_lb = 0.90;
 md_lr = 0.20; md_lg = 0.75; md_lb = 0.30;
 hi_lr = 0.90; hi_lg = 0.25; hi_lb = 0.15;
 ou_lr = 0.65; ou_lg = 0.65; ou_lb = 0.72;
+// the display's band colours for the house painter (rk_curve), LOW MID HIGH: the knobs' accents (the spec), not the
+// library palette
+eq3_cc[0] = lo_lr; eq3_cc[1] = lo_lg; eq3_cc[2] = lo_lb;
+eq3_cc[3] = md_lr; eq3_cc[4] = md_lg; eq3_cc[5] = md_lb;
+eq3_cc[6] = hi_lr; eq3_cc[7] = hi_lg; eq3_cc[8] = hi_lb;
 
 @serialize
 
@@ -132,13 +582,45 @@ rkth_local_off = eq3_native;   // NATIVE restored (rk_theme's hidden-slider patt
 @block
 srate != eq3_sr_seen ? (   // ext_noinit: the rate can move under us
   eq3_sr_seen = srate; sm_coeff = 1 - exp(-1 / (srate * 0.005)); recalc_freq();
+  eq3_fm_step = 1 / (max(srate, 8000) * 0.010); eq3_rel = exp(-1 / (max(srate, 8000) * 0.3));
 );
-rk_link_pull();
+// The FILTER keeper. A link group kept alive only by 3-Bands from before 1.4.0 (they link sliders 1-10) never writes
+// the FILTER's slot (14), so a copy joining it would adopt whatever was left there: another copy's old value, or 0
+// (outside audit, 2026-10-04). Each 1.4.0 member stamps the group block's spare cell 61 every block, right after its
+// pull, so a copy joining in the same audio cycle sees one that seeded this block. A copy joining a group first
+// WATCHES that stamp for EQ3_KEEP_T (of real time or of audio it processed, whichever ends first, as rk_gmem_link's
+// own watch: an offline render must not outrun it), without pulling. A stamp that moved in the last EQ3_KEEP_T (on
+// either clock) = a 1.4.0 member is running: the group's FILTER is adopted, as linking means. None = only older copies
+// (or nobody) keep the group: the copy writes its own FILTER into the slot before each pull, so joining leaves it as
+// it is. Movement, not the stamp's age: a member removed a moment before a join still had a fresh stamp, and two
+// copies joining one empty group in the same cycle each saw the other's stamp missing (both: Codex delta audit,
+// 2026-10-05). (Cell 61 is free in this plugin's blocks: its slots end at 15; rk_gmem_link puts sliders 33+ from 38.)
+eq3_lg = slider11 | 0;
+eq3_lg >= 1 && eq3_lg <= 16 && eq3_lg != rk_link_in ? (
+  eq3_lgb = rk_link_base + (eq3_lg - 1) * 64;
+  eq3_now = time_precise();
+  eq3_kg != eq3_lg ? (   // a new join: watched from here
+    eq3_kg = eq3_lg; eq3_kt0 = eq3_now; eq3_ka = 0; eq3_ks = gmem[eq3_lgb + 61];
+    eq3_kct = eq3_kca = -1000;   // no movement seen yet
+  );
+  gmem[eq3_lgb + 61] !== eq3_ks ? ( eq3_ks = gmem[eq3_lgb + 61]; eq3_kct = eq3_now; eq3_kca = eq3_ka; );
+  eq3_now - eq3_kt0 >= EQ3_KEEP_T || eq3_ka >= EQ3_KEEP_T ? (
+    eq3_now - eq3_kct > EQ3_KEEP_T && eq3_ka - eq3_kca > EQ3_KEEP_T ? gmem[eq3_lgb + rk_link_slot(14)] = eq3_filter;
+    rk_link_pull();
+  );
+  eq3_ka += samplesblock / max(srate, 1);
+) : (
+  eq3_kg = 0;   // in its group, or in none: a later join is watched afresh
+  rk_link_pull();
+);
+eq3_lg >= 1 && eq3_lg <= 16 && eq3_lg == rk_link_in ? gmem[rk_link_base + (eq3_lg - 1) * 64 + 61] = time_precise();
 recalc_gains();   // every block (4 exp): GUI, automation and link pulls alike
 (slider2 != cf_last2 || slider4 != cf_last4) ? (
   cf_last2 = slider2; cf_last4 = slider4;
   recalc_freq();
 );
+// SMOOTH's glides wake when a target moved (@sample puts them back to rest once all have landed)
+sq_gm !== sq_gm_t || sq_AL !== sq_AL_t || sq_AH !== sq_AH_t || sq_gL !== sq_gL_t || sq_gH !== sq_gH_t ? sq_live = 1;
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
 // NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
@@ -165,8 +647,43 @@ sl0 = (tmplLP = (1 - xLP)*spl0 + xLP*tmplLP + cDenorm);
 sl1 = (tmprLP = (1 - xLP)*spl1 + xLP*tmprLP + cDenorm);
 sh0 = spl0 - (tmplHP = (1 - xHP)*spl0 + xHP*tmplHP + cDenorm);
 sh1 = spl1 - (tmprHP = (1 - xHP)*spl1 + xHP*tmprHP + cDenorm);
-spl0 = (sl0*sm_lVol + (spl0 - sl0 - sh0)*sm_mVol + sh0*sm_hVol)*sm_outVol;
-spl1 = (sl1*sm_lVol + (spl1 - sl1 - sh1)*sm_mVol + sh1*sm_hVol)*sm_outVol;
+eq3_c0 = sl0*sm_lVol + (spl0 - sl0 - sh0)*sm_mVol + sh0*sm_hVol;   // CLASSIC, LOSER's sum as before
+eq3_c1 = sl1*sm_lVol + (spl1 - sl1 - sh1)*sm_mVol + sh1*sm_hVol;
+
+// ── SMOOTH: stacked shelves (EON) ─────────────────────────────────────────
+// The MID level on the whole signal, then two low shelves at the low line (LOW from there to its own level) and two
+// high shelves at the high line. Levels and cutoffs glide over 5 ms, as CLASSIC's do; a level within 1e-9 of its
+// target lands on it, so with every band at 0 dB the output is the input exactly.
+// Only while something moves (sq_live, set by @block when a target changes): at rest every value sits exactly on its
+// target and the coefficients are what this would compute again, so skipping it changes nothing but the cost.
+sq_live ? (
+  sq_gm += (sq_gm_t - sq_gm) * sm_coeff; abs(sq_gm_t - sq_gm) < sq_snap ? sq_gm = sq_gm_t;
+  sq_AL += (sq_AL_t - sq_AL) * sm_coeff; abs(sq_AL_t - sq_AL) < sq_snap ? sq_AL = sq_AL_t;
+  sq_AH += (sq_AH_t - sq_AH) * sm_coeff; abs(sq_AH_t - sq_AH) < sq_snap ? sq_AH = sq_AH_t;
+  sq_gL += (sq_gL_t - sq_gL) * sm_coeff; abs(sq_gL_t - sq_gL) < sq_snap ? sq_gL = sq_gL_t;
+  sq_gH += (sq_gH_t - sq_gH) * sm_coeff; abs(sq_gH_t - sq_gH) < sq_snap ? sq_gH = sq_gH_t;
+  sq_a1L = 1 / (1 + sq_gL * (sq_gL + SQ_K)); sq_a2L = sq_gL * sq_a1L; sq_a3L = sq_gL * sq_a2L;
+  sq_a1H = 1 / (1 + sq_gH * (sq_gH + SQ_K)); sq_a2H = sq_gH * sq_a1H; sq_a3H = sq_gH * sq_a2H;
+  sq_m1L = SQ_K * (sq_AL - 1); sq_m2L = sq_AL * sq_AL - 1;                                   // low shelf
+  sq_m0H = sq_AH * sq_AH; sq_m1H = SQ_K * (1 - sq_AH) * sq_AH; sq_m2H = 1 - sq_AH * sq_AH;   // high shelf
+  // all landed (exact compares: EEL2's == has a dead zone): rest from the next sample
+  sq_gm === sq_gm_t && sq_AL === sq_AL_t && sq_AH === sq_AH_t && sq_gL === sq_gL_t && sq_gH === sq_gH_t ? sq_live = 0;
+);
+eq3_s0 = sq_h2L.sq_shelf_hi(sq_h1L.sq_shelf_hi(sq_l2L.sq_shelf_lo(sq_l1L.sq_shelf_lo(spl0 * sq_gm))));
+eq3_s1 = sq_h2R.sq_shelf_hi(sq_h1R.sq_shelf_hi(sq_l2R.sq_shelf_lo(sq_l1R.sq_shelf_lo(spl1 * sq_gm))));
+// the band levels for the display (only while it shows): LOSER's split of the input, each band after its gain
+eq3_lv_on ? (
+  eq3_lvl = max(max(abs(sl0 * sm_lVol), abs(sl1 * sm_lVol)), eq3_lvl * eq3_rel);
+  eq3_lvm = max(max(abs((spl0 - sl0 - sh0) * sm_mVol), abs((spl1 - sl1 - sh1) * sm_mVol)), eq3_lvm * eq3_rel);
+  eq3_lvh = max(max(abs(sh0 * sm_hVol), abs(sh1 * sm_hVol)), eq3_lvh * eq3_rel);
+);
+
+// the FILTER switch: both run all the time and the output crossfades over 10 ms, so a switch (by hand or
+// automated) never clicks. At rest on CLASSIC the mix is exactly 0 and the output is LOSER's, sample for sample.
+eq3_fm = eq3_fm < eq3_fm_t ? min(eq3_fm_t, eq3_fm + eq3_fm_step) : max(eq3_fm_t, eq3_fm - eq3_fm_step);
+// (on SMOOTH, its own output untouched: through the mix it could round by one bit)
+spl0 = (eq3_fm >= 1 ? eq3_s0 : eq3_c0 + (eq3_s0 - eq3_c0) * eq3_fm)*sm_outVol;
+spl1 = (eq3_fm >= 1 ? eq3_s1 : eq3_c1 + (eq3_s1 - eq3_c1) * eq3_fm)*sm_outVol;
 spl0 = eq3_dry0 + (spl0 - eq3_dry0) * eq3_ps_mix;
 spl1 = eq3_dry1 + (spl1 - eq3_dry1) * eq3_ps_mix;
 meter_process_sample(spl0, spl1);
@@ -422,13 +939,39 @@ gfx_ext_flags & 1 ? (
   // size, estimated with the 1x header and meter), never below 1x, capped
   // at 3x. So the header, meter and fonts grow exactly as the knobs
   // do. The embedded branch never reaches this line.
-  sc_r = max(22*ret, min((gfx_w - 56*ret) / 4 * 0.30, (gfx_h - 34*ret) * 0.24));   // 34 = the header (the body below it, as main_r)
+  // ── the BAND DISPLAY drawer (rk_drawer) ── GROW (a float EON Floatter serves): the face lives in the closed
+  // height and the display opens in the room the window gains below it, so the knobs and the meter never move.
+  // INWIN (any other window): the strip still works and an open display takes its room from the knobs. POP (the
+  // ReaKit FX dock): no strip; a BANDS chip in the header pops the display over the knobs (not saved).
+  rkdr_frame(eq3_display);
+  eq3_display != rkdr_open ? eq3_display = rkdr_open;   // BARE: no undo point, the project not marked (rk_drawer)
+  eq3_cur = 0;   // the pointer a control asks for this frame (0 = the arrow), set at the end of the frame
+  eq3_rt = max(1, gfx_ext_retina);
+  eq3_sh = rkdr_sh;
+  rkdr_mode == 0 ? (
+    eq3_fh = rkdr_B - eq3_sh; eq3_dy = eq3_fh; eq3_dh = rkdr_G;
+  ) : rkdr_mode == 1 ? (
+    // the display's room taken from the knobs; a window too short to keep a usable knob row (160 px at 100 %)
+    // lays it OVER the knobs instead (eq3_ovl), as the dock's pop-over does
+    eq3_dh = rkdr_open ? rkdr_share(gfx_h) : 0;   // the design's share of the window, at least the display itself
+    eq3_ovl = eq3_dh > 0 && gfx_h - eq3_sh - eq3_dh < 160 * eq3_rt;
+    eq3_ovl ? (
+      eq3_fh = gfx_h - eq3_sh; eq3_dh = min(eq3_dh, max(0, eq3_fh - 34 * eq3_rt)); eq3_dy = eq3_fh - eq3_dh;
+    ) : (
+      eq3_fh = gfx_h - eq3_sh - eq3_dh; eq3_dy = eq3_fh;
+    );
+  ) : (
+    eq3_fh = gfx_h; eq3_dh = 0;
+  );
+  // (the height share 0.16, was 0.24: the knob block holds its crossover label too since 1.4.0, and a short wide
+  // window -- the ReaKit FX dock -- took the factor from its width and cut the values off at the bottom)
+  sc_r = max(22*ret, min((gfx_w - 56*ret) / 4 * 0.30, (eq3_fh - 34*ret) * 0.16));   // 34 = the header (the body below it, as main_r)
   ret = ret * max(1, min(3, sc_r / (30.3*ret)));
 
   hdr_h = 34*ret;
   mtr_w = 56*ret;
   body_w = gfx_w - mtr_w;
-  body_h = gfx_h - hdr_h;
+  body_h = eq3_fh - hdr_h;
   sec_w = body_w / 4;
 
   main_r = min(sec_w * 0.30, body_h * 0.24);
@@ -446,13 +989,22 @@ gfx_ext_flags & 1 ? (
   // tips line that sat there (Codex delta audit, 2026-09-28). The knob row moves up as far as
   // the header allows; past that the knobs shrink, and the fonts and gaps
   // follow them. A window the design size or taller is untouched.
-  stack_h = lbl_gap + lbl_val_gap + val_font + 4*ret;
-  knob_cy = min(knob_cy, gfx_h - 4*ret - stack_h);
-  knob_cy - main_r < hdr_h + 4*ret ? (
-    main_r = max(22*ret, knob_cy - hdr_h - 4*ret);
-    lbl_font = floor(kf(12, main_r)); val_font = floor(kf(10, main_r)); xo_font = val_font;
-    lbl_gap = main_r * 1.55; lbl_val_gap = lbl_font + 5*ret;
+  // The knob block, top to bottom: its crossover label (a control since 1.4.0), the knob, GAIN, the value. It sits
+  // between the section names (LOW / MID / HIGH, their LEDs and accent bars: about 30 px under the header) and
+  // the face's bottom, and the knobs shrink to fit a short window (the ReaKit FX dock: the labels used to ride up
+  // into the header there, and the knobs over the section names).
+  eq3_top = hdr_h + 30*ret;
+  loop(3,
+    eq3_up = lbl_gap + xo_font + 2*ret;
+    stack_h = lbl_gap + lbl_val_gap + val_font + 4*ret;
+    eq3_up + stack_h > eq3_fh - 4*ret - eq3_top && main_r > 22*ret ? (
+      main_r = max(22*ret, main_r * (eq3_fh - 4*ret - eq3_top) / (eq3_up + stack_h));
+      lbl_font = floor(kf(12, main_r)); val_font = floor(kf(10, main_r)); xo_font = val_font;
+      lbl_gap = main_r * 1.55; lbl_val_gap = lbl_font + 5*ret;
+    );
   );
+  eq3_up = lbl_gap + xo_font + 2*ret; stack_h = lbl_gap + lbl_val_gap + val_font + 4*ret;
+  knob_cy = max(eq3_top + eq3_up, min(knob_cy, eq3_fh - 4*ret - stack_h));
 
   // Title
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
@@ -472,7 +1024,8 @@ gfx_ext_flags & 1 ? (
   // list; the cluster never writes a host slider, it surfaces the pick.
   rkth_namebar(eq3_name_bar);
   rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
-  rkth_cluster_hdr(gfx_x + 12*ret, (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0))/2, 0, 0);
+  eq3_clx = gfx_x + 12*ret; eq3_cly = (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0))/2;
+  rkth_cluster_hdr(eq3_clx, eq3_cly, 0, 0);
   rkth_nb_pick >= 0 ? (
     eq3_name_bar = rkth_nb_pick; slider_automate(eq3_name_bar); rkth_nb_pick = -1;
   );
@@ -485,6 +1038,25 @@ gfx_ext_flags & 1 ? (
   rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, 0.20, 0.40, 0.90, mx, my, lmb_down);
   rk_badge_sz = max(9*ret, hdr_h * 0.36);
   rk_link_draw_badge(rk_gear_x - rk_badge_sz - 5*ret, rk_gear_y - rk_badge_sz / 2, rk_badge_sz, 0.20, 0.40, 0.90, mx, my, lmb_down);
+  // the FILTER switch: right of THEME, up to the badge
+  eq3_swx = eq3_clx + (rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56 * rkth_scale) + 8*ret;
+  eq3_filter_switch(eq3_swx, eq3_cly, (RKTH_H_CHIP*rkth_scale)|0, rk_gear_x - rk_badge_sz - 13*ret - eq3_swx);
+  // POP (the ReaKit FX dock): the BANDS chip, where the header has room after the switch
+  eq3_popchip_hv = 0;
+  rkdr_mode == 2 ? (
+    gfx_setfont(1, "Arial", (RKTH_F_CHIP * rkth_scale) | 0, 'b'); gfx_measurestr("BANDS", tw, th);
+    eq3_pcw = tw + 12 * rkth_scale; eq3_pch = (RKTH_H_CHIP * rkth_scale) | 0;
+    eq3_pcx = rk_gear_x - rk_badge_sz - 13*ret - eq3_pcw;
+    eq3_pcx > eq3_swx + 150 * rkth_scale ? (
+      eq3_popchip_hv = mx >= eq3_pcx && mx < eq3_pcx + eq3_pcw && my >= eq3_cly && my < eq3_cly + eq3_pch;
+      eq3_popchip_hv && lmb_down ? ( eq3_pop = !eq3_pop; lmb_down = 0; );
+      eq3_pop ? gfx_set(md_lr, md_lg, md_lb, 1) : rkth_setcol(1, 0.16, 0.18, 0.22, 1);
+      gfx_rect(eq3_pcx, eq3_cly, eq3_pcw, eq3_pch);
+      rkth_setcol(7, 0.32, 0.35, 0.42, 1); gfx_rect(eq3_pcx, eq3_cly, eq3_pcw, eq3_pch, 0);
+      eq3_pop ? gfx_set(0.05, 0.05, 0.06, 1) : eq3_popchip_hv ? gfx_set(0.95, 0.97, 1.0, 1) : rkth_setcol(2, 0.85, 0.87, 0.90, 1);
+      gfx_x = eq3_pcx + 6 * rkth_scale; gfx_y = eq3_cly + 3 * rkth_scale; gfx_drawstr("BANDS");
+    ) : eq3_pop = 0;
+  ) : eq3_pop = 0;
 
   gfx_set(0.15, 0.18, 0.22, 1);
   gfx_line(0, hdr_h - 1*ret, gfx_w, hdr_h - 1*ret);
@@ -545,10 +1117,37 @@ gfx_ext_flags & 1 ? (
 
   // Dividers
   gfx_set(0.18, 0.18, 0.20, 0.5);
-  gfx_line(sec_w,     hdr_h + 2*ret, sec_w,     gfx_h - 2*ret);
-  gfx_line(sec_w * 2, hdr_h + 2*ret, sec_w * 2, gfx_h - 2*ret);
-  gfx_line(sec_w * 3, hdr_h + 2*ret, sec_w * 3, gfx_h - 2*ret);
-  gfx_line(body_w,    hdr_h + 2*ret, body_w,    gfx_h - 2*ret);
+  gfx_line(sec_w,     hdr_h + 2*ret, sec_w,     eq3_fh - 2*ret);
+  gfx_line(sec_w * 2, hdr_h + 2*ret, sec_w * 2, eq3_fh - 2*ret);
+  gfx_line(sec_w * 3, hdr_h + 2*ret, sec_w * 3, eq3_fh - 2*ret);
+  gfx_line(body_w,    hdr_h + 2*ret, body_w,    eq3_fh - 2*ret);
+
+  // where the display is this frame (POP: over the knobs, from the bottom of the face), and the frame's click and
+  // wheel taken from the knobs and labels when they land on it
+  rkdr_mode == 2 ? (
+    eq3_pop && eq3_fh - hdr_h > 60 * eq3_rt ? (
+      eq3_dh = min(rkdr_share(gfx_h), eq3_fh - hdr_h - 4 * eq3_rt); eq3_dy = eq3_fh - eq3_dh;
+    ) : ( eq3_pop = 0; eq3_dh = 0; );
+  );
+  eq3_ev_lmb = 0; eq3_ev_wheel = 0;
+  eq3_dh >= 40 * eq3_rt && mx >= 0 && mx < gfx_w && my >= eq3_dy && my < eq3_dy + eq3_dh ? (
+    eq3_ev_lmb = lmb_down; eq3_ev_wheel = frame_wheel; lmb_down = 0; frame_wheel = 0;
+  ) : (
+    // a click anywhere else closes the pop-over (the BANDS chip toggles it itself)
+    rkdr_mode == 2 && eq3_pop && lmb_down && !eq3_popchip_hv ? ( eq3_pop = 0; lmb_down = 0; );
+  );
+  eq3_dd ? ( eq3_ev_wheel = 0; lmb_down = 0; frame_wheel = 0; );   // a drag in the display keeps the mouse
+
+  // the crossover labels over the knobs: the live values, and controls (eq3_xo_label), before the knobs
+  gfx_setfont(1, "Arial", xo_font, 'b'); gfx_measurestr("0", tw, th);
+  eq3_ly = knob_cy - lbl_gap - th;
+  eq3_fmt_hz(eq3_lo(), #eq3_a); eq3_fmt_hz(eq3_hi(), #eq3_b);
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  sprintf(#eq3_l0, "< %s Hz", #eq3_a);            eq3_xo_label(0, sec_w * 0.5, eq3_ly, #eq3_l0);
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  sprintf(#eq3_l1, "%s - %s Hz", #eq3_a, #eq3_b); eq3_xo_label(1, sec_w * 1.5, eq3_ly, #eq3_l1);
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  sprintf(#eq3_l2, "> %s Hz", #eq3_b);            eq3_xo_label(2, sec_w * 2.5, eq3_ly, #eq3_l2);
 
   // LOW knob
   cx = sec_w * 0.5; m = km + 0 * KS;
@@ -561,8 +1160,6 @@ gfx_ext_flags & 1 ? (
   sprintf(#lv, "%+.1f dB", slider1);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#lv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#lv);
-  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", xo_font, 'b');
-  gfx_measurestr("< 200 Hz", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy - lbl_gap - th; gfx_drawstr("< 200 Hz");
 
   // MID knob
   cx = sec_w * 1.5; m = km + 1 * KS;
@@ -575,8 +1172,6 @@ gfx_ext_flags & 1 ? (
   sprintf(#mv, "%+.1f dB", slider3);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#mv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#mv);
-  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", xo_font, 'b');
-  gfx_measurestr("200 - 2k Hz", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy - lbl_gap - th; gfx_drawstr("200 - 2k Hz");
 
   // HIGH knob
   cx = sec_w * 2.5; m = km + 2 * KS;
@@ -589,8 +1184,6 @@ gfx_ext_flags & 1 ? (
   sprintf(#hv, "%+.1f dB", slider5);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#hv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#hv);
-  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", xo_font, 'b');
-  gfx_measurestr("> 2k Hz", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy - lbl_gap - th; gfx_drawstr("> 2k Hz");
 
   // OUTPUT knob
   cx = sec_w * 3.5; m = km + 3 * KS;
@@ -605,11 +1198,30 @@ gfx_ext_flags & 1 ? (
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
   gfx_measurestr(#ov, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#ov);
 
-  // Meter
+  // Meter: the face's height (the display runs under it too)
   mtr_x = body_w + 6*ret; mtr_y = hdr_h + 8*ret;
-  mtr_h = gfx_h - hdr_h - 16*ret;
+  mtr_h = eq3_fh - hdr_h - 16*ret;
   mtr_bar_w = mtr_w - 24*ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── the BAND DISPLAY: in the drawer's room (GROW), taken from the knobs (INWIN), or over them (POP). Nothing is
+  // drawn or computed while it is shut.
+  eq3_dh >= 40 * eq3_rt ? (
+    rkdr_mode == 2 || (rkdr_mode == 1 && eq3_ovl) ? ( gfx_set(0, 0, 0, 0.45); gfx_rect(0, eq3_dy - 3 * eq3_rt, gfx_w, eq3_dh + 3 * eq3_rt); )
+                   : ( gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1); gfx_rect(0, eq3_dy, gfx_w, eq3_dh); );
+    gfx_set(0.15, 0.18, 0.22, 1); gfx_line(0, eq3_dy, gfx_w, eq3_dy);
+    eq3_display(0, eq3_dy, gfx_w, eq3_dh, eq3_ev_lmb, eq3_ev_wheel);
+  ) : ( eq3_dd = 0; );
+  eq3_lv_on = eq3_dh >= 40 * eq3_rt;   // @sample's band-level followers run only while the display shows
+
+  // ── the BAND DISPLAY strip along the bottom edge (GROW / INWIN; not in the dock): a click opens or closes it ──
+  rkdr_strip(gfx_h - eq3_sh, gfx_w, "BAND DISPLAY", _th_tx_r, _th_tx_g, _th_tx_b, _th_td_r, _th_td_g, _th_td_b,
+             _th_bg_r, _th_bg_g, _th_bg_b);
+
+  // the pointer: the arrow unless a control above asked for its own this frame (eq3_cur). A JSFX window keeps the
+  // last cursor set until another is set, so one never set back stays over the whole plugin (the user, 2026-10-04:
+  // the double arrow everywhere). Set while the pointer is over the window, or a drag holds it.
+  (mx >= 0 && mx < gfx_w && my >= 0 && my < gfx_h) || eq3_dd || eq3_xd >= 0 ? gfx_setcursor(eq3_cur > 0 ? eq3_cur : 32512);
 );
 
 // ── Options menu overlay ──

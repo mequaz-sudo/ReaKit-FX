@@ -1,7 +1,7 @@
 // Stereo Width (ReaKit)
 // (C) 2026 EON Studios
-// Mid/side stereo width control with correlation meter
-// Version: 1.1.1
+// Mid/side stereo width control with correlation meter, and a STEREO FIELD drawer (a live scope)
+// Version: 1.2.0
 //
 // GUI by EON Studios (ReaKit Libraries)
 desc:EON: Stereo Width
@@ -15,11 +15,13 @@ import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_drawer.jsfx-inc
 
 slider1:100<0,200,1>-Width (%)
 slider2:1<0,1,1>-Enable
 slider3:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider4:sw_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+slider5:sw_drawer=1<0,1,1>-Stereo field drawer (internal; 1 = open, new copies and old projects open; written BARE by the face, read by EON Floatter; persists via FX chunk; rk_drawer)
 
 in_pin:left input
 in_pin:right input
@@ -49,6 +51,15 @@ meter_init(freemem); freemem += 1380;
 rk_ps_init(-1);
 rk_link_init(3, 2, freemem); freemem += 64;   // group in slider3, sliders 1-2 linked
 rk_link_set_base(31364400);   // EON_RKFX_LINK
+rkdr_init(160, 20, 140, 204);   // the STEREO FIELD drawer: 160 px, its strip 20 px, the closed face 140 px at least,
+                                // 204 as designed (EON Floatter's SIZES row): open, 364, the face's size before the
+                                // drawer, at 100 % (rk_drawer: grows with the window)
+// The STEREO FIELD's samples: the output, every sample, in a ring the window reads (the audio writes, @gfx only reads;
+// sw_fw is the next write, an index the window copies once a frame)
+SW_FN = 4096; SW_FMASK = SW_FN - 1;
+sw_fbuf = freemem; freemem += SW_FN * 2;
+memset(sw_fbuf, 0, SW_FN * 2);
+sw_fw = 0;
 
 corr_sum_lr = corr_sum_ll = corr_sum_rr = 0;   // the correlation meter's ~50 ms sums
 corr_val = corr_smooth = 0;
@@ -111,6 +122,8 @@ rk_ps_active ? (
   corr_sum_ll = corr_rms_coeff * corr_sum_ll + spl0 * spl0;
   corr_sum_rr = corr_rms_coeff * corr_sum_rr + spl1 * spl1;
   meter_process_sample(spl0, spl1);
+  sw_fbuf[sw_fw * 2] = spl0; sw_fbuf[sw_fw * 2 + 1] = spl1;   // the STEREO FIELD's ring
+  sw_fw = (sw_fw + 1) & SW_FMASK;
 );
 
 
@@ -237,6 +250,97 @@ function draw_corr_meter(ox, oy, w, h, val) (
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// SHARED: the STEREO FIELD (a goniometer) in a box -- the last SW_FDRAW samples of the output as points: mono
+// straight up, the left and the right channel on the two diagonals, out of phase across. It scales itself to the
+// level (at once up, slowly down, never past -40 dB), so the shape reads at any level. The ring is the audio's
+// (sw_fbuf, sw_fw): read here, never written; the scratch values are LOCAL (@gfx runs beside @sample).
+// ═══════════════════════════════════════════════════════════════════════
+SW_FDRAW = 1024;
+function sw_draw_field(ox, oy, w, h) local(s, cx, cy, r, d, wp, i, idx, l, rr, x, y, pk, k, ps, tw, th) (
+  gfx_set(0.12, 0.15, 0.20, 1);
+  gfx_rect(ox, oy, w, h);
+  s = min(w, h);
+  cx = floor(ox + w * 0.5); cy = floor(oy + h * 0.5); r = s * 0.44; d = r * 0.7071;
+  // guides: the level circle, mono (up) and out of phase (across), the two channels (the diagonals)
+  gfx_set(0.28, 0.32, 0.38, 0.55);
+  gfx_circle(cx, cy, r, 0, 1);
+  gfx_line(cx, cy - r, cx, cy + r);
+  gfx_line(cx - r, cy, cx + r, cy);
+  gfx_set(0.28, 0.32, 0.38, 0.35);
+  gfx_line(cx - d, cy - d, cx + d, cy + d);
+  gfx_line(cx + d, cy - d, cx - d, cy + d);
+  gfx_setfont(1, "Arial", max(7, floor(min(s * 0.07, 10) * ret)));
+  gfx_set(0.45, 0.48, 0.52, 1);
+  gfx_measurestr("M", tw, th);
+  gfx_x = cx - tw * 0.5; gfx_y = oy + 3 * ret; gfx_drawstr("M");
+  gfx_x = cx - d - tw - 4 * ret; gfx_y = cy - d - th; gfx_drawstr("L");
+  gfx_x = cx + d + 4 * ret; gfx_y = cy - d - th; gfx_drawstr("R");
+  // the points, the newest brightest; a ring standing still (stopped, the play-state toggles) shows none after a
+  // moment, rather than a frozen picture
+  wp = sw_fw;
+  wp != sw_f_lastw ? ( sw_f_lastw = wp; sw_f_still = 0; ) : ( sw_f_still += 1; );
+  sw_f_still < 6 ? (
+    pk = 0; i = 0;
+    loop(SW_FDRAW,
+      idx = (wp - SW_FDRAW + i) & SW_FMASK;
+      l = sw_fbuf[idx * 2]; rr = sw_fbuf[idx * 2 + 1];
+      pk = max(pk, max(abs(l + rr), abs(l - rr)) * 0.7071);
+      i += 1;
+    );
+    sw_f_pk = pk > sw_f_pk ? pk : sw_f_pk * 0.97 + pk * 0.03;
+    k = r / max(sw_f_pk, 0.01);   // sw_f_pk >= every point's reach: they all fall inside the circle
+    ps = max(1, floor(1.5 * ret + 0.5));
+    i = 0;
+    loop(SW_FDRAW,
+      idx = (wp - SW_FDRAW + i) & SW_FMASK;
+      l = sw_fbuf[idx * 2]; rr = sw_fbuf[idx * 2 + 1];
+      x = cx + (rr - l) * 0.7071 * k;
+      y = cy - (l + rr) * 0.7071 * k;
+      // the accent, lifted halfway to white so it reads on the dark box
+      gfx_set(0.5 + wd_lr * 0.5, 0.5 + wd_lg * 0.5, 0.5 + wd_lb * 0.5, 0.25 + 0.7 * i / SW_FDRAW);
+      gfx_rect(x - ps * 0.5, y - ps * 0.5, ps, ps);
+      i += 1;
+    );
+  );
+  gfx_set(0.28, 0.32, 0.38, 0.8);
+  gfx_rect(ox, oy, w, 1);
+  gfx_rect(ox, oy + h - 1, w, 1);
+  gfx_rect(ox, oy, 1, h);
+  gfx_rect(ox + w - 1, oy, 1, h);
+);
+
+// The drawer's content in a box: the field (a square, the larger share) and, beside it, the correlation (its word,
+// the bar, the value), each centred in the box's height. box = 1: the pop-over, its own background first.
+// The drawer: the correlation row ABOVE the field (the user, 2026-10-05: "correlation above the graph not next to
+// it"): the meter across, its value at the right, no label (the user: "remove the correlation text"); the field takes
+// the room under it, centred, as big a square as fits.
+function sw_draw_drawer(ox, oy, w, h, box) local(pad, gap, s, x0, cw, bw, fs, tw, th, vw, bh, y0) (
+  box ? ( gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1); gfx_rect(ox, oy, w, h); );
+  pad = 10*ret; gap = 8*ret;
+  cw = w - 2 * pad;
+  y0 = oy + pad;
+  bh = max(14*ret, min(20*ret, floor(h * 0.12)));
+  fs = max(8*ret, floor(min(cw * 0.06, 11*ret)));
+  gfx_setfont(1, "Arial", fs);
+  gfx_measurestr("+0.00", vw, th);                      // the widest value: the bar never moves with the number
+  cw >= vw + gap + 40*ret ? (
+    x0 = ox + pad;
+    bw = cw - vw - gap;
+    draw_corr_meter(x0, y0, bw, bh, corr_smooth);
+    sprintf(#cv, "%+.2f", corr_smooth);
+    corr_smooth >= 0 ? gfx_set(0.15, 0.85, 0.40, 0.8) : gfx_set(0.90, 0.50, 0.10, 0.8);
+    gfx_setfont(1, "Arial", fs);
+    gfx_measurestr(#cv, tw, th);
+    gfx_x = ox + w - pad - tw; gfx_y = y0 + (bh - th) * 0.5; gfx_drawstr(#cv);
+    y0 += bh + gap;
+  );
+  s = floor(min(oy + h - pad - y0, cw));
+  s < 24*ret ? s = 0;
+  s > 0 ? sw_draw_field(ox + floor((w - s) * 0.5), y0 + floor((oy + h - pad - y0 - s) * 0.5), s, s);
+);
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // MODE: embedded (MCP/TCP) vs standalone
 // ═══════════════════════════════════════════════════════════════════════
 gfx_ext_flags & 1 ? (
@@ -322,22 +426,57 @@ gfx_ext_flags & 1 ? (
   !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
 
 // ╔═══════════════════════════════════════════════════════════════════════╗
-// ║  STANDALONE — header, knob, correlation meter, meters                 ║
+// ║  STANDALONE — header, knob, meter; the STEREO FIELD drawer below      ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
   hdr_h = 34*ret;
   mtr_w = 44*ret;
   body_w = gfx_w - mtr_w;
-  body_h = gfx_h - hdr_h;
 
-  // Split body: top = knob zone (60%), bottom = correlation meter zone (40%)
-  knob_zone_h = body_h * 0.62;
-  corr_zone_h = body_h - knob_zone_h;
+  // ── the STEREO FIELD drawer (rk_drawer; the user, 2026-10-05: "can we give width the same treatment that
+  // saturation got with the bottom drawer", "the correlation i wanted in there as well") ── The face is the WIDTH
+  // knob and the meter; the drawer holds the stereo field and the correlation meter side by side. Closed 204 +
+  // drawer 160 = 364, the size the face had before (so a project saved before it opens looking as designed, the
+  // drawer open: new copies and old projects open). GROW (a float EON Floatter serves): the face keeps the closed
+  // height rkdr_B and the drawer opens in the room the window gains below it, so the knob and the meter never move.
+  // INWIN (any other window): the strip still works and an open drawer takes its room from the window in the same
+  // proportions; a window too small for both keeps the face and offers the FIELD chip. POP (the ReaKit FX dock): no
+  // strip; the FIELD chip pops the drawer's content over the face (not saved, starts shut).
+  rkdr_frame(sw_drawer);
+  sw_drawer != rkdr_open ? sw_drawer = rkdr_open;   // BARE: no undo point, the project not marked (rk_drawer)
+  sw_sh = rkdr_sh;
+  sw_fh = 0;                                         // the field's room under the face (0 = none)
+  rkdr_mode == 0 ? (
+    sw_face_b = rkdr_B - sw_sh;                      // the closed face, less its strip, whatever the drawer does
+    sw_fh = rkdr_G;                                  // the room that has arrived
+  ) : rkdr_mode == 1 && rkdr_open ? (
+    // the design's proportions, the drawer allowed down to 60 % of its size here (rkdr_share never goes under it, to
+    // stay in step with Floatter's growing): without Floatter the window opens at @gfx's 280, where the full drawer
+    // left the face too little and only the chip showed
+    sw_fh = max(floor(rkdr_D * 0.6), floor((gfx_h - sw_sh) * rkdr_dh / (rkdr_ch - rkdr_sh1 + rkdr_dh) + 0.5));
+    gfx_h - sw_fh >= rkdr_minh * ret ? ( sw_face_b = gfx_h - sw_fh - sw_sh; ) : ( sw_fh = 0; sw_face_b = gfx_h - sw_sh; );
+  ) : (
+    sw_face_b = gfx_h - sw_sh;
+  );
+  sw_chip = rkdr_mode == 2 || (rkdr_mode == 1 && rkdr_open && sw_fh <= 0);
+  body_h = sw_face_b - hdr_h;
+
+  // the face is the knob alone (the correlation went into the drawer)
+  knob_zone_h = body_h;
   body_cx = body_w * 0.5;
 
   knob_r = min(body_w * 0.16, knob_zone_h * 0.26);
   knob_r = max(knob_r, 18*ret);
   knob_cy = hdr_h + knob_zone_h * 0.42;
+  // Fitted (2026-10-05: with the drawer open inside the window, or docked, the face is shorter and the knob's scale
+  // ran into the WIDTH row): the block -- the scale out to 1.4 R above the centre, 1.45 R down to WIDTH, its words
+  // -- stays between the WIDTH row's accent bar and the zone's bottom, the knob made smaller rather than overlap
+  // (Saturation's rule). At the designed size it moves under 3 px.
+  sw_top = hdr_h + 14*ret + max(9*ret, floor(min(body_w * 0.05, 13*ret))) * 1.25;   // the WIDTH row's bar + a gap
+  sw_bot = hdr_h + knob_zone_h - 2*ret;
+  sw_k = 2.85 + 0.58 * ret;                                   // the block per R (its words scale with R)
+  knob_r = min(knob_r, max(12*ret, (sw_bot - sw_top - 4*ret) / sw_k));
+  knob_cy = max(knob_cy, sw_top + 1.4 * knob_r);
 
   lbl_font = max(8*ret, floor(knob_r * 0.32));
   val_font = max(8*ret, floor(knob_r * 0.26));
@@ -392,6 +531,32 @@ gfx_ext_flags & 1 ? (
   led_r_hdr = max(3*ret, sh_font * 0.35);
   gfx_setfont(1, "Arial", sh_font, 'b');
 
+  // ── the FIELD chip (the dock, or a window too small for the drawer): at the right of the WIDTH row, a click pops
+  // the drawer's content (the field and the correlation) over the face; a click on the chip or anywhere else closes
+  // it (a click inside it does nothing). Its clicks are read here, before the WIDTH LED's, so the click that closes
+  // it does nothing else (Saturation's CURVE chip).
+  sw_chip ? (
+    gfx_measurestr("WIDTH", sw_wtw, th);
+    gfx_measurestr("FIELD", tw, th);
+    sw_cb_h = th + 6*ret;
+    sw_cb_w = tw + 14*ret;
+    sw_cb_w > body_w - 6*ret - (body_cx + sw_wtw / 2 + 6*ret) ? sw_cb_w = sw_cb_h;   // no room for the word: an arrow
+    sw_cb_x = body_w - sw_cb_w - 6*ret; sw_cb_y = sh_y + th * 0.5 - sw_cb_h * 0.5;
+    sw_pn_x = 8*ret; sw_pn_y = sw_cb_y + sw_cb_h + 4*ret;
+    sw_pn_w = max(40*ret, gfx_w - 16*ret);
+    sw_pn_h = max(40*ret, gfx_h - sw_pn_y - 6*ret);
+    lmb_down ? (
+      mx >= sw_cb_x && mx < sw_cb_x + sw_cb_w && my >= sw_cb_y && my < sw_cb_y + sw_cb_h ? (
+        sw_pop = !sw_pop; lmb_down = 0;
+      ) : sw_pop ? (
+        !(mx >= sw_pn_x && mx < sw_pn_x + sw_pn_w && my >= sw_pn_y && my < sw_pn_y + sw_pn_h) ? sw_pop = 0;
+        lmb_down = 0;
+      );
+    );
+  ) : (
+    sw_pop = 0;
+  );
+
   mb0 = bm;
   gfx_measurestr("WIDTH", tw, th); sh_cx = body_cx;
   led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
@@ -407,13 +572,30 @@ gfx_ext_flags & 1 ? (
   slider2 ? gfx_set(wd_lr, wd_lg, wd_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
   gfx_rect(body_cx - body_w * 0.25, bar_y, body_w * 0.50, 2*ret);
 
-  // Meter divider
+  // the FIELD chip: lit while the field is popped open; the word, or an arrow where it does not fit
+  sw_chip ? (
+    sw_pop ? gfx_set(wd_lr, wd_lg, wd_lb, 1) : gfx_set(0.20, 0.22, 0.26, 1);
+    gfx_rect(sw_cb_x, sw_cb_y, sw_cb_w, sw_cb_h);
+    sw_pop ? gfx_set(0.08, 0.08, 0.09, 1) : gfx_set(0.80, 0.82, 0.86, 1);
+    sw_cb_w > sw_cb_h ? (
+      gfx_setfont(1, "Arial", sh_font, 'b');
+      gfx_measurestr("FIELD", tw, th);
+      gfx_x = sw_cb_x + (sw_cb_w - tw) * 0.5; gfx_y = sw_cb_y + (sw_cb_h - th) * 0.5;
+      gfx_drawstr("FIELD");
+    ) : (
+      sw_ar = sw_cb_h * 0.25; sw_acx = sw_cb_x + sw_cb_w * 0.5; sw_acy = sw_cb_y + sw_cb_h * 0.5;
+      sw_pop ? gfx_triangle(sw_acx - sw_ar, sw_acy + sw_ar * 0.5, sw_acx + sw_ar, sw_acy + sw_ar * 0.5, sw_acx, sw_acy - sw_ar * 0.5)
+             : gfx_triangle(sw_acx - sw_ar, sw_acy - sw_ar * 0.5, sw_acx + sw_ar, sw_acy - sw_ar * 0.5, sw_acx, sw_acy + sw_ar * 0.5);
+    );
+  );
+
+  // Meter divider: down to the face's bottom (an open field runs under the meter too)
   gfx_set(0.18, 0.18, 0.20, 0.5);
-  gfx_line(body_w, hdr_h + 2*ret, body_w, gfx_h - 2*ret);
+  gfx_line(body_w, hdr_h + 2*ret, body_w, sw_face_b - 2*ret);
 
   // ── WIDTH knob ──
   cx = body_cx; m = km;
-  nv = ssl_knob_interact(m, cx, knob_cy, knob_r, slider1, 0, 200, 100, 201);
+  nv = sw_pop ? slider1 : ssl_knob_interact(m, cx, knob_cy, knob_r, slider1, 0, 200, 100, 201);   // the field is over it
   nv = floor(nv + 0.5); nv = clamp(nv, 0, 200);
   nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
   rk_role_col(3, 1, wd_cr, wd_cg, wd_cb);  // WIDTH — shape/width role
@@ -436,39 +618,30 @@ gfx_ext_flags & 1 ? (
   gfx_measurestr("WIDE", tw, th);
   gfx_x = cx + knob_r * 1.6 - tw; gfx_y = knob_cy - knob_r * 0.15; gfx_drawstr("WIDE");
 
-  // ── Horizontal divider between knob and correlation ──
-  div_y = hdr_h + knob_zone_h;
-  gfx_set(0.18, 0.18, 0.20, 0.4);
-  gfx_line(6*ret, div_y, body_w - 6*ret, div_y);
-
-  // ── Correlation meter section ──
-  cm_section_label_font = max(8*ret, floor(min(body_w * 0.04, 11*ret)));
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
-  gfx_setfont(1, "Arial", cm_section_label_font, 'b');
-  gfx_measurestr("CORRELATION", tw, th);
-  cm_label_y = div_y + 8*ret;
-  gfx_x = body_cx - tw / 2; gfx_y = cm_label_y; gfx_drawstr("CORRELATION");
-
-  cm_pad = 12*ret;
-  cm_w = body_w - cm_pad * 2;
-  cm_h = min(24*ret, corr_zone_h * 0.28);
-  cm_h = max(cm_h, 14*ret);
-  cm_ox = cm_pad;
-  cm_oy = cm_label_y + th + 8*ret;
-  draw_corr_meter(cm_ox, cm_oy, cm_w, cm_h, corr_smooth);
-
-  // Correlation value readout
-  sprintf(#cv, "%+.2f", corr_smooth);
-  corr_smooth >= 0 ? gfx_set(0.15, 0.85, 0.40, 0.8) : gfx_set(0.90, 0.50, 0.10, 0.8);
-  gfx_setfont(1, "Arial", max(8*ret, floor(min(body_w * 0.04, 11*ret))));
-  gfx_measurestr(#cv, tw, th);
-  gfx_x = body_cx - tw / 2; gfx_y = cm_oy + cm_h + 6*ret; gfx_drawstr(#cv);
-
-  // ── Meter ──
+  // ── Meter: the face's height ──
   mtr_x = body_w + 5*ret; mtr_y = hdr_h + 8*ret;
-  mtr_h = gfx_h - hdr_h - 16*ret;
+  mtr_h = sw_face_b - hdr_h - 16*ret;
   mtr_bar_w = mtr_w - 18*ret;
   mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── the STEREO FIELD drawer: in the room under the face, across the whole width, the field and the correlation.
+  // Nothing is drawn there before the room arrives, and no drawer work is done while it is shut.
+  sw_fh > 0 ? (
+    gfx_set(0.18, 0.18, 0.20, 0.5);
+    gfx_line(6*ret, sw_face_b, gfx_w - 6*ret, sw_face_b);
+    sw_draw_drawer(0, sw_face_b, gfx_w, sw_fh, 0);
+  );
+
+  // ── the STEREO FIELD strip along the bottom edge (GROW / INWIN; not in the dock): a click opens or closes it ──
+  rkdr_strip(gfx_h - sw_sh, gfx_w, "STEREO FIELD", _th_tx_r, _th_tx_g, _th_tx_b, _th_td_r, _th_td_g, _th_td_b,
+             _th_bg_r, _th_bg_g, _th_bg_b);
+
+  // ── the drawer's content, popped open over the face (the FIELD chip), last so it is on top ──
+  sw_chip && sw_pop ? (
+    gfx_set(0, 0, 0, 0.45);
+    gfx_rect(sw_pn_x - 3*ret, sw_pn_y - 2*ret, sw_pn_w + 6*ret, sw_pn_h + 6*ret);   // a shadow
+    sw_draw_drawer(sw_pn_x, sw_pn_y, sw_pn_w, sw_pn_h, 1);
+  );
 );
 
 // ── Options menu overlay ──

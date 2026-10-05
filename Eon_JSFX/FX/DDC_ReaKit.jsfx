@@ -19,7 +19,8 @@
 // lookahead, and 2x on the detector. His header above is kept as he wrote it.
 // v2.1.2
 desc:EON: DDC
-options:gmem=Swing_Media_Transfer no_meter
+options:gfx_hz=60 no_meter
+options:gmem=Swing_Media_Transfer
 
 import ../../ReaKit/knobs_kbsg.jsfx-inc
 import ../../ReaKit/buttons_kbsg.jsfx-inc
@@ -126,9 +127,32 @@ function recalc_dsp() (
   ratio_1 = ratio;
   ratio = max(slider2,0.0001);
 
+  // LOSER's reset: at the top Threshold (-0.1 dB) the release takes ~10 s, so the gain goes back
+  // to 1. It used to land in one sample: a click when Threshold reached the top with gain
+  // reduction in play (stress test 2026-10-02). For plain compression (ratio >= 1 now and before,
+  // so the gain is at or below 1) @sample now walks it back over ~10 ms (ddc_rel_fL / ddc_rel_fR,
+  // release direction only, each channel on its own). Below 1:1 the gain sits ABOVE 1, up to
+  // thousands near ratio 0, with the make-up cancelling it: there the reset must stay instant, or
+  // leaving the bottom of Ratio swells by tens of dB (+35 dB measured, ratio 0 -> 10; independent
+  // review 2026-10-04).
+  // At load (snap_params) it lands at once either way.
+  ddc_rel_k = 1 - exp(-1 / max(0.010 * srate, 1));
   treshdB == -.1 || ratio_1 < .1  ? (
-    gainL = seekgainL = 1;
-    gainR = seekgainR = 1;
+    seekgainL = 1;
+    seekgainR = 1;
+    snap_params || ratio < 1 || ratio_1 < 1 ? (
+      gainL = gainR = 1;
+      ddc_rel_fL = ddc_rel_fR = 0;
+    ) : (
+      // a gain still ABOVE 1 (a Ratio under 1:1 a block or two ago left it there, before Ratio and
+      // Threshold both moved; Codex delta audit 2026-10-05) goes back at once, as below 1:1: walking,
+      // the detector's attack took it back and the top threshold's slow attack kept it boosted for
+      // tens of seconds. A gain at or under 1 walks.
+      gainL > 1 ? ( gainL = 1; ddc_rel_fL = 0; ) : ( ddc_rel_fL = 1; );
+      gainR > 1 ? ( gainR = 1; ddc_rel_fR = 0; ) : ( ddc_rel_fR = 1; );
+    );
+  ) : (
+    ddc_rel_fL = ddc_rel_fR = 0;
   );
 
   // The detector's own rate: 2x runs it twice per sample (the audio is never
@@ -141,10 +165,12 @@ function recalc_dsp() (
   rms_size_1 = rms_size;
   rms_size = min(max(floor(slider6/1000*det_sr + 0.5), 1), 1000000);
   rms_size_1 != rms_size ? (
+      // no memset here (up to 192,000 cells per channel on the audio thread, audit 2026-10-05): the sums and
+      // positions restart and the ring WARMS UP (rms_fill counts the samples written since; a stale cell is
+      // overwritten, never subtracted, and the mean divides by what has been written)
       rms_sqr_sum = rms_bpos = 0;
-      memset(0,0,rms_size);
       rms_sqr_sum_R = rms_bpos_R = 0;
-      memset(rms_buf_R, 0, rms_size);
+      rms_fill = 0;
   );
 
   feed = slider7;
@@ -220,12 +246,18 @@ function ddc_detect(scL, scR) (
 
   // ── RMS over rms_size steps (1 = off: the level itself, no ring, no sqrt) ──
   rms_size > 1 ? (
-    rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
+    rms_fill < rms_size ? (
+      rms_fill += 1;                                     // warming up: the cells ahead are stale, not subtracted
+      rms_sqr_sum += (rms_bpos[0] = sqr(det_L));
+      rms_sqr_sum_R += ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
+    ) : (
+      rms_sqr_sum = max(rms_sqr_sum - rms_bpos[0], 0) + (rms_bpos[0] = sqr(det_L));
+      rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
+    );
     (rms_bpos += 1) >= rms_size ? rms_bpos = 0;
-    rmsL = sqrt(rms_sqr_sum / rms_size);
-    rms_sqr_sum_R = max(rms_sqr_sum_R - (rms_buf_R + rms_bpos_R)[0], 0) + ((rms_buf_R + rms_bpos_R)[0] = sqr(det_R));
     (rms_bpos_R += 1) >= rms_size ? rms_bpos_R = 0;
-    rmsR = sqrt(rms_sqr_sum_R / rms_size);
+    rmsL = sqrt(rms_sqr_sum / rms_fill);
+    rmsR = sqrt(rms_sqr_sum_R / rms_fill);
   ) : (
     rmsL = det_L; rmsR = det_R;
   );
@@ -236,9 +268,10 @@ function ddc_detect(scL, scR) (
     rms_dB < knee_lo ? (
       (under_treshL += 1) > hold ? ( seekgainL = 1; );
     ) : rms_dB < knee_hi ? (
-      _x = (rms_dB - knee_lo) / knee;
-      _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
-      _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
+      // the quadratic soft knee: 0 dB of reduction at the knee's foot, the hard-knee line's exactly at its top
+      // (the old effective-ratio curve left a step there: (1 + ratio) / 2 instead of ratio; audit 2026-10-05)
+      _x = rms_dB - knee_lo;
+      _sg = exp((1 / ratio - 1) * _x * _x / (2 * knee) / c_ampdB);
       hold ? (
         ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
       ) : ( seekgainL = _sg; );
@@ -268,9 +301,10 @@ function ddc_detect(scL, scR) (
     rms_dB < knee_lo ? (
       (under_treshR += 1) > hold ? ( seekgainR = 1; );
     ) : rms_dB < knee_hi ? (
-      _x = (rms_dB - knee_lo) / knee;
-      _eff_r = 1 + (ratio - 1) * _x * _x * 0.5;
-      _sg = exp((treshdB + (rms_dB - treshdB) / _eff_r - rms_dB) / c_ampdB);
+      // the quadratic soft knee: 0 dB of reduction at the knee's foot, the hard-knee line's exactly at its top
+      // (the old effective-ratio curve left a step there: (1 + ratio) / 2 instead of ratio; audit 2026-10-05)
+      _x = rms_dB - knee_lo;
+      _sg = exp((1 / ratio - 1) * _x * _x / (2 * knee) / c_ampdB);
       hold ? (
         ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
       ) : ( seekgainR = _sg; );
@@ -363,6 +397,28 @@ os_on ? (
   ddc_detect(os.y0L, os.y0R);
 ) : (
   ddc_detect(sc_L, sc_R);
+);
+
+// ── The reset's fast return to unity (see recalc_dsp), each channel on its own: release direction
+// only, so a channel's own detector still wins if its signal crosses the threshold again, and the
+// other channel keeps walking (one flag for both left the other a few dB down, Link under 100 % and a
+// louder hit mid-walk, recovering at the top Threshold's 0.1 dB per Release time: seconds, tens with a
+// long Release; outside audit 2026-10-04, .dev_tests/ddc_reset_unlinked.py).
+// It walks to unity at most: a soft knee's target above 1 (its lower half) is left to the
+// detector's own slow release, as the old one-shot reset left it. Each lands exactly. ──
+ddc_rel_fL ? (
+  gainL > seekgainL ? ( ddc_rel_fL = 0; ) : (   // attacking again: hand back, as the old reset did
+    ddc_tgt = min(seekgainL, 1);
+    gainL += (ddc_tgt - gainL) * ddc_rel_k;
+    abs(ddc_tgt - gainL) < 0.000001 ? ( gainL = ddc_tgt; ddc_rel_fL = 0; );
+  );
+);
+ddc_rel_fR ? (
+  gainR > seekgainR ? ( ddc_rel_fR = 0; ) : (
+    ddc_tgt = min(seekgainR, 1);
+    gainR += (ddc_tgt - gainR) * ddc_rel_k;
+    abs(ddc_tgt - gainR) < 0.000001 ? ( gainR = ddc_tgt; ddc_rel_fR = 0; );
+  );
 );
 
 // ── Gain: the reduction as computed, times the smoothed output volume ──
@@ -845,3 +901,4 @@ is_embedded ? (
 
   rkth_cluster_overlay();   // the open THEME panel and its lists draw on top
 ); // end floating
+
