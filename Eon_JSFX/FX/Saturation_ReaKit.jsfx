@@ -348,7 +348,9 @@ gfx_ext_flags & 1 ? (
   // CURVE) ── GROW (a float EON Floatter serves): the face lives in the closed height rkdr_B and the curve opens
   // in the room the window gains below it, so the knob and the meter never move. INWIN (any other window): the
   // strip still works and an open curve takes its room from the knob, as the split always did. POP (the ReaKit FX
-  // dock): no strip, today's face: the curve under the knob when there is room, else behind the CURVE chip.
+  // dock): no strip; the knob alone, and the CURVE chip pops the curve over it (not saved), as the 3-Band's BANDS
+  // chip does. The curve used to sit under the knob there whenever the dock was tall enough, whatever the drawer's
+  // state said (the user, 2026-10-05: "bottom graph dont stay closed in the dock").
   rkdr_frame(sat_drawer);
   sat_drawer != rkdr_open ? sat_drawer = rkdr_open;   // BARE: no undo point, the project not marked (rk_drawer)
   sat_sh = rkdr_sh;
@@ -357,7 +359,7 @@ gfx_ext_flags & 1 ? (
     sat_split = 0;
   ) : (
     body_h = gfx_h - hdr_h - sat_sh;
-    sat_split = rkdr_mode == 2 || rkdr_open;   // INWIN closed: the knob alone, the strip opens the curve
+    sat_split = rkdr_mode == 1 && rkdr_open;   // INWIN closed, and the dock: the knob alone
   );
 
   // Split body vertically: top = knob zone, bottom = curve zone. COMPACT: a window with no room for both (the
@@ -374,6 +376,7 @@ gfx_ext_flags & 1 ? (
   sat_k = 2.85 + 0.58 * ret;                                 // the block per R (its words scale with R * ret)
   sat_kr = (hdr_h + body_h * 0.48 - 6 * ret - sat_top) / sat_k;   // the normal split's knob, fitted
   sat_compact = sat_split && (min(body_w - 20 * ret, body_h * 0.52 - 20 * ret) < 100 * ret || sat_kr < 26 * ret);
+  sat_chip = sat_compact || rkdr_mode == 2;   // the CURVE chip and its pop-over: COMPACT, and always in the dock
   knob_zone_h = sat_split && !sat_compact ? body_h * 0.48 : body_h;
   curve_zone_h = body_h - knob_zone_h;
   body_cx = body_w * 0.5;
@@ -445,7 +448,7 @@ gfx_ext_flags & 1 ? (
   // click on the chip or anywhere else closes it (a click inside it does nothing). Not saved: it starts closed.
   // While it is open the knob under it takes no click, drag or wheel. Its clicks are read here, before the DRIVE
   // LED's, so the click that closes it does nothing else.
-  sat_compact ? (
+  sat_chip ? (
     gfx_measurestr("DRIVE", sat_dtw, th);
     gfx_measurestr("CURVE", tw, th);
     sat_cvb_h = th + 6 * ret;
@@ -482,8 +485,8 @@ gfx_ext_flags & 1 ? (
   slider2 ? gfx_set(drv_lr, drv_lg, drv_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
   gfx_rect(body_cx - body_w * 0.25, bar_y, body_w * 0.50, 2 * ret);
 
-  // the CURVE chip (COMPACT): lit while the curve is open; the word, or an arrow where it does not fit
-  sat_compact ? (
+  // the CURVE chip (COMPACT, the dock): lit while the curve is open; the word, or an arrow where it does not fit
+  sat_chip ? (
     sat_cv_open ? gfx_set(0.90, 0.55, 0.15, 1) : gfx_set(0.20, 0.22, 0.26, 1);   // lit: the curve's own orange
     gfx_rect(sat_cvb_x, sat_cvb_y, sat_cvb_w, sat_cvb_h);
     sat_cv_open ? gfx_set(0.08, 0.08, 0.09, 1) : gfx_set(0.80, 0.82, 0.86, 1);
@@ -553,8 +556,8 @@ gfx_ext_flags & 1 ? (
   rkdr_strip(gfx_h - sat_sh, gfx_w, "CURVE", _th_tx_r, _th_tx_g, _th_tx_b, _th_td_r, _th_td_g, _th_td_b,
              _th_bg_r, _th_bg_g, _th_bg_b);
 
-  // ── the CURVE, popped open over the knob (COMPACT), last so it is on top ──
-  sat_compact && sat_cv_open ? (
+  // ── the CURVE, popped open over the knob (COMPACT, the dock), last so it is on top ──
+  sat_chip && sat_cv_open ? (
     gfx_set(0, 0, 0, 0.45);
     gfx_rect(sat_pnl_x - 3 * ret, sat_pnl_y - 2 * ret, sat_pnl_s + 6 * ret, sat_pnl_s + 6 * ret);   // a shadow
     draw_curve(sat_pnl_x, sat_pnl_y, sat_pnl_s);
