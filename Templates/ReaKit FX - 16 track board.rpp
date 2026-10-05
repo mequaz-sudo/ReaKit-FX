@@ -94,11 +94,6 @@
     <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
       20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     >
-    <JS_SER
-      AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-      AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-    >
     MULTIFXLINK 0
     FLOATPOS 0 0 0 0
     FXID {61B3C028-56D8-4D46-B308-055CEEAF7F52}
@@ -106,9 +101,6 @@
     BYPASS 0 0 0
     <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
       0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
-    >
-    <JS_SER
-      AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
     >
     MULTIFXLINK 0
     PRESETNAME Default
@@ -126,9 +118,6 @@
     BYPASS 0 0 0
     <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
       100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    >
-    <JS_SER
-      AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
     >
     MULTIFXLINK 0
     FLOATPOS 0 0 0 0
@@ -192,11 +181,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {43B145D9-AEA4-4E28-9259-0B6742DCF692}
@@ -205,9 +189,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {F26C72B7-0199-4C36-8E5E-A5342ABAA09B}
@@ -215,9 +196,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         -4.1 200 4.8 2000 3.6 0 1 1 1 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -234,9 +212,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -280,11 +255,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {5ED49BA1-275C-48F0-B3D4-7AFD8AEA71F7}
@@ -293,9 +263,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {F367C32E-D132-42F2-9E03-ED98AAFF8BE7}
@@ -303,9 +270,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         -4.1 200 4.8 2000 3.6 0 1 1 1 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -322,9 +286,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -368,11 +329,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {116A5FDB-889C-4361-9AC3-1D371BD020B1}
@@ -381,9 +337,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {2F8ADBD9-FD7E-41B7-9BD7-24FDA8F6771B}
@@ -391,9 +344,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         -4.1 200 4.8 2000 3.6 0 1 1 1 1 2 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -410,9 +360,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -456,11 +403,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {00F8C9F3-0736-436B-8501-363CA15ED156}
@@ -469,9 +411,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {71A07F56-2E9F-4267-AF1D-2D942D72C3CC}
@@ -479,9 +418,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         -4.1 200 4.8 2000 3.6 0 1 1 1 1 2 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -498,9 +434,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -545,11 +478,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {11DA6929-0941-4054-AA5A-581F5683475C}
@@ -558,9 +486,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {D7B3E881-A15F-4FB6-8545-4643DEDFF8F0}
@@ -568,9 +493,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         -4.1 200 4.8 2000 3.6 0 1 1 1 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -587,9 +509,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -633,11 +552,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {5BB3413A-307D-4AE3-82E8-576217C1807D}
@@ -646,9 +560,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {560F7B5A-564F-4575-A3A0-AD00BEA08ABF}
@@ -656,9 +567,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -675,9 +583,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -721,11 +626,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {1D179B39-38FC-452C-BC08-2377FED98D12}
@@ -734,9 +634,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {53FABE19-8E9E-4115-83DD-BAC612FE6B91}
@@ -744,9 +641,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -763,9 +657,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -809,11 +700,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -8.16 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {29568F24-3E64-4C42-AEE8-F32C88B45539}
@@ -822,9 +708,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {7F7E7C1D-EB6B-4356-A3FB-5DB352344B85}
@@ -832,9 +715,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -851,9 +731,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -897,11 +774,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -7.2 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {DB63292F-7C00-4B95-92F4-D4F725D90F0A}
@@ -910,9 +782,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {A2BC0A08-992D-4C68-AFAE-8E9B3F69A037}
@@ -920,9 +789,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -939,9 +805,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -985,11 +848,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -7.92 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {42547100-956C-4A8C-8B7D-A16944DAFB5F}
@@ -998,9 +856,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {BDA2BF9C-C270-4CFF-BEDA-4D35EA1F2E22}
@@ -1008,9 +863,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1027,9 +879,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1073,11 +922,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -7.92 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {BB045603-4009-4FD0-9C0C-B30545AB072F}
@@ -1086,9 +930,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {FFBD2060-065F-4087-A357-743034183880}
@@ -1096,9 +937,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1115,9 +953,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1161,11 +996,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -9.6 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {9F0D18E0-3B7D-4F08-9C2A-240EFEAA2692}
@@ -1174,9 +1004,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {EB902308-0779-4387-B07D-63D70CE2270E}
@@ -1184,9 +1011,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1203,9 +1027,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1249,11 +1070,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -7.68 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {D52ACF40-FDBC-4C31-92FD-E60E80ED6971}
@@ -1262,9 +1078,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {B3079ADA-2B77-4537-AB89-32F6ADAA847E}
@@ -1272,9 +1085,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1291,9 +1101,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1338,11 +1145,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -8.88 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {9079FA4D-48B6-4D9F-9598-223E00308AC5}
@@ -1351,9 +1153,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {F70E650C-03E9-4514-9E24-CDB7B42A85E9}
@@ -1361,9 +1160,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1380,9 +1176,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1433,11 +1226,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {B67C1C4A-DD22-4F80-BEBC-1752F4EAD40D}
@@ -1446,9 +1234,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {22E7FAC5-5A65-4F21-BBC5-D3B98CC567AF}
@@ -1456,9 +1241,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       PRESETNAME Default
@@ -1476,9 +1258,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1529,11 +1308,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {BEA78EE3-162E-48F5-A64C-20A522E307AD}
@@ -1542,9 +1316,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {5EA98848-C8A4-459E-938E-7FF94F4E98AC}
@@ -1552,9 +1323,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       PRESETNAME Default
@@ -1572,9 +1340,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1623,11 +1388,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - -5.52 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {4EFFF02B-B8CB-44E8-8DD7-D3539A55DBFD}
@@ -1636,9 +1396,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {DAD9E8D7-B281-4EB2-8213-02B41D93340D}
@@ -1646,9 +1403,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1665,9 +1419,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1727,11 +1478,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
         20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {1863DACF-DF29-4D7E-99EF-5C7F4ABA663E}
@@ -1740,9 +1486,6 @@
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
-      >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {9DF14D18-D791-48A5-8345-0672D031662C}
@@ -1750,9 +1493,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
         0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
@@ -1769,9 +1509,6 @@
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
         100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      >
-      <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
       >
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
