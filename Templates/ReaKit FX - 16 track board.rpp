@@ -1,0 +1,1782 @@
+<REAPER_PROJECT 0.1 "7.81/win64" 1790873558 0
+  <NOTES 0 2
+  >
+  RIPPLE 0 0
+  GROUPOVERRIDE 0 0 0 0
+  AUTOXFADE 128
+  ENVATTACH 3
+  POOLEDENVATTACH 0
+  TCPUIFLAGS 0
+  MIXERUIFLAGS 11 117 0
+  ENVFADESZ10 40
+  PEAKGAIN 1
+  FEEDBACK 0
+  PANLAW 1
+  PROJOFFS 0 0 0
+  MAXPROJLEN 0 0
+  GRID 3455 8 1 8 1 0 0 0
+  TIMEMODE 1 5 -1 30 0 0 -1 0
+  VIDEO_CONFIG 0 0 65792
+  PANMODE 3
+  PANLAWFLAGS 3
+  CURSOR 0
+  ZOOM 25.47655226122176 0 0
+  VZOOMEX 1 0
+  USE_REC_CFG 0
+  RECMODE 1
+  SMPTESYNC 0 30 100 40 1000 300 0 0 1 0 0
+  LOOP 0
+  LOOPGRAN 0 4
+  RECORD_PATH "Media" ""
+  <RECORD_CFG
+    ZXZhdxgAAQ==
+  >
+  <APPLYFX_CFG
+  >
+  RENDER_FILE ""
+  RENDER_PATTERN ""
+  RENDER_FMT 0 2 0
+  RENDER_1X 0
+  RENDER_RANGE 1 0 0 0 1000
+  RENDER_RESAMPLE 3 0 1
+  RENDER_ADDTOPROJ 0
+  RENDER_STEMS 0
+  RENDER_DITHER 0
+  RENDER_TRIM 0.000001 0.000001 0 0
+  TIMELOCKMODE 0
+  TEMPOENVLOCKMODE 0
+  ITEMMIX 1
+  DEFPITCHMODE 589824 0
+  TAKELANE 1
+  SAMPLERATE 44100 0 0
+  <RENDER_CFG
+    ZXZhdxgAAQ==
+  >
+  LOCK 1
+  <METRONOME 6 2
+    VOL 0.25 0.125
+    BEATLEN 4
+    FREQ 1760 880 1
+    SAMPLES "" "" "" ""
+    SPLIGNORE 0 0
+    SPLDEF 2 660 "" 0 ""
+    SPLDEF 3 440 "" 0 ""
+    PATTERN 0 169
+    PATTERNSTR ABBB
+    MULT 1
+  >
+  GLOBAL_AUTO -1
+  TEMPO 140 4 4 0
+  PLAYRATE 1 0 0.25 4
+  GROUP_NAME 0 Keys
+  GROUP_COLOR 0 29758357
+  GROUP_NAME 1 Overheads
+  SELECTION 2.84442626897693 2.84442626897693
+  SELECTION2 2.84442626897693 2.84442626897693
+  MASTERAUTOMODE 0
+  MASTERTRACKHEIGHT 56 0
+  MASTERPEAKCOL 16576
+  MASTERMUTESOLO 0
+  MASTERTRACKVIEW 1 0.888598 0.012821 0.5 0 0 0 0 0 0 0 0 0 0 1
+  MASTERHWOUT 0 0 1 0 0 0 0 -1
+  MASTER_NCH 2 2
+  MASTER_VOLUME 1 0 -1 -1 1
+  MASTER_PANMODE 3
+  MASTER_PANLAWFLAGS 3
+  MASTER_FX 1
+  MASTER_TRACKID {F4497F93-13DE-4602-A6D5-377E9906AAD9}
+  MASTER_SEL 0
+  <MASTERFXLIST
+    SHOW 0
+    LASTSEL 1
+    DOCKED 0
+    BYPASS 0 0 0
+    <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+      20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    >
+    <JS_SER
+      AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+    >
+    MULTIFXLINK 0
+    FLOATPOS 0 0 0 0
+    FXID {61B3C028-56D8-4D46-B308-055CEEAF7F52}
+    WAK 0 2
+    BYPASS 0 0 0
+    <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+      0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
+    >
+    <JS_SER
+      AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+    >
+    MULTIFXLINK 0
+    PRESETNAME Default
+    FLOATPOS 0 0 0 0
+    FXID {CB6D9633-443D-4A62-8911-5B2B5EA1F5E8}
+    WAK 0 2
+    BYPASS 0 0 0
+    <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+      -20 20 20 0.5 200 0 0 1 -9.9 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    >
+    MULTIFXLINK 0
+    FLOATPOS 0 0 0 0
+    FXID {0EE36B1E-B60E-460F-9D40-3E23C4DA439D}
+    WAK 0 2
+    BYPASS 0 0 0
+    <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+      100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    >
+    <JS_SER
+      AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+    >
+    MULTIFXLINK 0
+    FLOATPOS 0 0 0 0
+    FXID {D7CC9DEC-77CA-4B7D-82E3-B2283B8265AD}
+    WAK 0 2
+  >
+  <MASTERPLAYSPEEDENV
+    EGUID {64CD49E1-69F5-4CAD-94A0-1BEF0A28EC77}
+    ACT 0 -1
+    VIS 0 1 1
+    LANEHEIGHT 0 0
+    ARM 0
+    DEFSHAPE 0 -1 -1
+  >
+  <TEMPOENVEX
+    EGUID {AC7EAD6F-42B7-46BB-9731-8C5850B514AB}
+    ACT 0 -1
+    VIS 1 0 1
+    LANEHEIGHT 0 0
+    ARM 0
+    DEFSHAPE 1 -1 -1
+  >
+  RULERHEIGHT 83 86
+  RULERLANE 1 4 "" 0 -1 0
+  RULERLANE 2 8 "" 0 -1 0
+  <PROJBAY
+  >
+  <TRACK {31BE84C4-CE7A-4821-B316-F42C7D7D16DA}
+    NAME "Lead Vox"
+    PEAKCOL 16777433
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "mic_condenser_1.png"
+    FX 1
+    TRACKID {31BE84C4-CE7A-4821-B316-F42C7D7D16DA}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {43B145D9-AEA4-4E28-9259-0B6742DCF692}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {F26C72B7-0199-4C36-8E5E-A5342ABAA09B}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        -4.1 200 4.8 2000 3.6 0 1 1 1 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {DEE7AB5F-32B6-42ED-B259-E677319A8CB4}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {EC9C9186-7065-4C09-89C1-8E73E3299B61}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7E08F41A-DCF0-410D-989D-40121CBBA9BC}
+      WAK 0 2
+    >
+  >
+  <TRACK {16CE8057-5AF4-43F1-B445-877E9154147E}
+    NAME "BG Vox"
+    PEAKCOL 16777433
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "mic_dynamic_1.png"
+    FX 1
+    TRACKID {16CE8057-5AF4-43F1-B445-877E9154147E}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 4
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {5ED49BA1-275C-48F0-B3D4-7AFD8AEA71F7}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {F367C32E-D132-42F2-9E03-ED98AAFF8BE7}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        -4.1 200 4.8 2000 3.6 0 1 1 1 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {DCAD0217-9113-4004-99C0-85B537F02FA5}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {2B4D0F75-8433-4144-B1C0-2989697AF550}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {79B9C93D-BFF5-4145-9F96-1CD21C9E381C}
+      WAK 0 2
+    >
+  >
+  <TRACK {5379C2FA-9C9D-49FC-9C9D-EB38413429D1}
+    NAME "Gtr DI"
+    PEAKCOL 16842751
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "guitar.png"
+    FX 1
+    TRACKID {5379C2FA-9C9D-49FC-9C9D-EB38413429D1}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {116A5FDB-889C-4361-9AC3-1D371BD020B1}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {2F8ADBD9-FD7E-41B7-9BD7-24FDA8F6771B}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        -4.1 200 4.8 2000 3.6 0 1 1 1 1 2 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {30862542-AAE1-4A9F-AC82-26958FE411DC}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {0EB2D2D9-224E-4BC3-8CED-B657A082841E}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {3E6BA280-C7A1-4C92-B2D3-11FF251BC765}
+      WAK 0 2
+    >
+  >
+  <TRACK {4EBDCA15-5354-4C4A-937A-957C3225F5F1}
+    NAME "Gtr Amp"
+    PEAKCOL 16842751
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "amp_combo.png"
+    FX 1
+    TRACKID {4EBDCA15-5354-4C4A-937A-957C3225F5F1}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {00F8C9F3-0736-436B-8501-363CA15ED156}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {71A07F56-2E9F-4267-AF1D-2D942D72C3CC}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        -4.1 200 4.8 2000 3.6 0 1 1 1 1 2 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {4317FAE0-F678-4515-9267-4A18A239DED8}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {488137A5-1105-4802-BE6E-C152BF9FC8AD}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {E4AD854B-ACA1-453B-B278-B9F3B12852CC}
+      WAK 0 2
+    >
+  >
+  <TRACK {A564E3CF-5BA4-4C22-9FF0-CDF736676AC0}
+    NAME "Keys L&R"
+    PEAKCOL 16842751
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "synth.png"
+    FX 1
+    TRACKID {A564E3CF-5BA4-4C22-9FF0-CDF736676AC0}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 4
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {11DA6929-0941-4054-AA5A-581F5683475C}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {D7B3E881-A15F-4FB6-8545-4643DEDFF8F0}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        -4.1 200 4.8 2000 3.6 0 1 1 1 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7C6DF1F5-71FC-4411-BF96-710ACFF0E749}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {EBD47EF5-11C8-497A-AD24-B9884629AA21}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {3A7834A3-3094-4D29-92C0-DE2C07163478}
+      WAK 0 2
+    >
+  >
+  <TRACK {96E851B3-4C45-44AD-B5D3-B235BE04D272}
+    NAME "Bass DI"
+    PEAKCOL 33488896
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "bass3.png"
+    FX 1
+    TRACKID {96E851B3-4C45-44AD-B5D3-B235BE04D272}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {5BB3413A-307D-4AE3-82E8-576217C1807D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {560F7B5A-564F-4575-A3A0-AD00BEA08ABF}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {2CF87DA6-49E8-4D77-A6B9-BD3CD1FBDE9D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {1B80735E-7FA6-4D23-8252-F4DAC48AF0C0}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {123EDCF1-DC6A-4DA9-8E97-D5CC681FE7EC}
+      WAK 0 2
+    >
+  >
+  <TRACK {63B4A848-8D5D-4789-8308-CA44DFF9A3D3}
+    NAME "Bass Amp"
+    PEAKCOL 33488896
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "amp.png"
+    FX 1
+    TRACKID {63B4A848-8D5D-4789-8308-CA44DFF9A3D3}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 4
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {1D179B39-38FC-452C-BC08-2377FED98D12}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {53FABE19-8E9E-4115-83DD-BAC612FE6B91}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {FF64662F-0839-4584-87AD-0C909C0A008B}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {AD4B3B5A-68E7-4E5E-BC48-12356205B3DB}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {096CF899-D230-4A2B-BC7A-CCA038EB6410}
+      WAK 0 2
+    >
+  >
+  <TRACK {3D560F23-F598-4AF5-BF80-D5955647C3C7}
+    NAME Kick
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "kick.png"
+    FX 1
+    TRACKID {3D560F23-F598-4AF5-BF80-D5955647C3C7}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -8.16 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {29568F24-3E64-4C42-AEE8-F32C88B45539}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7F7E7C1D-EB6B-4356-A3FB-5DB352344B85}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {A713A6EE-ABEE-4D91-8D0F-AE2311CAECB2}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {274D425B-10E6-4E78-9BCD-4752CBBA88C9}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {5D7A0CEF-F169-4558-8B71-AE6074505B7D}
+      WAK 0 2
+    >
+  >
+  <TRACK {10618D89-D42B-4D99-903D-3D35A0AEA6EB}
+    NAME Snare
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "snare_top.png"
+    FX 1
+    TRACKID {10618D89-D42B-4D99-903D-3D35A0AEA6EB}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 2
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -7.2 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {DB63292F-7C00-4B95-92F4-D4F725D90F0A}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {A2BC0A08-992D-4C68-AFAE-8E9B3F69A037}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {76CE8854-CCAA-4899-B79E-126F9D90AA9A}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {3248273A-2A8B-4DFF-9E2F-CFD2190969A9}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {2928C0F7-7164-4818-9B5B-2C0D5FF83A04}
+      WAK 0 2
+    >
+  >
+  <TRACK {AE3186DE-7E77-4E07-8875-E5EDC8240900}
+    NAME "Tom Lo"
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "tom.png"
+    FX 1
+    TRACKID {AE3186DE-7E77-4E07-8875-E5EDC8240900}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -7.92 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {42547100-956C-4A8C-8B7D-A16944DAFB5F}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {BDA2BF9C-C270-4CFF-BEDA-4D35EA1F2E22}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {44A343FF-F66A-4870-ADA5-FB4240DAA9FF}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -0.3 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {5B53C542-5D8F-48DD-A0DC-B5A2E1EC59E3}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {9F6D48D2-29CA-4F93-82B9-97A39E8EC3F0}
+      WAK 0 2
+    >
+  >
+  <TRACK {12A20959-5CC0-402F-AA15-771866AE83FF}
+    NAME "Tom Mid"
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "tom.png"
+    FX 1
+    TRACKID {12A20959-5CC0-402F-AA15-771866AE83FF}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -7.92 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {BB045603-4009-4FD0-9C0C-B30545AB072F}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {FFBD2060-065F-4087-A357-743034183880}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {E50EB3D7-F3CB-4D45-9F6E-82D19030D6E3}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {95856842-6330-433E-9FE0-6360C454FC31}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {54BFADD8-B620-4EC9-B88A-DC3C655C58AA}
+      WAK 0 2
+    >
+  >
+  <TRACK {AD02E6C7-40E7-40D2-9AD6-993EBC4DED2A}
+    NAME "Tom HI"
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "tom.png"
+    FX 1
+    TRACKID {AD02E6C7-40E7-40D2-9AD6-993EBC4DED2A}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -9.6 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {9F0D18E0-3B7D-4F08-9C2A-240EFEAA2692}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {EB902308-0779-4387-B07D-63D70CE2270E}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {37E3A024-DFCF-40C9-A39A-42081BC511B6}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {711BAF29-E7C2-4054-82B9-FDF0138205AC}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {1A2FEE82-5237-4BFF-9D7B-91F158D5FD19}
+      WAK 0 2
+    >
+  >
+  <TRACK {4A1EC7D2-D0F1-4FC8-87A4-77D1639E96AF}
+    NAME Room
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "mic.png"
+    FX 1
+    TRACKID {4A1EC7D2-D0F1-4FC8-87A4-77D1639E96AF}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -7.68 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {D52ACF40-FDBC-4C31-92FD-E60E80ED6971}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {B3079ADA-2B77-4537-AB89-32F6ADAA847E}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {CE66EC23-4FA8-460B-ADC7-A266D8F515DA}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {57243431-1958-4BE4-9451-5C29AB9992C4}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {14A43512-B3E1-48D8-93E8-6B0A41B481DC}
+      WAK 0 2
+    >
+  >
+  <TRACK {007A2C13-8F5F-443C-A7EA-602D45CF799B}
+    NAME "OH L&R"
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.012821 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "overheads.png"
+    FX 1
+    TRACKID {007A2C13-8F5F-443C-A7EA-602D45CF799B}
+    PERF 0
+    LAYOUTS "" "Mixer Swap"
+    MIDIOUT -1 -1
+    MAINSEND 0 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 1
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -8.88 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {9079FA4D-48B6-4D9F-9598-223E00308AC5}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {F70E650C-03E9-4514-9E24-CDB7B42A85E9}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {00CBE2F5-B548-46E5-BCED-58A7EB17E9CD}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {BFB25148-1311-462B-BAFC-C4C64D5B25F9}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {238D868F-598D-4F4A-801D-1AC8C692D36C}
+      WAK 0 2
+    >
+  >
+  <TRACK {1AC5F364-634B-413E-B9C1-81E900C22AEB}
+    NAME Vocals
+    PEAKCOL 16777433
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.001709 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    SPACER 1
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "mic.png"
+    FX 1
+    TRACKID {1AC5F364-634B-413E-B9C1-81E900C22AEB}
+    PERF 0
+    LAYOUTS B "Mixer Swap"
+    AUXRECV 0 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 1 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    MIDIOUT -1 -1
+    MAINSEND 1 0
+    <FXCHAIN
+      WNDRECT 24 52 1106 973
+      SHOW 0
+      LASTSEL 0
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {B67C1C4A-DD22-4F80-BEBC-1752F4EAD40D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {22E7FAC5-5A65-4F21-BBC5-D3B98CC567AF}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      PRESETNAME Default
+      FLOATPOS 0 0 0 0
+      FXID {565B4CAF-A578-4B71-A5D1-4F4BFAB60801}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {033349F5-549A-4A2D-BF39-ED240E4F50F2}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {C0729C7B-14C2-4906-9792-7D718A0BD2B2}
+      WAK 0 2
+    >
+  >
+  <TRACK {6784D95F-7B77-4ECD-9EF8-46677CD2D701}
+    NAME Instruments
+    PEAKCOL 16842751
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.001709 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "meter.png"
+    FX 1
+    TRACKID {6784D95F-7B77-4ECD-9EF8-46677CD2D701}
+    PERF 0
+    LAYOUTS B "Mixer Swap"
+    AUXRECV 2 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 3 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 4 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    MIDIOUT -1 -1
+    MAINSEND 1 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 0
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {BEA78EE3-162E-48F5-A64C-20A522E307AD}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {5EA98848-C8A4-459E-938E-7FF94F4E98AC}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - Default
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      PRESETNAME Default
+      FLOATPOS 0 0 0 0
+      FXID {E293E8A5-1DCB-4123-9662-FB6ED003E7CB}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 1 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {0B848A82-9198-4D1E-AA4D-EB9502EABB69}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {AA57F837-EB6C-4725-B090-41D664E68A03}
+      WAK 0 2
+    >
+  >
+  <TRACK {482CE8A2-F09F-4CFA-ABCB-AAC6CB310357}
+    NAME Bass
+    PEAKCOL 33488896
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.001709 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "bass4.png"
+    FX 1
+    TRACKID {482CE8A2-F09F-4CFA-ABCB-AAC6CB310357}
+    PERF 0
+    LAYOUTS B "Mixer Swap"
+    AUXRECV 5 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 6 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    MIDIOUT -1 -1
+    MAINSEND 1 0
+    <FXCHAIN
+      SHOW 0
+      LASTSEL 0
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - -5.52 - - - - 1 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {4EFFF02B-B8CB-44E8-8DD7-D3539A55DBFD}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {DAD9E8D7-B281-4EB2-8213-02B41D93340D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {AEC3AB2D-9A93-4405-B1CE-D73B30B71198}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {A5221CA2-C8F6-45BD-ABA3-CF85FD63B075}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {B62AAE24-DB4B-4BC3-8329-20B9AB66A4E4}
+      WAK 0 2
+    >
+  >
+  <TRACK {9BC24FF9-C5BF-475B-9C84-92B5E18FD4FF}
+    NAME Drums
+    PEAKCOL 19240192
+    BEAT -1
+    AUTOMODE 0
+    PANMODE 6
+    PANLAWFLAGS 3
+    VOLPAN 1 0 -1 -1 1
+    MUTESOLO 0 0 0
+    IPHASE 0
+    PLAYOFFS 0 1
+    ISBUS 0 0
+    BUSCOMP 0 0 0 0 0
+    SHOWINMIX 1 0.888598 0.001709 1 0.5 0 0 0 0
+    FIXEDLANES 9 0 0 0 0
+    LANEREC -1 -1 -1 0
+    SEL 0
+    REC 0 0 1 0 0 0 0 0
+    VU 64
+    TRACKHEIGHT 0 0 0 0 0 0 0
+    INQ 0 0 0 0.5 100 0 0 100
+    NCHAN 2
+    TRACKIMGFN "drums.png"
+    FX 1
+    TRACKID {9BC24FF9-C5BF-475B-9C84-92B5E18FD4FF}
+    PERF 0
+    LAYOUTS B "Mixer Swap"
+    AUXRECV 7 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 8 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 9 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 10 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 11 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 12 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    AUXRECV 13 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
+    AUXRECV_SLOT_HINT 0
+    MIDIOUT -1 -1
+    MAINSEND 1 0
+    <FXCHAIN
+      WNDRECT 56 59 1106 973
+      SHOW 0
+      LASTSEL 2
+      DOCKED 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+        20 20000 0 0 - - 0 - - - - 0 - - 0 2 0 2 0 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        AAAAAAAAAAAAAAAAAAAAAAAAQEAAAKBBAAAAQAAAAAA=
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {1863DACF-DF29-4D7E-99EF-5C7F4ABA663E}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+        0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {9DF14D18-D791-48A5-8345-0672D031662C}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 200 0 2000 0 0 1 1 1 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {D3050529-5BE4-49F8-9265-E665CF77A4B1}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        0 20 20 0.5 200 0 0 1 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7EC5299B-A119-4FCD-B029-72A45973442D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+        100 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAQEAAAKBB
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {861CF474-296B-45FE-AE1F-4854CCD09534}
+      WAK 0 2
+    >
+  >
+>
