@@ -222,7 +222,9 @@ track the bar names: GainKit first in the chain, the others at the end.
 ![The bar with its gear menu open](screenshots/session/dock_bar_menu.png)
 
 - the track's number, icon and name, with its colour as a stripe along the top (or a band across
-  the bar, or none: the gear);
+  the bar, or none: the gear). Click the name to rename the track right there: type, Enter sets it,
+  Escape puts the old name back. Click the icon, or the faint square where one would sit, to open
+  the icon picker;
 - a chip for each effect, in the order of the track's chain: a lit one is on the track (click it
   to bring it on view), a dim one is not (right-click it to add it). Drag a chip to move the effect
   in the chain; drag a dim one in to add the effect at that spot. A grey marker stands for another
@@ -238,8 +240,13 @@ track the bar names: GainKit first in the chain, the others at the end.
   band), full or short effect names, whether a double-click pops an effect out, whether the bar
   folds to a thin handle (the chevron folds it, a click on the handle drops it back down), the
   track colour on that handle, and whether the menu stays open until you close it. **Pick a track
-  icon...** opens our own picker: REAPER's icons in a grid, a search box, a click sets the shown
-  track's icon (one undo step), and the current one is marked. The menu and the picker need
+  icon...** opens our own picker: REAPER's icons in a grid with a search box (Enter picks the first
+  match), sorted into groups, Drums, Guitars and bass, Keys and synths, and so on; a click sets the
+  shown track's icon in one undo step, a double-click sets it and closes, and the current one is
+  marked. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
+  category. **+ Group** makes a group of your own; right-click an icon to put it in a group or mark
+  it a favourite. Favourites and Recent get their own pills, "All selected tracks" sets every
+  selected track at once, and the window remembers where you left it. The menu and the picker need
   ReaImGui; without it, the gear shows a plain menu and the picker row opens REAPER's own icon
   dialog;
 - the chevron at the far left folds the bar; the X at the far right closes the dock.
