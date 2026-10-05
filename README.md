@@ -247,7 +247,9 @@ track the bar names: GainKit first in the chain, the others at the end.
   icon...** opens our own picker: REAPER's icons in a grid with a search box (Enter picks the first
   match), sorted into groups, Drums, Guitars and bass, Keys and synths, and so on; a click sets the
   shown track's icon in one undo step, a double-click sets it and closes, and the current one is
-  marked. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
+  marked. The package also brings our own set of 51 track icons (drums piece by piece, percussion,
+  keys, strings, brass, vocal, buses, loops and more, drawn in REAPER's icon grey) in a folder of
+  their own, the EON category. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
   category. **+ Group** makes a group of your own; right-click an icon to put it in a group or mark
   it a favourite. Favourites and Recent get their own pills, "All selected tracks" sets every
   selected track at once, and the window remembers where you left it. The menu and the picker need
