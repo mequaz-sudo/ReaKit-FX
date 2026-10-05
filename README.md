@@ -139,6 +139,9 @@ signal, and an output meter. The LED bypasses it. In a short window, as in the d
 steps aside and the knob takes the room; the CURVE button opens the display over the knob, and a
 click anywhere else closes it. In its own window, the strip along the bottom edge drops a CURVE
 drawer under the knob: the window grows for it (EON Floatter running) and the knob keeps its place.
+In the dock the knob stands alone and a CURVE chip pops the curve over it.
+
+![The three drawers: Saturation's CURVE, the 3-Band EQ's band display, Stereo Width's STEREO FIELD](screenshots/session/drawers.png)
 
 ![Saturation in the dock, the CURVE button, and its window at four sizes](screenshots/session/saturation_compact.png)
 
@@ -219,7 +222,7 @@ track the bar names: GainKit first in the chain, the others at the end.
 
 ### The bar
 
-![The bar with its gear menu open](screenshots/session/dock_bar_menu.png)
+![The bar, each part named](screenshots/session/dock_bar.png)
 
 - the track's number, icon and name, with its colour as a stripe along the top (or a band across
   the bar, or none: the gear). Click the name to rename the track right there: type, Enter sets it,
@@ -251,7 +254,11 @@ track the bar names: GainKit first in the chain, the others at the end.
   dialog;
 - the chevron at the far left folds the bar; the X at the far right closes the dock.
 
+![The gear menu](screenshots/session/dock_bar_menu.png)
+
 ![The track icon picker](screenshots/session/dock_icon_picker.png)
+
+![Renaming the track on the bar](screenshots/session/dock_rename.png)
 
 ![The dock beside the mixer, one effect at a time, and three on a track in a wider dock](screenshots/session/dock_keys.png)
 
