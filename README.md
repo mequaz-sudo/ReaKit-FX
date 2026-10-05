@@ -164,7 +164,7 @@ wider window gets bigger knobs, not more empty space.
 
 LOSER's Digital Drum Compressor: threshold, ratio, attack, hold and release, knee, mix, a
 sidechain high-pass, stereo link, lookahead, RMS or peak detection, feed-forward, feedback or an
-external sidechain, auto makeup, oversampling, and a gain-reduction meter.
+external sidechain, auto makeup, a detector that can run at double rate (DET 2x: the level detector, not the audio), and a gain-reduction meter.
 
 ### De-Esser
 
