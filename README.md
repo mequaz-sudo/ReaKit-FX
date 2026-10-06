@@ -370,8 +370,8 @@ REAPER's own setting, so it holds for every docker and after a restart.
    https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/main/index.xml
    ```
 
-3. **Extensions > ReaPack > Browse packages.** Type **ReaKit**, check that exactly three packages show, click **Select
-   all**, then **Actions > Install/update selection**. Then type **js_ReaScriptAPI**, click that one package
+3. **Extensions > ReaPack > Browse packages.** Type **ReaKit**, check that five packages show (ReaKit FX, GainKit Plus, EON Floatter,
+   ReaKit FX templates, ReaKit FX track icons), click **Select all**, then **Actions > Install/update selection**. Then type **js_ReaScriptAPI**, click that one package
    and install it the same way. Then type **ReaImGui**, click only the one called "ReaImGui: ReaScript
    binding for Dear ImGui" and install it: EON Floatter needs both. Click **Apply**, then restart REAPER.
 4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run/close**. GainKit Plus and
