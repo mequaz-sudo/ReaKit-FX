@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.5
+-- @version 1.0.6
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -43,7 +43,7 @@
 
 local r = reaper
 
-local VERSION   = "1.0.5"   -- shown in the panel; keep with @version above
+local VERSION   = "1.0.6"   -- shown in the panel; keep with @version above
 local EXT_D     = "EON_FloatSize"      -- captures / scale / global (the keys the pair used)
 local EXT_F     = "EON_Floatter"       -- this script's own state
 -- ⚠ Mirrored in rk_lua_core.lua (core.ALIVE_FLOATTER_*) for the Kit Bridge,
@@ -540,6 +540,9 @@ end
 function eon_startup_selfclean_src(name, section, key)
   return
     "  local p=reaper.GetResourcePath()..\"/Scripts/__startup.lua\"\n" ..
+    -- a stranded .eon-prev (an earlier replacement that failed both ways) goes back first, only while the real
+    -- file is absent: the writer's own recovery rule (outside audit 3, 2026-10-05)
+    "  do local pb=io.open(p..'.eon-prev','r'); if pb then pb:close(); local pf=io.open(p,'r'); if pf then pf:close() else os.rename(p..'.eon-prev',p) end end end\n" ..
     "  local f=io.open(p,'r'); local c=f and f:read('*a'); if f then f:close() end\n" ..
     "  local w=c and io.open(p,'a'); if w then w:close()\n" ..
     -- Markers assembled at run time: the literal "-- EON:<name> END" must never appear
@@ -560,7 +563,9 @@ function eon_startup_selfclean_src(name, section, key)
     "    if fw then ok=fw:write(c) and true or false; if not fw:close() then ok=false end end\n" ..
     "    if ok then os.remove(b); local h=os.rename(p,b); if os.rename(t,p) then os.remove(b) elseif h then os.rename(b,p) end end\n" ..
     "    os.remove(t) end\n" ..
-    "  reaper.SetExtState('" .. section .. "','" .. key .. "','',true)\n"
+    -- the flag is cleared only while the start-up file is there; a replacement that failed both ways keeps it, so
+    -- the next launch tries again (the original waits in .eon-prev)
+    "  do local pf=io.open(p,'r'); if pf then pf:close(); reaper.SetExtState('" .. section .. "','" .. key .. "','',true) end end\n"
 end
 
 local function startup_path()
@@ -1039,9 +1044,15 @@ function W.poll(now)
           -- No canvas child yet: a JSFX gets 20 polls (5 s) in case REAPER is
           -- still building the window; a VST never grows one and is let go.
           e.tries = e.tries + 1
-          if e.tries >= 20 then e.settled = true; e.src = nil end
+          if e.tries >= 20 then e.settled = true; e.src = nil; e.gaveup = true end
         end                                          -- "later": minimized, look again
       end
+    elseif e.gaveup and L.find_canvas(e.hwnd) then
+      -- Given up on without a canvas: the ReaKit FX dock had taken the surface out of this (hidden) window while
+      -- Floatter looked. The dock has handed it back (the plugin popped out, or shown by a script): a first sight
+      -- again, so the window is sized as a fresh one is (measured 2026-10-05, floatter_seq_probe.lua: a 3-Band popped
+      -- out more than five seconds after the dock took it stayed at REAPER's 1032 px for good).
+      e.gaveup, e.settled, e.tries = nil, false, 0
     else
       W.detect_manual(e, now)
     end

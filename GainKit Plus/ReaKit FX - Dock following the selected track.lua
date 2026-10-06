@@ -187,7 +187,7 @@ local ICONS = { [ICON_CLOSE_TRACK] = true, [ICON_CLOSE_ALL] = true, [ICON_PIN] =
 -- The gear's options, saved like STRIP and PIN (ExtState opt_<key>); tests set one with opt_req = "key=value"
 local opt = {}
 local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", dblclick = "1", fold = "1", fold_color = "1",
-                  menu_stay = "1" }
+                  menu_stay = "1", tint = "0" }
 local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
 for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
 local FOLD_H = 8                       -- the folded bar's handle, px at 100 %
@@ -1499,7 +1499,8 @@ local function gear_pick(pick)
   elseif pick == 7 then opt_set("dblclick", opt.dblclick == "1" and "0" or "1")
   elseif pick == 8 then opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true
   elseif pick == 9 then opt_set("fold_color", opt.fold_color == "1" and "0" or "1")
-  elseif pick == 10 then picker_open() end
+  elseif pick == 10 then picker_open()
+  elseif pick == 11 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true) end
   has_key = ""
 end
 -- The EON palette (EON Floatter's P; the Swing FX picker's slate): 0xRRGGBBAA
@@ -1555,30 +1556,142 @@ end
 -- "All selected") in one undo step; double-click sets and closes; Enter in the search box picks the first match;
 -- "No icon" clears. Without ReaImGui the menu row runs REAPER's own dialog
 -- (action 40899). A root icon of REAPER's folder is stored by bare name (REAPER writes the full path back); others
--- by full path; the bar reads both. The window remembers its place and size (pick_rect). Test hooks: pick_req =
+-- by full path (one under REAPER's folder by its folder-relative name); the bar reads both. The window remembers its place and size (pick_rect). Test hooks: pick_req =
 -- open | close | none | <name> | dir:<path> | cat:<key> | fav:<name> | group:<group>:<name> | newgroup:<name> |
--- all:0|1 | q:<text>; published picker, picker_cells, picker_cats.
+-- all:0|1 | q:<text> | size:1..3 | side:0|1 | closeafter:0|1 | key:up|down|left|right|enter; published picker,
+-- picker_cells, picker_cats, picker_sel (the highlighted icon's name).
 local PICK = { on = false, ctx = nil, font = nil, font_b = nil, list = {}, cat = "", q = "", img = {},
                x = 0, y = 0, w = 0, h = 0, first = false, cells_pub = nil, cats_pub = nil, dirs = {}, groups = {},
-               gorder = {}, fav = {}, recent = {}, enter = false, rect = nil, ask = nil }
+               gorder = {}, fav = {}, recent = {}, enter = false, rect = nil, ask = nil,
+               size = 2, side = false, close_after = false,            -- pick_size 1..3, pick_side, pick_close (saved)
+               sel = 1, sig = "", qact = false, key_req = nil, sel_pub = nil, lbl = {} }   -- the keyboard highlight
 local function pick_norm(pth) return (pth:gsub("[\\]", "/")) end
 local ICON_ROOT = pick_norm(r.GetResourcePath() .. "/Data/track_icons")
 local GROUPS_FILE = pick_norm(r.GetResourcePath() .. "/Data/ReaKit_FX_icon_groups.txt")
-local BUILTIN_ORDER = { "Drums", "Guitars & bass", "Keys & synths", "Strings, brass & winds", "Vocals & mics", "Buses, FX & rooms", "Marks & folders" }
+-- The track colour on the icon (the gear: "Icons follow the track colour", opt tint, OFF to start; the user,
+-- 2026-10-06). A coloured track wears a copy of its icon painted in its colour: <resource>/Data/ReaKit_FX_tinted_icons/
+-- <rrggbb>_<icon>.png, ONE file per colour and icon for the whole machine (a second track in the same red with the
+-- same icon points at the same file; a new colour makes a new file; a file is never repainted or removed, other
+-- tracks and projects may wear it). The track's own icon (what the picker, REAPER's dialog or the project gave it)
+-- is kept on the track as P_EXT:ReaKitFX_icon, saved with the project, by its REAPER-folder name when it sits there
+-- ("EON/kick.png"), and comes back when the colour goes or the option goes off. The pass reads every track twice
+-- a second (three reads a track) and touches only what differs, so a project that is already right is not marked
+-- changed. Paint = js_ReaScriptAPI's LICE: the glyph's shape and
+-- edges (alpha) kept, its grey scaled against its own brightest pixel so REAPER's dark drawings come out in the
+-- full colour (tint_probe.lua, 2026-10-05: PutPixel COPY keeps alpha). Tests: the pass is forced by tint_req = "1".
+-- TINT is a GLOBAL on purpose: the main chunk sits at Lua's 200-local limit (one more local fails to load,
+-- 2026-10-06), and the gear's handler above needs it before the picker's names below exist.
+TINT = { dir = pick_norm(r.GetResourcePath() .. "/Data/ReaKit_FX_tinted_icons"), key = "P_EXT:ReaKitFX_icon", t = 0 }
+function TINT.in_dir(p)                                           -- a painted copy's path, from THIS machine or another
+  return pick_norm(p):lower():find("/reakit_fx_tinted_icons/", 1, true) ~= nil   -- (a project that travels keeps the
+end                                                               -- other machine's path: known by the folder's name)
+function TINT.own_name(p)                                         -- a full path under REAPER's icon folder -> its folder name
+  local n = pick_norm(p)
+  if n:lower():sub(1, #ICON_ROOT + 1) == ICON_ROOT:lower() .. "/" then return n:sub(#ICON_ROOT + 2) end
+  return n
+end
+function TINT.resolve(orig)                                       -- the own name's full path
+  if orig:match("^%a:") or orig:sub(1, 1) == "/" then return orig end
+  return ICON_ROOT .. "/" .. orig
+end
+function TINT.paint(src, cr, cg, cb, dst)                         -- the icon painted in the colour; false when it cannot be
+  if not r.JS_LICE_LoadPNG then return false end
+  local b = r.JS_LICE_LoadPNG(src); if not b then return false end
+  local w, h = r.JS_LICE_GetWidth(b), r.JS_LICE_GetHeight(b)
+  if w * h > 400 * 400 then r.JS_LICE_DestroyBitmap(b); return false end   -- a pixel is two API calls: a big picture would stall REAPER
+  local top, top_a = 0, 0                                         -- the brightest pixel among the most opaque ones: a
+  for y = 0, h - 1 do for x = 0, w - 1 do                          -- resized PNG's faint edge pixels carry wild
+    local v = math.floor(r.JS_LICE_GetPixel(b, x, y))             -- colours (rgb 255 at alpha 1, measured 2026-10-06,
+    local a = (v >> 24) & 0xFF                                    -- lice_pixels_probe.lua) and would dim the paint
+    if a >= 128 or (top_a < 128 and a > top_a) then
+      local l = math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
+      if a >= 128 and top_a < 128 then top, top_a = l, a elseif l > top then top, top_a = l, a end
+    end
+  end end
+  if top == 0 then top = 255 end
+  for y = 0, h - 1 do for x = 0, w - 1 do
+    local v = math.floor(r.JS_LICE_GetPixel(b, x, y))
+    local a = (v >> 24) & 0xFF
+    if a > 0 then
+      local l = math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF) / top
+      local col = (a << 24) | (math.floor(cr * l + 0.5) << 16) | (math.floor(cg * l + 0.5) << 8) | math.floor(cb * l + 0.5)
+      r.JS_LICE_PutPixel(b, x, y, col, 1.0, "COPY")
+    end
+  end end
+  r.RecursiveCreateDirectory(TINT.dir, 0)
+  local ok = r.JS_LICE_WritePNG(dst, b, true)
+  r.JS_LICE_DestroyBitmap(b)
+  return ok and r.file_exists(dst)
+end
+function TINT.own(tr)                                             -- the track's own icon (for the picker: the one to mark)
+  local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
+  if icon ~= "" and TINT.in_dir(icon) then
+    local _, orig = r.GetSetMediaTrackInfo_String(tr, TINT.key, "", false)
+    return orig ~= "" and TINT.resolve(orig) or icon, true
+  end
+  return icon, false
+end
+function TINT.pass(force)                                         -- every track: the icon it should wear now
+  local now = r.time_precise()                                    -- twice a second: the project's state count does NOT
+  if not force and now - TINT.t < 0.5 then return end             -- move for a colour or an icon set by a script
+  TINT.t = now                                                    -- (measured 2026-10-06), so the tracks are read each time
+  local proj = r.EnumProjects(-1)
+  local on = opt.tint == "1"
+  local n, made = 0, 0
+  for i = 0, r.CountTracks(proj) - 1 do
+    local tr = r.GetTrack(proj, i)
+    local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
+    local _, orig = r.GetSetMediaTrackInfo_String(tr, TINT.key, "", false)
+    local tinted = icon ~= "" and TINT.in_dir(icon)
+    if on and not tinted then                                     -- what it wears is its own: remembered
+      local own = icon ~= "" and TINT.own_name(icon) or ""
+      if own ~= orig then r.GetSetMediaTrackInfo_String(tr, TINT.key, own, true); orig = own end
+    end
+    local col = math.floor(r.GetMediaTrackInfo_Value(tr, "I_CUSTOMCOLOR"))
+    if on and orig ~= "" and (col & 0x1000000) ~= 0 then
+      local cr, cg, cb = r.ColorFromNative(col & 0xFFFFFF)
+      local dst = TINT.dir .. "/" .. string.format("%02x%02x%02x", cr, cg, cb) .. "_" .. orig:gsub("[^%w%.]", "_")
+      if not r.file_exists(dst) then
+        local src = TINT.resolve(orig)
+        if r.file_exists(src) and TINT.paint(src, cr, cg, cb, dst) then made = made + 1 else dst = nil end
+      end
+      if dst and pick_norm(icon):lower() ~= dst:lower() then r.GetSetMediaTrackInfo_String(tr, "P_ICON", dst, true); n = n + 1 end
+    elseif tinted and orig ~= "" then                             -- no colour now, or the option off: its own back
+      r.GetSetMediaTrackInfo_String(tr, "P_ICON", orig, true); n = n + 1
+    end
+  end
+  if n > 0 then r.TrackList_AdjustWindows(false); ticon.t = 0 end
+  if n > 0 or made > 0 then dbg(string.format("tint: %d track(s) changed, %d file(s) painted", n, made)) end
+end
+local BUILTIN_ORDER = { "Drums", "Guitars", "Bass", "Keys", "Synths", "Strings", "Brass", "Winds", "Vocals", "Mics",
+                        "Buses", "FX", "Rooms", "Marks", "Folders" }      -- one thing per group (the user, 2026-10-06: no "&")
 local BUILTIN = {
   ["Drums"] = "beats bongos cabasa congas cowbell cowbell_more cymbal_large cymbal_small drumbox drums hihat kick maracas overheads pads ride_bell ride_rim snare_bottom snare_top tamborine tom xylophone",
-  ["Guitars & bass"] = "ac_guitar ac_guitar_full amp amp_combo balalaika banjo bass bass2 bass3 bass4 bass_full double_bass guitar guitar2 guitar3 guitar4 guitar5 guitar_full pedal",
-  ["Keys & synths"] = "organ piano synth synth2 synthbass",
-  ["Strings, brass & winds"] = "cello harmonica harp sax trombone trumpet violin",
-  ["Vocals & mics"] = "female female_head male male_head mic mic_condenser_1 mic_condenser_2 mic_dynamic_1 mic_dynamic_2 mic_shotgun speech yeah_you_guys_are_great",
-  ["Buses, FX & rooms"] = "fx group mixer reverb room_large room_medium room_small tape deck meter midi system phones",
-  ["Marks & folders"] = "bass_clef treble_clef ff pp envelope film folder folder_down folder_left folder_right folder_up idea bin",
+  ["Guitars"] = "ac_guitar ac_guitar_full amp amp_combo balalaika banjo guitar guitar2 guitar3 guitar4 guitar5 guitar_full pedal",
+  ["Bass"] = "bass bass2 bass3 bass4 bass_full double_bass",
+  ["Keys"] = "organ piano",
+  ["Synths"] = "synth synth2 synthbass",
+  ["Strings"] = "cello harp violin",
+  ["Brass"] = "trombone trumpet",
+  ["Winds"] = "harmonica sax",
+  ["Vocals"] = "female female_head male male_head speech yeah_you_guys_are_great",
+  ["Mics"] = "mic mic_condenser_1 mic_condenser_2 mic_dynamic_1 mic_dynamic_2 mic_shotgun",
+  ["Buses"] = "group mixer system midi phones meter",
+  ["FX"] = "fx reverb tape deck",
+  ["Rooms"] = "room_large room_medium room_small",
+  ["Marks"] = "bass_clef treble_clef ff pp envelope film idea bin",
+  ["Folders"] = "folder folder_down folder_left folder_right folder_up",
 }
+
 local function pick_split(sv) local t = {}; for v in (sv or ""):gmatch("[^|]+") do t[#t + 1] = v end; return t end
 local function pick_load_state()
   PICK.dirs = pick_split(r.GetExtState(EXT, "pick_dirs"))
   PICK.fav = {}; for _, k in ipairs(pick_split(r.GetExtState(EXT, "pick_fav"))) do PICK.fav[k] = true end
   PICK.recent = pick_split(r.GetExtState(EXT, "pick_recent"))
+  PICK.size = tonumber(r.GetExtState(EXT, "pick_size")) or 2
+  if PICK.size < 1 or PICK.size > 3 then PICK.size = 2 end
+  PICK.side = r.GetExtState(EXT, "pick_side") == "1"
+  PICK.close_after = r.GetExtState(EXT, "pick_close") == "1"
   local rect = r.GetExtState(EXT, "pick_rect")
   local x, y, w, h = rect:match("^(%-?%d+) (%-?%d+) (%d+) (%d+)$")
   PICK.rect = x and { tonumber(x), tonumber(y), tonumber(w), tonumber(h) } or nil
@@ -1617,7 +1730,8 @@ local function pick_save_fav()
   local t = {}; for k in pairs(PICK.fav) do t[#t + 1] = k end; table.sort(t)
   r.SetExtState(EXT, "pick_fav", table.concat(t, "|"), true)
 end
-local function pick_key(e) return e.src == 1 and e.file or e.full end   -- how an icon is named in groups and favourites
+local function pick_key(e) return e.src == 1 and e.store or e.full end  -- how an icon is named in groups and favourites (a root
+                                                                  -- icon by its bare name as before; "EON/kick.png" apart from "kick.png")
 local function pick_dir_label(i)                                  -- the folder's name; parent/name when two end the same
   local d = pick_norm(PICK.dirs[i]):gsub("/+$", "")
   local last = d:match("([^/]+)$") or d
@@ -1641,8 +1755,11 @@ local function picker_scan()
       local f = r.EnumerateFiles(dir, i)
       if not f or f == "" then break end
       if f:lower():match("%.png$") then
+        -- what goes into the track's icon field: for REAPER's own folder a name relative to it ("kick.png",
+        -- "EON/kick.png": REAPER resolves both against its folder and expands them, measured icon_subdir_probe.lua
+        -- 2026-10-05, so a project travels between machines); for an added folder the full path
         list[#list + 1] = { name = (f:gsub("%.[Pp][Nn][Gg]$", "")), file = f, full = dir .. "/" .. f, cat = cat, src = si,
-                            store = (si == 1 and cat == "") and f or (dir .. "/" .. f) }
+                            store = si == 1 and (dir .. "/" .. f):sub(#ICON_ROOT + 2) or (dir .. "/" .. f) }
       end
       i = i + 1
     end
@@ -1701,9 +1818,9 @@ local function picker_set(e)                                      -- e = an entr
   local wantn = pick_norm(want):lower()
   local todo = {}
   for _, tr in ipairs(trs) do                                     -- only the tracks it would change
-    local _, cur = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
+    local cur = TINT.own(tr)                                    -- a tinted copy stands for the track's own icon
     local curn = pick_norm(cur):lower()
-    local same = cur == want or curn == wantn or (e and e.src == 1 and e.cat == "" and curn == e.full:lower())
+    local same = cur == want or curn == wantn or (e and e.src == 1 and curn == e.full:lower())   -- REAPER wrote the full path back
     if not same then todo[#todo + 1] = tr end
   end
   if #todo > 0 then
@@ -1713,6 +1830,7 @@ local function picker_set(e)                                      -- e = an entr
   end
   ticon.t = 0                                                     -- the bar reads the field again at once
   r.TrackList_AdjustWindows(false)
+  if opt.tint == "1" then TINT.pass(true) end                     -- the colour on it at once
   if e then                                                       -- the recent row
     local k, t = pick_key(e), { }
     t[1] = k
@@ -1725,7 +1843,7 @@ local function picker_close()
   if PICK.on and PICK.rect then r.SetExtState(EXT, "pick_rect", string.format("%d %d %d %d", PICK.rect[1], PICK.rect[2], PICK.rect[3], PICK.rect[4]), true) end
   PICK.on, PICK.ctx, PICK.img = false, nil, {}
   PICK.cells_pub, PICK.cats_pub = nil, nil
-  r.SetExtState(EXT, "picker_cells", "", false); r.SetExtState(EXT, "picker_cats", "", false)
+  r.SetExtState(EXT, "picker_cells", "", false); r.SetExtState(EXT, "picker_cats", "", false); r.SetExtState(EXT, "picker_sel", "", false)
 end
 local function pick_add_dir(d)
   d = pick_norm(d):gsub("/+$", "")
@@ -1783,9 +1901,9 @@ local function picker_frame()
   local tr = shown_track()
   local has, cr, cg, cb = track_color(tr)
   local hue = has and mp_rgba(cr, cg, cb) or MP.accent
-  local CELL = math.floor(44 * sc)
+  local CELL = math.floor(({ 34, 44, 72 })[PICK.size] * sc)       -- S / M / L
   if PICK.first then ImGui.SetNextWindowPos(ctx, PICK.x, PICK.y); ImGui.SetNextWindowSize(ctx, PICK.w, PICK.h) end
-  ImGui.SetNextWindowSizeConstraints(ctx, CELL * 4 + 30, CELL * 3 + 120, 4000, 4000)
+  ImGui.SetNextWindowSizeConstraints(ctx, math.max(CELL * 4 + 30, math.floor(330 * sc)), CELL * 3 + 140, 4000, 4000)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
   ImGui.PushStyleColor(ctx, ImGui.Col_ChildBg, 0x161F28FF)
   ImGui.PushStyleColor(ctx, ImGui.Col_Border, MP.line)
@@ -1799,6 +1917,7 @@ local function picker_frame()
   ImGui.PushStyleColor(ctx, ImGui.Col_CheckMark, hue)
   ImGui.PushStyleColor(ctx, ImGui.Col_PopupBg, 0x1C2732FF)
   ImGui.PushStyleColor(ctx, ImGui.Col_HeaderHovered, mp_alpha(hue, 0x40))
+  ImGui.PushStyleColor(ctx, ImGui.Col_Header, mp_alpha(hue, 0x30))
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowRounding, 5)
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowBorderSize, 1)
   ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 10, 8)
@@ -1814,7 +1933,7 @@ local function picker_frame()
     PICK.rect = { math.floor(wx), math.floor(wy), math.floor(ww), math.floor(wh) }
     ImGui.DrawList_AddRectFilled(dl, wx, wy, wx + ww, wy + 3, hue)             -- the track's stripe
     local cur = ""                                                   -- the track's icon field (an "and" would keep one value)
-    if tr then local _; _, cur = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false) end
+    if tr then cur = TINT.own(tr) end                                -- a tinted copy stands for the track's own icon
     -- REAPER writes the field back as a full path with backslashes even when given a bare name (measured
     -- 2026-10-05, picker_run.py): compared slash-blind and case-blind, by the full path or the bare name
     local curn = pick_norm(cur):lower()
@@ -1833,31 +1952,41 @@ local function picker_frame()
     -- the search box
     if PICK.first then ImGui.SetKeyboardFocusHere(ctx) end
     ImGui.SetNextItemWidth(ctx, -1)
-    local ent, q = ImGui.InputTextWithHint(ctx, "##q", "Search the icons (Enter picks the first)", PICK.q, ImGui.InputTextFlags_EnterReturnsTrue)
+    local ent, q = ImGui.InputTextWithHint(ctx, "##q", "Search the icons (arrows move, Enter picks)", PICK.q, ImGui.InputTextFlags_EnterReturnsTrue)
     if q ~= PICK.q then PICK.q = q end
+    PICK.qact = ImGui.IsItemActive(ctx)
     if ent and PICK.q ~= "" then PICK.enter = true end
-    -- the switch
+    -- the switches: all selected tracks, close after a pick; the size (S M L: 34 / 44 / 72 px, names under the icons
+    -- at L) and the categories as a list on the side instead of pills (2026-10-06, after a look at Reapertips &
+    -- Sexan's selector: its sidebar, size slider and used-icon outline; ideas only, GPL)
     local all_on = r.GetExtState(EXT, "pick_all") == "1"
     local chg, v = ImGui.Checkbox(ctx, "All selected tracks", all_on)
     if chg then r.SetExtState(EXT, "pick_all", v and "1" or "0", true) end
-    -- the category pills, wrapping
+    ImGui.SameLine(ctx, 0, 14)
+    chg, v = ImGui.Checkbox(ctx, "Close after a pick", PICK.close_after)
+    if chg then PICK.close_after = v; r.SetExtState(EXT, "pick_close", v and "1" or "0", true) end
+    ImGui.AlignTextToFramePadding(ctx)
+    ImGui.TextColored(ctx, MP.muted, "Size")
+    for i, lb in ipairs({ "S", "M", "L" }) do
+      ImGui.SameLine(ctx, 0, i == 1 and 6 or 3)
+      local on = PICK.size == i
+      ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
+      ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or MP.text)
+      if ImGui.SmallButton(ctx, lb .. "##sz" .. i) and not on then PICK.size = i; PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(i), true) end
+      ImGui.PopStyleColor(ctx, 2)
+    end
+    ImGui.SameLine(ctx, 0, 14)
+    chg, v = ImGui.Checkbox(ctx, "Categories on the side", PICK.side)
+    if chg then PICK.side = v; r.SetExtState(EXT, "pick_side", v and "1" or "0", true) end
+    -- the categories: pills that wrap, or a list on the side; the same right-click menus either way
     local cats = pick_cats()
     local cats_s = {}
-    local avail = ImGui.GetContentRegionAvail(ctx)
-    local lx = 0
-    for i, c in ipairs(cats) do
-      local key, label = c[1], c[2]
-      local tw = ImGui.CalcTextSize(ctx, label) + 12
-      if i > 1 and lx + tw > avail then lx = 0 else if i > 1 then ImGui.SameLine(ctx, 0, 4) end end
-      lx = lx + tw + 4
-      local on = PICK.cat == key
-      ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
-      ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or (key:sub(1, 1) == "*" and MP.accent or MP.text))
-      if ImGui.SmallButton(ctx, label .. "##cat" .. i) then PICK.cat = on and "" or key end
-      ImGui.PopStyleColor(ctx, 2)
+    local function cat_rect(key, label)
       local px0, py0 = ImGui.GetItemRectMin(ctx)
       local px1, py1 = ImGui.GetItemRectMax(ctx)
       cats_s[#cats_s + 1] = string.format("%s=%s:%d,%d,%d,%d", key, label, math.floor(px0), math.floor(py0), math.floor(px1 - px0), math.floor(py1 - py0))
+    end
+    local function cat_menu(i, key, on)
       local kind, name = key:match("^(%a):(.*)$")
       if kind == "g" and ImGui.BeginPopupContextItem(ctx, "##gp" .. i) then
         if ImGui.MenuItem(ctx, "Rename the group...") then PICK.ask = { "rename", name } end
@@ -1875,75 +2004,143 @@ local function picker_frame()
         ImGui.EndPopup(ctx)
       end
     end
+    if PICK.side then
+      if ImGui.BeginChild(ctx, "##side", math.floor(150 * sc), 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
+        for i, c in ipairs(cats) do
+          local key, label = c[1], c[2]
+          local on = PICK.cat == key
+          ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and hue or (key:sub(1, 1) == "*" and MP.accent or MP.text))
+          if ImGui.Selectable(ctx, label .. "##cat" .. i, on) then PICK.cat = on and "" or key end
+          ImGui.PopStyleColor(ctx)
+          cat_rect(key, label); cat_menu(i, key, on)
+        end
+        ImGui.EndChild(ctx)
+      end
+      ImGui.SameLine(ctx)
+    else
+      local avail = ImGui.GetContentRegionAvail(ctx)
+      local lx = 0
+      for i, c in ipairs(cats) do
+        local key, label = c[1], c[2]
+        local tw = ImGui.CalcTextSize(ctx, label) + 12
+        if i > 1 and lx + tw > avail then lx = 0 else if i > 1 then ImGui.SameLine(ctx, 0, 4) end end
+        lx = lx + tw + 4
+        local on = PICK.cat == key
+        ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
+        ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or (key:sub(1, 1) == "*" and MP.accent or MP.text))
+        if ImGui.SmallButton(ctx, label .. "##cat" .. i) then PICK.cat = on and "" or key end
+        ImGui.PopStyleColor(ctx, 2)
+        cat_rect(key, label); cat_menu(i, key, on)
+      end
+    end
     local cp = table.concat(cats_s, ";")
     if cp ~= PICK.cats_pub then PICK.cats_pub = cp; r.SetExtState(EXT, "picker_cats", cp, false) end
-    -- the grid
+    -- the icons the other selected tracks wear (a thin outline; the shown track's own is marked in its colour)
+    local worn = {}
+    for i = 0, r.CountSelectedTracks2(0, true) - 1 do
+      local t2 = r.GetSelectedTrack2(0, i, true)
+      if t2 ~= tr then local o = TINT.own(t2); if o ~= "" then worn[pick_norm(o):lower()] = true end end
+    end
+    -- the grid: the icons that pass the category and the search, in a highlight the arrow keys move
+    -- (Up / Down always, Left / Right when the search box is not typing) and Enter picks; with the colour follow
+    -- on, every icon is drawn in the shown track's colour (a multiply: REAPER's dark icons come out darker than
+    -- the real paint, which scales them up)
+    local LBL = PICK.size == 3 and math.floor(14 * sc) or 0
+    local CH = CELL + LBL
+    local tintc = (opt.tint == "1" and has) and mp_rgba(cr, cg, cb) or 0xFFFFFFFF
     if ImGui.BeginChild(ctx, "##grid", 0, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
       local cdl = ImGui.GetWindowDrawList(ctx)
       local x0, y0 = ImGui.GetCursorScreenPos(ctx)
       local gavail = ImGui.GetContentRegionAvail(ctx)
       local cols = math.max(1, math.floor(gavail / CELL))
       local needle = PICK.q:lower():gsub("[%s_%-]", "")
-      local n, cells = 0, {}
+      local vis = {}
+      for _, e in ipairs(PICK.list) do
+        if pick_in_cat(e, PICK.cat) and (needle == "" or e.name:lower():gsub("[%s_%-]", ""):find(needle, 1, true)) then vis[#vis + 1] = e end
+      end
+      local sig = PICK.cat .. "|" .. needle .. "|" .. #vis
+      if sig ~= PICK.sig then PICK.sig = sig; PICK.sel = 1 end
+      local mv, kreq = 0, PICK.key_req
+      PICK.key_req = nil
+      if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) or kreq == "down" then mv = cols
+      elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) or kreq == "up" then mv = -cols
+      elseif (not PICK.qact and ImGui.IsKeyPressed(ctx, ImGui.Key_RightArrow)) or kreq == "right" then mv = 1
+      elseif (not PICK.qact and ImGui.IsKeyPressed(ctx, ImGui.Key_LeftArrow)) or kreq == "left" then mv = -1 end
+      if (not ImGui.IsAnyItemActive(ctx) and (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) or ImGui.IsKeyPressed(ctx, ImGui.Key_KeypadEnter))) or kreq == "enter" then PICK.enter = true end
+      if mv ~= 0 and #vis > 0 then PICK.sel = math.max(1, math.min(#vis, PICK.sel + mv)) end
+      if PICK.enter and vis[PICK.sel] then picker_set(vis[PICK.sel]); if PICK.close_after then open = false end end
+      PICK.enter = false
+      local cells = {}
       local pad = math.floor(6 * sc)
-      local picked_first = false
-      for ei, e in ipairs(PICK.list) do
-        if pick_in_cat(e, PICK.cat) and (needle == "" or e.name:lower():gsub("[%s_%-]", ""):find(needle, 1, true)) then
-          if PICK.enter and not picked_first then picked_first = true; picker_set(e) end
-          local cx, cy = x0 + (n % cols) * CELL, y0 + (n // cols) * CELL
-          ImGui.SetCursorScreenPos(ctx, cx, cy)
-          ImGui.InvisibleButton(ctx, "##i" .. ei, CELL, CELL)
-          local k = pick_key(e)
-          if ImGui.IsRectVisibleEx(ctx, cx, cy, cx + CELL, cy + CELL) then
-            local hov = ImGui.IsItemHovered(ctx)
-            local is_cur = cur ~= "" and (curn == e.full:lower() or (e.src == 1 and e.cat == "" and curn == e.file:lower()))
-            if hov or is_cur then
-              ImGui.DrawList_AddRectFilled(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CELL - 2, is_cur and mp_alpha(hue, 0x50) or 0x34465AFF, 4)
-            end
-            if is_cur then ImGui.DrawList_AddRect(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CELL - 2, hue, 4, 0, 1.5) end
-            local img = PICK.img[e.full]
-            if img == nil then
-              local ok, im = pcall(ImGui.CreateImage, e.full)
-              img = ok and im or false
-              if img then pcall(ImGui.Attach, ctx, img) end
-              PICK.img[e.full] = img
-            end
-            if img then ImGui.DrawList_AddImage(cdl, img, cx + pad, cy + pad, cx + CELL - pad, cy + CELL - pad)
-            else ImGui.DrawList_AddText(cdl, cx + CELL * 0.5 - 4, cy + CELL * 0.5 - 7, MP.dim, "?") end
-            if PICK.fav[k] then ImGui.DrawList_AddText(cdl, cx + CELL - 11, cy + 1, MP.accent, "*") end
-            if hov then ImGui.SetTooltip(ctx, e.name .. (e.cat ~= "" and ("  (" .. e.cat .. ")") or "") .. (PICK.fav[k] and "  favourite" or "")) end
-            if #cells < 60 then cells[#cells + 1] = string.format("%s:%d,%d,%d,%d", e.name, math.floor(cx), math.floor(cy), CELL, CELL) end
+      for n0, e in ipairs(vis) do
+        local n = n0 - 1
+        local cx, cy = x0 + (n % cols) * CELL, y0 + (n // cols) * CH
+        ImGui.SetCursorScreenPos(ctx, cx, cy)
+        ImGui.InvisibleButton(ctx, "##i" .. n0, CELL, CH)
+        if n0 == PICK.sel and mv ~= 0 then ImGui.SetScrollHereY(ctx, 0.5) end
+        local k = pick_key(e)
+        if ImGui.IsRectVisibleEx(ctx, cx, cy, cx + CELL, cy + CH) then
+          local hov = ImGui.IsItemHovered(ctx)
+          local is_cur = cur ~= "" and (curn == e.full:lower() or (e.src == 1 and e.cat == "" and curn == e.file:lower()))
+          local on_sel = not is_cur and (worn[e.full:lower()] or (e.src == 1 and e.cat == "" and worn[e.file:lower()])) and true or false
+          if hov or is_cur then
+            ImGui.DrawList_AddRectFilled(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CH - 2, is_cur and mp_alpha(hue, 0x50) or 0x34465AFF, 4)
           end
-          if ImGui.IsItemClicked(ctx, 0) then
-            picker_set(e)
-            if ImGui.IsMouseDoubleClicked(ctx, 0) then open = false end
+          if is_cur then ImGui.DrawList_AddRect(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CH - 2, hue, 4, 0, 1.5)
+          elseif on_sel then ImGui.DrawList_AddRect(cdl, cx + 2, cy + 2, cx + CELL - 2, cy + CH - 2, MP.muted, 4, 0, 1) end
+          if n0 == PICK.sel then ImGui.DrawList_AddRect(cdl, cx + 4, cy + 4, cx + CELL - 4, cy + CH - 4, mp_alpha(MP.text, 0x90), 3, 0, 1) end
+          local img = PICK.img[e.full]
+          if img == nil then
+            local ok, im = pcall(ImGui.CreateImage, e.full)
+            img = ok and im or false
+            if img then pcall(ImGui.Attach, ctx, img) end
+            PICK.img[e.full] = img
           end
-          if ImGui.BeginPopupContextItem(ctx, "##cp" .. ei) then   -- right-click: favourite, the groups
-            ImGui.TextDisabled(ctx, e.name)
-            if ImGui.MenuItem(ctx, PICK.fav[k] and "Unfavourite" or "Favourite") then
-              if PICK.fav[k] then PICK.fav[k] = nil else PICK.fav[k] = true end; pick_save_fav()
+          if img then ImGui.DrawList_AddImage(cdl, img, cx + pad, cy + pad, cx + CELL - pad, cy + CELL - pad, 0, 0, 1, 1, tintc)
+          else ImGui.DrawList_AddText(cdl, cx + CELL * 0.5 - 4, cy + CELL * 0.5 - 7, MP.dim, "?") end
+          if LBL > 0 then                                            -- the name under the icon, cut to the cell
+            local lbl = PICK.lbl[e.full]
+            if not lbl then
+              lbl = e.name
+              while #lbl > 1 and ImGui.CalcTextSize(ctx, lbl) > CELL - 6 do lbl = lbl:sub(1, -2) end
+              PICK.lbl[e.full] = lbl
             end
-            for _, g in ipairs(PICK.gorder) do
-              local inn = PICK.groups[g][k] == true
-              if ImGui.MenuItem(ctx, (inn and "Remove from " or "Add to ") .. g) then
-                if inn then PICK.groups[g][k] = nil else PICK.groups[g][k] = true end; pick_save_groups()
-              end
-            end
-            if ImGui.MenuItem(ctx, "New group with this icon...") then PICK.ask = { "newgroup", k } end
-            ImGui.EndPopup(ctx)
+            ImGui.DrawList_AddText(cdl, cx + math.floor((CELL - ImGui.CalcTextSize(ctx, lbl)) / 2), cy + CELL - pad + 1, MP.text, lbl)   -- (the track colour over its own fill read badly)
           end
-          n = n + 1
+          if PICK.fav[k] then ImGui.DrawList_AddText(cdl, cx + CELL - 11, cy + 1, MP.accent, "*") end
+          if hov then ImGui.SetTooltip(ctx, e.name .. (e.cat ~= "" and ("  (" .. e.cat .. ")") or "") .. (PICK.fav[k] and "  favourite" or "") .. (on_sel and "  on a selected track" or "")) end
+          if #cells < 60 then cells[#cells + 1] = string.format("%s:%d,%d,%d,%d", e.name, math.floor(cx), math.floor(cy), CELL, CH) end
+        end
+        if ImGui.IsItemClicked(ctx, 0) then
+          PICK.sel = n0
+          picker_set(e)
+          if ImGui.IsMouseDoubleClicked(ctx, 0) or PICK.close_after then open = false end
+        end
+        if ImGui.BeginPopupContextItem(ctx, "##cp" .. n0) then   -- right-click: favourite, the groups
+          ImGui.TextDisabled(ctx, e.name)
+          if ImGui.MenuItem(ctx, PICK.fav[k] and "Unfavourite" or "Favourite") then
+            if PICK.fav[k] then PICK.fav[k] = nil else PICK.fav[k] = true end; pick_save_fav()
+          end
+          for _, g in ipairs(PICK.gorder) do
+            local inn = PICK.groups[g][k] == true
+            if ImGui.MenuItem(ctx, (inn and "Remove from " or "Add to ") .. g) then
+              if inn then PICK.groups[g][k] = nil else PICK.groups[g][k] = true end; pick_save_groups()
+            end
+          end
+          if ImGui.MenuItem(ctx, "New group with this icon...") then PICK.ask = { "newgroup", k } end
+          ImGui.EndPopup(ctx)
         end
       end
-      PICK.enter = false
-      ImGui.SetCursorScreenPos(ctx, x0, y0 + math.ceil(n / cols) * CELL)
+      ImGui.SetCursorScreenPos(ctx, x0, y0 + math.ceil(#vis / cols) * CH)
       ImGui.Dummy(ctx, 1, 1)                                     -- so the child scrolls to the last row
-      if n == 0 then
+      if #vis == 0 then
         ImGui.SetCursorScreenPos(ctx, x0 + 4, y0 + 4)
         ImGui.TextColored(ctx, MP.muted, #PICK.list == 0 and "No icons in the folders" or "No icon matches")
       end
       local cp2 = table.concat(cells, ";")
       if cp2 ~= PICK.cells_pub then PICK.cells_pub = cp2; r.SetExtState(EXT, "picker_cells", cp2, false) end
+      local sp = vis[PICK.sel] and vis[PICK.sel].name or ""
+      if sp ~= PICK.sel_pub then PICK.sel_pub = sp; r.SetExtState(EXT, "picker_sel", sp, false) end
       ImGui.EndChild(ctx)
     end
     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, "", ImGui.PopupFlags_AnyPopupId) then open = false end
@@ -1951,7 +2148,7 @@ local function picker_frame()
   end
   if PICK.font then ImGui.PopFont(ctx) end
   ImGui.PopStyleVar(ctx, 5)
-  ImGui.PopStyleColor(ctx, 13)
+  ImGui.PopStyleColor(ctx, 14)
   PICK.first = false
   if not open then picker_close() end
   -- the dialogs, after the frame (a modal dialog inside Begin/End would stall ReaImGui's frame)
@@ -2110,6 +2307,7 @@ local function menu_frame()
     row("Track number", opt.trackno == "1", function() opt_set("trackno", opt.trackno == "1" and "0" or "1") end, hue_t, "number")
     row("Track icon", opt.icon == "1", function() opt_set("icon", opt.icon == "1" and "0" or "1") end, hue_t, "icon")
     row("Pick a track icon...", nil, function() picker_open(); MENU.closing = true end, hue_t, "pick")
+    row("Icons follow the track colour", opt.tint == "1", function() opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true) end, hue_t, "tint")
     ImGui.Dummy(ctx, 0, 1)
     ImGui.AlignTextToFramePadding(ctx)
     ImGui.TextColored(ctx, MP.muted, "    Track colour"); ImGui.SameLine(ctx, 0, 8)
@@ -2167,7 +2365,8 @@ local function gear_menu(mx, my)
     .. on(opt.dblclick == "1") .. "Double-click pops an effect out|"
     .. on(opt.fold == "1") .. "Fold the bar to a handle|"
     .. on(opt.fold_color == "1") .. "Track colour on the folded handle|"
-    .. "Pick a track icon..."
+    .. "Pick a track icon...|"
+    .. on(opt.tint == "1") .. "Icons follow the track colour"
   gfx.x, gfx.y = mx, my
   local pick = gfx.showmenu(m)
   if pick and pick > 0 then gear_pick(pick) end
@@ -2390,7 +2589,7 @@ local function quit()
   MENU.on, MENU.ctx = false, nil
   PICK.on, PICK.ctx = false, nil
   NAME.on = false
-  for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "picker_cats", "hover", "tip", "name_edit", "name_hit", "ticon_hit" }) do r.SetExtState(EXT, k, "", false) end
+  for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "picker_cats", "picker_sel", "hover", "tip", "name_edit", "name_hit", "ticon_hit" }) do r.SetExtState(EXT, k, "", false) end
   r.gmem_write(DRW + 9, 0)                                         -- holds nothing now (the drawer band)
   r.gmem_write(DRW + 8, 0)
   pcall(function() r.set_action_options(8) end)                    -- the toolbar button goes dark
@@ -2475,8 +2674,9 @@ local function loop()
   if req ~= "" then
     r.SetExtState(EXT, "opt_req", "", false)
     local k, v = req:match("^(%w+)=(.*)$")
-    if k and OPT_DEF[k] then opt_set(k, v); if k == "fold" then fold_open = true end; has_key = "" end
+    if k and OPT_DEF[k] then opt_set(k, v); if k == "fold" then fold_open = true end; if k == "tint" then TINT.pass(true) end; has_key = "" end
   end
+  if r.GetExtState(EXT, "tint_req") == "1" then r.SetExtState(EXT, "tint_req", "", false); TINT.pass(true) end
   req = r.GetExtState(EXT, "gear_req")                             -- tests: the gear's menu, picked by number
   if req ~= "" then r.SetExtState(EXT, "gear_req", "", false); gear_pick(tonumber(req) or 0) end
   req = r.GetExtState(EXT, "menu_req")                             -- tests: the gear's menu, "open" at the bar's middle | "close"
@@ -2499,6 +2699,10 @@ local function loop()
     elseif req:sub(1, 4) == "dir:" then if #PICK.list == 0 then pick_load_state() end; pick_add_dir(req:sub(5))
     elseif req:sub(1, 4) == "cat:" then PICK.cat = req:sub(5)
     elseif req:sub(1, 2) == "q:" then PICK.q = req:sub(3)
+    elseif req:sub(1, 5) == "size:" then PICK.size = math.max(1, math.min(3, tonumber(req:sub(6)) or 2)); PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(PICK.size), true)
+    elseif req:sub(1, 5) == "side:" then PICK.side = req:sub(6) == "1"; r.SetExtState(EXT, "pick_side", req:sub(6), true)
+    elseif req:sub(1, 11) == "closeafter:" then PICK.close_after = req:sub(12) == "1"; r.SetExtState(EXT, "pick_close", req:sub(12), true)
+    elseif req:sub(1, 4) == "key:" then PICK.key_req = req:sub(5)
     elseif req:sub(1, 4) == "all:" then r.SetExtState(EXT, "pick_all", req:sub(5), true)
     elseif req:sub(1, 4) == "fav:" then
       if #PICK.list == 0 then pick_load_state(); picker_scan() end
@@ -2550,6 +2754,7 @@ local function loop()
     if not ok then dbg("picker error: " .. tostring(err)); picker_close() end
   end
   if want_close then closed_by_user(); quit(); gfx.quit(); return end   -- the bar's X
+  if opt.tint == "1" then TINT.pass(false) end                    -- the icons follow the track colours
   layout()
   sweep()
   draw_body()

@@ -49,7 +49,7 @@ slider11:0<0,20,0.1>-Knee (dB)
 slider12:100<0,100,1>-Mix (%)
 slider13:0<0,500,1>-SC HPF (Hz)
 slider14:100<0,100,1>-Link (%)
-slider15:0<0,1,1{Off,2x}>-Oversample
+slider15:0<0,1,1{Off,2x}>-Detector 2x (the level detector at double rate; the audio is not resampled)
 slider16:0<0,5,0.1>-Lookahead (ms)
 
 @init
@@ -847,10 +847,10 @@ is_embedded ? (
   slider15 ? gfx_set(0.05,0.05,0.07,1) : gfx_set(0.65,0.65,0.67,0.6);
   // Bold from 10 px only: text with digits in bold 8-9 px misreads (wiki 4.7).
   gfx_setfont(1, "Arial", floor(8*ret), floor(8*ret) >= 10 ? 'b' : 0);
-  gfx_measurestr("OS 2x", tw, th);
+  gfx_measurestr("DET 2x", tw, th);
   gfx_x = os_pill_x + os_pill_w*0.5 - tw*0.5;
   gfx_y = pill_os_y + (os_pill_h - th) * 0.5;
-  gfx_drawstr("OS 2x");
+  gfx_drawstr("DET 2x");
 
   // ── GR LED Ladder (right column) ───────────────────────
   gr_disp += (slider10 - gr_disp) * 0.25;

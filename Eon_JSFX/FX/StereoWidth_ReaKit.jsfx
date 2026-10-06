@@ -60,6 +60,7 @@ SW_FN = 4096; SW_FMASK = SW_FN - 1;
 sw_fbuf = freemem; freemem += SW_FN * 2;
 memset(sw_fbuf, 0, SW_FN * 2);
 sw_fw = 0;
+sw_scope_t = 0; sw_scope_on = 0;   // the window stamps sw_scope_t each frame it draws the field; @block gates the writes
 
 corr_sum_lr = corr_sum_ll = corr_sum_rr = 0;   // the correlation meter's ~50 ms sums
 corr_val = corr_smooth = 0;
@@ -105,6 +106,13 @@ atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp( ); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
+// The STEREO FIELD's ring is written only while a window draws the field (sw_draw_field stamps sw_scope_t, a scalar
+// hand-off from @gfx; outside audit 2, 2026-10-05: two writes a sample on every instance, field or no field). Resumed:
+// the ring is cleared first, so the first frame shows nothing stale.
+sw_scope_now = time_precise() - sw_scope_t < 0.5;
+sw_scope_now && !sw_scope_on ? ( memset(sw_fbuf, 0, SW_FN * 2); sw_fw = 0; );
+sw_scope_on = sw_scope_now;
+
 // NATIVE (for all six) followed while audio runs too, so an instance that is off screen keeps
 // step and is saved in the mode the others are in
 rkth_native_tick();
@@ -122,8 +130,10 @@ rk_ps_active ? (
   corr_sum_ll = corr_rms_coeff * corr_sum_ll + spl0 * spl0;
   corr_sum_rr = corr_rms_coeff * corr_sum_rr + spl1 * spl1;
   meter_process_sample(spl0, spl1);
-  sw_fbuf[sw_fw * 2] = spl0; sw_fbuf[sw_fw * 2 + 1] = spl1;   // the STEREO FIELD's ring
-  sw_fw = (sw_fw + 1) & SW_FMASK;
+  sw_scope_on ? (
+    sw_fbuf[sw_fw * 2] = spl0; sw_fbuf[sw_fw * 2 + 1] = spl1;   // the STEREO FIELD's ring, while a window draws it
+    sw_fw = (sw_fw + 1) & SW_FMASK;
+  );
 );
 
 
@@ -257,6 +267,7 @@ function draw_corr_meter(ox, oy, w, h, val) (
 // ═══════════════════════════════════════════════════════════════════════
 SW_FDRAW = 1024;
 function sw_draw_field(ox, oy, w, h) local(s, cx, cy, r, d, wp, i, idx, l, rr, x, y, pk, k, ps, tw, th) (
+  sw_scope_t = time_precise();   // the audio keeps the ring filled while this is fresh (@block)
   gfx_set(0.12, 0.15, 0.20, 1);
   gfx_rect(ox, oy, w, h);
   s = min(w, h);
