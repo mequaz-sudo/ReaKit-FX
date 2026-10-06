@@ -31,8 +31,9 @@ local function add(tr, p)
     local fx = r.TrackFX_AddByName(tr, n, false, -1)
     if fx >= 0 then
       local ok, id = r.TrackFX_GetNamedConfigParm(tr, fx, "fx_ident")
-      -- the right FILE, not a namesake: its exact file name, whole (wiki 6.16)
-      if not ok or basename(id):lower() == p.file:lower() then return fx end
+      -- the right FILE, not a namesake: its exact file name, whole (wiki 6.16); an FX REAPER cannot name is not
+      -- taken on trust (outside audit 2026-10-06: the other actions already refuse it)
+      if ok and basename(id):lower() == p.file:lower() then return fx end
       r.TrackFX_Delete(tr, fx)
     end
   end

@@ -1598,7 +1598,9 @@ function TINT.paint(src, cr, cg, cb, dst)                         -- the icon pa
   if not r.JS_LICE_LoadPNG then return false end
   local b = r.JS_LICE_LoadPNG(src); if not b then return false end
   local w, h = r.JS_LICE_GetWidth(b), r.JS_LICE_GetHeight(b)
-  if w * h > 400 * 400 then r.JS_LICE_DestroyBitmap(b); return false end   -- a pixel is two API calls: a big picture would stall REAPER
+  if w * h > 256 * 256 then r.JS_LICE_DestroyBitmap(b); return false end   -- a pixel is up to three API calls: 256 px
+                                                                  -- paints in ~80 ms, 400 px froze REAPER ~180 ms (paint_time_probe.lua,
+                                                                  -- outside audit 2026-10-06); a bigger picture keeps its plain icon
   local top, top_a = 0, 0                                         -- the brightest pixel among the most opaque ones: a
   for y = 0, h - 1 do for x = 0, w - 1 do                          -- resized PNG's faint edge pixels carry wild
     local v = math.floor(r.JS_LICE_GetPixel(b, x, y))             -- colours (rgb 255 at alpha 1, measured 2026-10-06,
@@ -1613,7 +1615,9 @@ function TINT.paint(src, cr, cg, cb, dst)                         -- the icon pa
     local v = math.floor(r.JS_LICE_GetPixel(b, x, y))
     local a = (v >> 24) & 0xFF
     if a > 0 then
-      local l = math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF) / top
+      -- clamped: a faint edge pixel can be brighter than top (top comes from the opaque ones) and an unclamped
+      -- channel over 255 spills into its neighbour, the alpha included (outside audit 2026-10-06)
+      local l = math.min(1, math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF) / top)
       local col = (a << 24) | (math.floor(cr * l + 0.5) << 16) | (math.floor(cg * l + 0.5) << 8) | math.floor(cb * l + 0.5)
       r.JS_LICE_PutPixel(b, x, y, col, 1.0, "COPY")
     end
@@ -1622,6 +1626,12 @@ function TINT.paint(src, cr, cg, cb, dst)                         -- the icon pa
   local ok = r.JS_LICE_WritePNG(dst, b, true)
   r.JS_LICE_DestroyBitmap(b)
   return ok and r.file_exists(dst)
+end
+function TINT.name(orig, cr, cg, cb)                              -- the painted copy's file: <rrggbb>_<hash>_<file name>;
+  local key, h = pick_norm(orig):lower(), 2166136261              -- the hash (FNV-1a) of the whole own name, case-folded
+  for i = 1, #key do h = ((h ~ key:byte(i)) * 16777619) & 0xFFFFFFFF end   -- (Windows folds case):
+  return string.format("%s/%02x%02x%02x_%08x_%s", TINT.dir, cr, cg, cb, h,   -- "Drums/Kick.png" and "Drums_Kick.png" made
+    (pick_norm(orig):gsub("^.*/", ""):gsub("[^%w%.%-]", "_")))   -- ONE file before it (outside audit 2026-10-06)
 end
 function TINT.own(tr)                                             -- the track's own icon (for the picker: the one to mark)
   local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
@@ -1650,7 +1660,7 @@ function TINT.pass(force)                                         -- every track
     local col = math.floor(r.GetMediaTrackInfo_Value(tr, "I_CUSTOMCOLOR"))
     if on and orig ~= "" and (col & 0x1000000) ~= 0 then
       local cr, cg, cb = r.ColorFromNative(col & 0xFFFFFF)
-      local dst = TINT.dir .. "/" .. string.format("%02x%02x%02x", cr, cg, cb) .. "_" .. orig:gsub("[^%w%.]", "_")
+      local dst = TINT.name(orig, cr, cg, cb)
       if not r.file_exists(dst) then
         local src = TINT.resolve(orig)
         if r.file_exists(src) and TINT.paint(src, cr, cg, cb, dst) then made = made + 1 else dst = nil end
