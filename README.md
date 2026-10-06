@@ -265,7 +265,11 @@ track the bar names: GainKit first in the chain, the others at the end.
 
 ![The gear menu](screenshots/session/dock_bar_menu.png)
 
-![The track icon picker](screenshots/session/dock_icon_picker.png)
+![The track icon picker: the categories down the side, the grid in the track's colour](screenshots/session/dock_icon_picker.png)
+
+![Eight coloured tracks wearing their icons in their colours](screenshots/session/dock_icon_colour.png)
+
+![The ReaKit FX track icons, the EON category](screenshots/session/track_icons.png)
 
 ![Renaming the track on the bar](screenshots/session/dock_rename.png)
 
