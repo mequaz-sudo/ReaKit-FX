@@ -251,8 +251,11 @@ track the bar names: GainKit first in the chain, the others at the end.
   keys, strings, brass, vocal, buses, loops and more, drawn in REAPER's icon grey) in a folder of
   their own, the EON category. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
   category. **+ Group** makes a group of your own; right-click an icon to put it in a group or mark
-  it a favourite. Favourites and Recent get their own pills, "All selected tracks" sets every
-  selected track at once, and the window remembers where you left it. **Icons follow the track
+  it a favourite. Favourites and Recent get their own pills, or put every category in a list down
+  the side. Three icon sizes, with the names under the icons at the largest; the arrow keys move a
+  highlight and Enter picks it; an icon another selected track wears gets a thin outline; "All
+  selected tracks" sets every selected track at once; "Close after a pick" does what it says; and the
+  window remembers where you left it. **Icons follow the track
   colour** (off to start) paints a coloured track's icon in its colour: a copy of the icon, made once
   per colour and icon for the whole machine and shared by every track and project that uses that
   pair; the plain icon comes back when the colour goes or the option goes off. The menu and the picker need
