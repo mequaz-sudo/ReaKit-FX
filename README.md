@@ -402,7 +402,8 @@ REAPER's own setting, so it holds for every docker and after a restart.
 5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit`. Close the effects
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
-   `JS: EON: De-Esser` and `JS: EON: Stereo Width`.
+   `JS: EON: De-Esser` and `JS: EON: Stereo Width`. Or add all six at once: **Track > Insert track from
+   template > ReaKit FX - All six** (from the ReaKit FX templates package).
 6. To change the look, open the plugin's window (the track's FX button) and click **THEME** at the top.
 
 Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so
