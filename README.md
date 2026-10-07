@@ -1,8 +1,8 @@
 # ReaKit FX
 
-Six free effects for REAPER with EON Studios interfaces, drawn by the
+Seven free effects for REAPER with EON Studios interfaces, drawn by the
 [ReaKit](https://github.com/mequaz-sudo/ReaKit) library: Saturation, 3-Band EQ and DDC by
-LOSER, a De-Esser built on Liteon's, and EON's own GainKit and Stereo Width. Every face is
+LOSER, a De-Esser built on Liteon's, and EON's own GainKit, Stereo Width and Filter. Every face is
 code, no image files, so it scales to any size and renders at full resolution on HiDPI. The
 GainKit Plus package adds a dock that keeps the selected track's effects in view: see
 [The ReaKit FX dock](#the-reakit-fx-dock).
@@ -190,6 +190,22 @@ above it. The WIDTH light runs blue at mono, green at 100 % and yellow at 200 %.
 it is the WIDTH knob at the bottom of the channel; a click on its correlation meter folds the meter
 away and gives the knob the strip, and the small CORR tab brings it back (each copy remembers).
 
+### Filter
+
+A high-pass and a low-pass, nothing else: two knobs, HIGH PASS and LOW PASS, each 20 Hz to
+20 kHz, and a SLOPE key for 12 or 24 dB per octave. A knob at the end of its travel is OFF (the
+high-pass at 20 Hz, the low-pass at 20 kHz) and its light goes out; a click on the light switches
+the filter off and brings it back where it was. The filters are Butterworth, built on Andrew
+Simper's trapezoidal state-variable stages (the same stages as the 3-Band EQ's SMOOTH voice): the
+corner lands exactly on the knob's value, and the cutoff glides over 5 ms and is recomputed every
+sample while it moves, so a knob sweep or an automation ramp is continuous, with no zipper. A
+filter switched on or off fades over 5 ms, and the slope crossfades over 10 ms, so nothing clicks.
+The strip along the bottom edge drops a CURVE drawer: the response, with a node per filter at its
+corner to drag sideways, scroll a semitone at a time, or double-click to switch off. In a mixer
+strip it is the two knobs stacked, with the compact curve under them; a click on the curve folds it
+away and the CURVE tab brings it back (each copy remembers). In the dock, the CURVE chip pops the
+curve over the knobs.
+
 ## The ReaKit FX dock
 
 ![The REAPER window with the ReaKit FX dock under the tracks: Lead Vox selected, its four effects side by side](screenshots/session/dock_overview.png)
@@ -310,10 +326,10 @@ REAPER's own setting, so it holds for every docker and after a restart.
 
 ## Across the plugins
 
-- **Presets** — each of the six has factory presets in REAPER's preset menu at the top of its
+- **Presets** — each effect has factory presets in REAPER's preset menu at the top of its
   window, named for the job: Vocal Smooth, Kick Punch and Drum Bus Glue on DDC, Vocal Standard and
-  Hi-Hat Tame on the De-Esser, Warmth, De-Mud and Telephone on the 3-Band EQ, and more on
-  Saturation, Stereo Width and GainKit (64 in all). The DDC and De-Esser presets are tuned to a set
+  Hi-Hat Tame on the De-Esser, Warmth, De-Mud and Telephone on the 3-Band EQ, Rumble, Air cut and
+  Telephone on the Filter, and more on Saturation, Stereo Width and GainKit (74 in all). The DDC and De-Esser presets are tuned to a set
   amount of reduction. A preset sets the sound and leaves the look, the link group and GainKit's
   name as they are.
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
@@ -408,8 +424,8 @@ REAPER's own setting, so it holds for every docker and after a restart.
 5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit`. Close the effects
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
-   `JS: EON: De-Esser` and `JS: EON: Stereo Width`. Or add all six at once: **Track > Insert track from
-   template > ReaKit FX - All six** (from the ReaKit FX templates package).
+   `JS: EON: De-Esser`, `JS: EON: Stereo Width` and `JS: EON: Filter`. Or add the six that came first at once:
+   **Track > Insert track from template > ReaKit FX - All six** (from the ReaKit FX templates package).
 6. To change the look, open the plugin's window (the track's FX button) and click **THEME** at the top.
 
 Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so

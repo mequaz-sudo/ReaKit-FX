@@ -34,8 +34,13 @@ meter in DSP", which is acknowledged here as the published reference for it.
 
 ## The effects
 
-GainKit is EON Studios' own code (MIT). The other four run their authors' own
-DSP and keep their original headers:
+GainKit, Stereo Width and Filter are EON Studios' own code (MIT). Filter's stages,
+and the 3-Band EQ's SMOOTH voice, are the trapezoidal state-variable filter as
+Andrew Simper (Cytomic) derived it in his technical papers ("Solving the
+continuous SVF equations using trapezoidal integration and equivalent
+currents"), acknowledged here as the published reference for the form; the
+code is EON's. The other four run their authors' own DSP and keep their
+original headers:
 
 - **Michael Gruhn (LOSER)** — Saturation, 3-Band EQ and DDC (Digital Drum
   Compressor), (C) 2006–2007.

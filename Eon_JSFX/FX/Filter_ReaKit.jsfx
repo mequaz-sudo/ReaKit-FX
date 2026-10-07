@@ -1,0 +1,884 @@
+// Filter (ReaKit)
+// (C) 2026 EON Studios
+// A high-pass and a low-pass, Butterworth at 12 or 24 dB/oct, on Andrew Simper's trapezoidal state-variable filter,
+// with a CURVE drawer (the response, two nodes to drag)
+// Version: 1.0.0
+//
+// DSP: each filter is one SVF stage (12 dB, Q 0.7071) or two in cascade (24 dB, Q 0.5412 and 1.3066: a 4th-order
+//   Butterworth), the trapezoidal form (Cytomic, "Solving the continuous SVF equations using trapezoidal integration
+//   and equivalent currents"), prewarped, so the corner lands exactly on the knob's value and the state survives a
+//   coefficient change: the cutoff GLIDES over 5 ms in the log domain, recomputed every sample while it moves, so a
+//   knob sweep or an automation ramp is continuous (a direct-form biquad stepped once per block zippers; the
+//   3-Band EQ's SMOOTH voice runs the same stages). Both slopes run while a filter is on and the output crossfades
+//   over 10 ms when the SLOPE key is switched; at rest the output is one path's, sample for sample. A filter at the
+//   end of its range (HP at 20 Hz, LP at 20 kHz) is OFF: it fades out over 5 ms and is not run; coming back it
+//   clears its state first, then fades in (GainKit's rule, popcheck rig 2026-10-01). A new instance fades in from
+//   its input the same way. The Play/Rec/Stop gate (rk_playstate) is folded into the same fades.
+// GUI by EON Studios (ReaKit Libraries)
+desc:EON: Filter
+//tags: filter highpass lowpass high-pass low-pass hp lp butterworth
+//author: EON Studios
+
+import ../../ReaKit/utils_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/buttons_kbsg.jsfx-inc
+import ../../ReaKit/meters_kbsg.jsfx-inc
+import ../../ReaKit/rk_playstate.jsfx-inc
+import ../../ReaKit/rk_gmem_link.jsfx-inc
+import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_drawer.jsfx-inc
+import ../../ReaKit/rk_curve.jsfx-inc
+
+slider1:20<20,20000,0.1>-HP Freq (Hz)
+slider2:20000<20,20000,0.1>-LP Freq (Hz)
+slider3:1<0,1,1{12 dB,24 dB}>-Slope
+slider4:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
+slider5:fl_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; 0 = borderless embed, house rule 1; persists via FX chunk, no @serialize touch)
+slider6:fl_drawer=1<0,1,1>-Curve drawer (internal; 1 = open, new copies and old projects open; written BARE by the face, read by EON Floatter; persists via FX chunk; rk_drawer)
+slider7:fl_strip_curve=1<0,1,1>-Curve on the strip (internal; 1 = shown, new copies show it; a click on the strip's curve folds it, the CURVE tab brings it back; written BARE; persists via FX chunk)
+
+in_pin:left input
+in_pin:right input
+out_pin:left output
+out_pin:right output
+options:gfx_hz=60 no_meter
+options:gmem=Swing_Media_Transfer
+
+@init
+// once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
+ext_noinit = 1;
+rkth_free_only = 1;   // the free effects list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
+ext_tail_size = -1;   // the filters and the fades have a tail
+gfx_ext_retina = 1;
+gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
+// 0x100 follows the NAME BAR row (slider5), re-applied in the @gfx tail. ⚠️ row ON = 0x100 CLEARED.
+fl_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+tau = 2 * $pi;
+cDenorm = 10^-30;
+
+freemem = 0;
+KS = 16; BS = 8;
+km = freemem; freemem += KS * 2;   // 2 knobs (HP, LP; the strip and the window never draw in the same pass)
+bm = freemem; freemem += BS * 4;   // 4 buttons (the two LEDs, the SLOPE key, a spare)
+memset(km, 0, KS * 2);
+memset(bm, 0, BS * 4);
+
+meter_init(freemem); freemem += 1380;
+rk_ps_init(-1);
+rk_link_init(4, 3, freemem); freemem += 64;   // group in slider4, sliders 1-3 linked
+// EON_RKFX_LINK: GainKit 31360000, Saturation 31361100, 3-Band EQ 31362200, De-Esser 31363300, Stereo Width 31364400,
+// then the drawer band EON_RKFX_DRAWER at 31365520 (rk_drawer): this one takes the next 1100 stride past it. Each
+// plugin's block is 1024 group slots + the quick-link scratch at +1024..+1027. ⚠️ Check against the bundle's
+// gmem_regions_supplement.tsv before anything else claims 31366600..31367700.
+rk_link_set_base(31366600);
+rkdr_init(160, 20, 150, 244);   // the CURVE drawer: 160 px, its strip 20 px, the closed face 150 px at least, 244 as
+                                // designed (EON Floatter's SIZES row): open, 404, the @gfx size below
+
+// the response for the display: FL_N dB values, log-spaced over rk_curve's 20..22000, filled when a setting changes
+FL_N = 256;
+fl_cv = freemem; freemem += FL_N;
+fl_ckm = freemem; freemem += 8;
+memset(fl_cv, 0, FL_N); memset(fl_ckm, 0, 8);
+fl_cv_ok = 0;
+
+// ── the filter constants ──
+FL_FMIN = 20; FL_FMAX = 20000;
+FL_K12  = 1.4142135624;   // 1/Q at Q 0.7071: one stage, 12 dB/oct Butterworth
+FL_K24A = 1.8477590650;   // 1/Q at Q 0.5412: stage 1 of the 4th-order Butterworth
+FL_K24B = 0.7653668647;   // 1/Q at Q 1.3066: stage 2
+FL_SNAP = 0.000001;       // a glide within this of its target lands on it (log Hz)
+
+// one trapezoidal SVF stage (Andrew Simper): the low-pass out; coefficients a1 = 1 / (1 + g (g + k)), a2 = g a1,
+// a3 = g a2 with g = tan(pi f / srate), k = 1 / Q. Each stage keeps its own state (the instances in @sample).
+function fl_svf_lp(x, a1, a2, a3) instance(ic1, ic2) local(v1, v2, v3) (
+  v3 = x - ic2; v1 = a1 * ic1 + a2 * v3; v2 = ic2 + a2 * ic1 + a3 * v3;
+  ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+  v2;
+);
+// the same stage, the high-pass out: x - k v1 - v2
+function fl_svf_hp(x, a1, a2, a3, k) instance(ic1, ic2) local(v1, v2, v3) (
+  v3 = x - ic2; v1 = a1 * ic1 + a2 * v3; v2 = ic2 + a2 * ic1 + a3 * v3;
+  ic1 = 2 * v1 - ic1; ic2 = 2 * v2 - ic2;
+  x - k * v1 - v2;
+);
+function fl_svf_clear() instance(ic1, ic2) ( ic1 = 0; ic2 = 0; );
+
+// the three stages' coefficients for one filter, from its glided cutoff (log Hz): the 12 dB stage and the two
+// 24 dB stages, so a slope switch can crossfade between paths that both run
+function fl_hp_coefs() local(g) (
+  g = tan($pi * exp(fl_hp_lf) / max(srate, 8000));
+  hp12_a1 = 1 / (1 + g * (g + FL_K12));  hp12_a2 = g * hp12_a1; hp12_a3 = g * hp12_a2;
+  hp24a_a1 = 1 / (1 + g * (g + FL_K24A)); hp24a_a2 = g * hp24a_a1; hp24a_a3 = g * hp24a_a2;
+  hp24b_a1 = 1 / (1 + g * (g + FL_K24B)); hp24b_a2 = g * hp24b_a1; hp24b_a3 = g * hp24b_a2;
+);
+function fl_lp_coefs() local(g) (
+  g = tan($pi * exp(fl_lp_lf) / max(srate, 8000));
+  lp12_a1 = 1 / (1 + g * (g + FL_K12));  lp12_a2 = g * lp12_a1; lp12_a3 = g * lp12_a2;
+  lp24a_a1 = 1 / (1 + g * (g + FL_K24A)); lp24a_a2 = g * lp24a_a1; lp24a_a3 = g * lp24a_a2;
+  lp24b_a1 = 1 / (1 + g * (g + FL_K24B)); lp24b_a2 = g * lp24b_a1; lp24b_a3 = g * lp24b_a2;
+);
+
+// the cutoff's log value for a slider setting, clamped to the range and to 0.45 srate (a 44.1 kHz project is safe)
+function fl_lf(hz) ( log(min(max(hz, FL_FMIN), max(srate, 8000) * 0.45)); );
+
+function recalc_dsp() local(sr) (
+  sr = max(srate, 8000);
+  fl_hp_on = slider1 > FL_FMIN + 0.5;     // the end of the range is OFF
+  fl_lp_on = slider2 < FL_FMAX - 0.5;
+  fl_hp_lf_t = fl_lf(slider1);
+  fl_lp_lf_t = fl_lf(slider2);
+  fl_sm_t = slider3 >= 0.5 ? 1 : 0;        // the SLOPE key: 0 = 12 dB, 1 = 24 dB
+  sm_coeff = 1 - exp(-1 / (0.005 * sr));   // the 5 ms glide
+  fade_step = 1 / (0.005 * sr);            // the 5 ms linear fade (on / off, the gate)
+  fl_sm_step = 1 / (0.010 * sr);           // the 10 ms slope crossfade
+  fl_live = 1;                             // the next samples recompute the coefficients until the glides land
+);
+
+recalc_dsp();
+fl_sr_seen = srate;
+dsp_dirty = 0;
+// the cutoffs start where they are set; later moves glide (@sample). The filters fade in from the input over 5 ms
+// (hp_mix, lp_mix at 0), so an instance inserted with a filter set does not click. The slope starts on its key.
+fl_hp_lf = fl_hp_lf_t; fl_lp_lf = fl_lp_lf_t;
+fl_hp_coefs(); fl_lp_coefs();
+fl_sm = fl_sm_t;
+hp_mix = lp_mix = 0; hp_run = lp_run = 0;
+// where a filter was before its LED switched it off (the LED brings it back here); the house defaults until then
+fl_hp_last = 80; fl_lp_last = 12000;
+
+// ── Colours (the EQ's LOW / HIGH: the high-pass works on the low end, the low-pass on the high) ──
+hp_cr = 0.15; hp_cg = 0.30; hp_cb = 0.72;   // HP knob cap
+hp_lr = 0.20; hp_lg = 0.40; hp_lb = 0.90;   // HP LED, node, curve shade
+lp_cr = 0.75; lp_cg = 0.18; lp_cb = 0.15;   // LP knob cap
+lp_lr = 0.90; lp_lg = 0.25; lp_lb = 0.15;   // LP LED, node, curve shade
+
+// ── the knob's travel <-> Hz: log, 0..1000 over 20 Hz .. 20 kHz (three decades, so 1000 steps is 0.7 % each) ──
+function fl_pos(hz) ( 1000 * log(min(max(hz, FL_FMIN), FL_FMAX) / FL_FMIN) / log(1000); );
+function fl_hz(pos) ( pos <= 0 ? FL_FMIN : pos >= 1000 ? FL_FMAX : FL_FMIN * 1000 ^ (pos / 1000); );
+// a setting, rounded as the readout shows it: whole Hz under 1 kHz, 10 Hz steps to 10 kHz, 100 Hz over
+function fl_round_hz(f) (
+  f < 1000 ? floor(f + 0.5) : f < 10000 ? floor(f / 10 + 0.5) * 10 : floor(f / 100 + 0.5) * 100;
+);
+// the readout: "80 Hz", "3.4 kHz", "12 kHz"; OFF at the end of the range
+function fl_fmt(f, on, s) local(k) (
+  !on ? strcpy(s, "OFF") : (
+    f = fl_round_hz(f);
+    f < 1000 ? sprintf(s, "%d Hz", f) : (
+      k = f / 1000;
+      abs(k - floor(k + 0.5)) < 0.001 ? sprintf(s, "%d kHz", floor(k + 0.5)) : sprintf(s, "%.1f kHz", k);
+    );
+  );
+);
+
+// ── the response for the display, from the SLIDERS (the settings, not the glide): the exact magnitude of the stages
+// above on the warped axis. om = tan(pi f / srate), g the stage's own; x2 = (om / g)^2; a stage's |H|^2 is
+// 1 / ((1 - x2)^2 + k^2 x2) for the low-pass, x2^2 over the same for the high-pass. ──
+function fl_stage_db(om, g, k, hp) local(x2, d) (
+  x2 = sqr(om / g); d = sqr(1 - x2) + k * k * x2;
+  10 * log10(max(hp ? x2 * x2 / d : 1 / d, 10^-20));
+);
+function fl_resp(f) local(sr, om, g, d) (
+  sr = max(srate, 8000);
+  om = tan($pi * min(f, sr * 0.49) / sr);
+  d = 0;
+  fl_hp_on ? (
+    g = tan($pi * exp(fl_hp_lf_t) / sr);
+    d += fl_sm_t ? fl_stage_db(om, g, FL_K24A, 1) + fl_stage_db(om, g, FL_K24B, 1) : fl_stage_db(om, g, FL_K12, 1);
+  );
+  fl_lp_on ? (
+    g = tan($pi * exp(fl_lp_lf_t) / sr);
+    d += fl_sm_t ? fl_stage_db(om, g, FL_K24A, 0) + fl_stage_db(om, g, FL_K24B, 0) : fl_stage_db(om, g, FL_K12, 0);
+  );
+  d;
+);
+// the curve, again only when something it depends on changed (rk_curve's rule: fill it when something changes, not
+// when something is drawn)
+function fl_curves() local(i, ch, v) (
+  ch = 0; i = 0;
+  loop(4,
+    v = i == 0 ? slider1 : i == 1 ? slider2 : i == 2 ? slider3 : srate;
+    fl_ckm[i] !== v ? ( fl_ckm[i] = v; ch = 1; );
+    i += 1;
+  );
+  ch || !fl_cv_ok ? (
+    fl_cv_ok = 1; i = 0;
+    loop(FL_N,
+      fl_cv[i] = fl_resp(RKCV_FMIN * (RKCV_FMAX / RKCV_FMIN) ^ (i / (FL_N - 1)));
+      i += 1;
+    );
+  );
+);
+// the curve at f (interpolated from the points)
+function fl_cv_at(f) local(p, i) (
+  p = max(0, min(FL_N - 1.001, (log(max(f, RKCV_FMIN)) - rkcv_lmin) / rkcv_flog * (FL_N - 1)));
+  i = p | 0; fl_cv[i] + (fl_cv[i + 1] - fl_cv[i]) * (p - i);
+);
+
+@serialize
+file_var(0, rk_ps_en_play);
+file_var(0, rk_ps_en_rec);
+file_var(0, rk_ps_en_stop);
+file_var(0, rk_ps_inited);
+file_var(0, fl_hp_last);
+file_var(0, fl_lp_last);
+rkth_self_serialize();   // the theme this instance painted itself (no bridge), appended last
+rkth_nat_serialize();    // NATIVE (no slider of its own for it), LAST: anything new goes below
+
+@slider
+recalc_dsp();
+rk_link_on_slider();
+
+@block
+srate != fl_sr_seen ? ( fl_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
+atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp(); );
+rk_link_pull() ? ( recalc_dsp(); );
+rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
+
+// NATIVE (for all of them) followed while audio runs too, so an instance that is off screen keeps step and is
+// saved in the mode the others are in
+rkth_native_tick();
+
+@sample
+rk_ps_tick();
+
+// ── the glides: the cutoffs ease to their settings over 5 ms in the log domain and the coefficients follow every
+// sample, until both have landed (then nothing here runs: at rest every value sits on its target) ──
+fl_live ? (
+  fl_hp_lf += (fl_hp_lf_t - fl_hp_lf) * sm_coeff; abs(fl_hp_lf_t - fl_hp_lf) < FL_SNAP ? fl_hp_lf = fl_hp_lf_t;
+  fl_lp_lf += (fl_lp_lf_t - fl_lp_lf) * sm_coeff; abs(fl_lp_lf_t - fl_lp_lf) < FL_SNAP ? fl_lp_lf = fl_lp_lf_t;
+  fl_hp_coefs(); fl_lp_coefs();
+  fl_hp_lf === fl_hp_lf_t && fl_lp_lf === fl_lp_lf_t ? fl_live = 0;   // exact compares: EEL2's == has a dead zone
+);
+// the SLOPE key: both paths run while a filter is on and the output crossfades over 10 ms. Every fade here runs
+// on a line and is SHAPED as it is applied (smoothstep, 3 m^2 - 2 m^3): a line applied as it is has a corner
+// where it ends, and that corner was the one transient left on the rig (ysfx, 2026-10-07: a slope step of 1/240
+// a sample on a full-scale signal; the shaped fade starts and ends with no slope at all).
+fl_sm = fl_sm < fl_sm_t ? min(fl_sm_t, fl_sm + fl_sm_step) : max(fl_sm_t, fl_sm - fl_sm_step);
+fl_smx = fl_sm * fl_sm * (3 - 2 * fl_sm);
+
+// ── HP: fades in and out over 5 ms (its setting, the Play/Rec/Stop gate); fully off it is not run ──
+hp_mix = fl_hp_on && rk_ps_active ? min(hp_mix + fade_step, 1) : max(hp_mix - fade_step, 0);
+hp_mix > 0 ? (
+  fl_mx = hp_mix * hp_mix * (3 - 2 * hp_mix);
+  !hp_run ? (   // starting from fully off: clear the stale state, and start AT the new cutoff (the fade-in carries
+                // the change; a glide up from the end stop left a -69 dBFS blip at the first samples, ysfx rig 2026-10-07)
+    hpL12.fl_svf_clear(); hpL24a.fl_svf_clear(); hpL24b.fl_svf_clear();
+    hpR12.fl_svf_clear(); hpR24a.fl_svf_clear(); hpR24b.fl_svf_clear();
+    fl_hp_lf = fl_hp_lf_t; fl_hp_coefs();
+    hp_run = 1;
+  );
+  fl_d0 = spl0; fl_d1 = spl1;
+  fl_x = spl0 + cDenorm;
+  fl_y12 = hpL12.fl_svf_hp(fl_x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
+  fl_y24 = hpL24b.fl_svf_hp(hpL24a.fl_svf_hp(fl_x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
+  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
+  spl0 = hp_mix < 1 ? fl_d0 + (fl_y - fl_d0) * fl_mx : fl_y;
+  fl_x = spl1 + cDenorm;
+  fl_y12 = hpR12.fl_svf_hp(fl_x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
+  fl_y24 = hpR24b.fl_svf_hp(hpR24a.fl_svf_hp(fl_x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
+  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
+  spl1 = hp_mix < 1 ? fl_d1 + (fl_y - fl_d1) * fl_mx : fl_y;
+) : ( hp_run = 0; );
+
+// ── LP: faded like the HP ──
+lp_mix = fl_lp_on && rk_ps_active ? min(lp_mix + fade_step, 1) : max(lp_mix - fade_step, 0);
+lp_mix > 0 ? (
+  fl_mx = lp_mix * lp_mix * (3 - 2 * lp_mix);
+  !lp_run ? (
+    lpL12.fl_svf_clear(); lpL24a.fl_svf_clear(); lpL24b.fl_svf_clear();
+    lpR12.fl_svf_clear(); lpR24a.fl_svf_clear(); lpR24b.fl_svf_clear();
+    fl_lp_lf = fl_lp_lf_t; fl_lp_coefs();
+    lp_run = 1;
+  );
+  fl_d0 = spl0; fl_d1 = spl1;
+  fl_x = spl0 + cDenorm;
+  fl_y12 = lpL12.fl_svf_lp(fl_x, lp12_a1, lp12_a2, lp12_a3);
+  fl_y24 = lpL24b.fl_svf_lp(lpL24a.fl_svf_lp(fl_x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
+  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
+  spl0 = lp_mix < 1 ? fl_d0 + (fl_y - fl_d0) * fl_mx : fl_y;
+  fl_x = spl1 + cDenorm;
+  fl_y12 = lpR12.fl_svf_lp(fl_x, lp12_a1, lp12_a2, lp12_a3);
+  fl_y24 = lpR24b.fl_svf_lp(lpR24a.fl_svf_lp(fl_x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
+  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
+  spl1 = lp_mix < 1 ? fl_d1 + (fl_y - fl_d1) * fl_mx : fl_y;
+) : ( lp_run = 0; );
+
+meter_process_sample(spl0, spl1);
+
+
+@gfx 260 404
+gfx_clear = 0x443D38;
+// EON theme: bridge mirrors the band into the suite's segment; follow when live.
+rk_theme_apply();
+sk_kp = (rkth_active() && gmem[GS_THEME_KNOB_P] > 0) ? (gmem[GS_THEME_KNOB_P] | 0) : 1;
+rkth_active() ? (   // NATIVE (for all of them) leaves the plugin's own colours
+  _th_bg_r=gmem[GS_THEME_BASE]; _th_bg_g=gmem[GS_THEME_BASE+1]; _th_bg_b=gmem[GS_THEME_BASE+2]; // BG
+  _th_tx_r=gmem[GS_THEME_BASE+6]; _th_tx_g=gmem[GS_THEME_BASE+7]; _th_tx_b=gmem[GS_THEME_BASE+8]; // TEXT
+  _th_td_r=gmem[GS_THEME_BASE+9]; _th_td_g=gmem[GS_THEME_BASE+10]; _th_td_b=gmem[GS_THEME_BASE+11]; // TEXT_DIM
+  ac_r=gmem[GS_THEME_BASE+15]; ac_g=gmem[GS_THEME_BASE+16]; ac_b=gmem[GS_THEME_BASE+17]; // ACCENT2: the gear, the badge
+) : (
+  _th_bg_r=0.27; _th_bg_g=0.24; _th_bg_b=0.22;
+  _th_tx_r=0.92; _th_tx_g=0.90; _th_tx_b=0.85;   // native title cream
+  _th_td_r=0.55; _th_td_g=0.55; _th_td_b=0.58;   // native dim grey
+  ac_r=0.58; ac_g=0.62; ac_b=0.70;
+);
+// 0x200 (embedded click-through) is armed conditionally inside the embedded branch -- only over dead zones.
+
+// ═══════════════════════════════════════════════════════════════════════
+// FRAME STATE
+// ═══════════════════════════════════════════════════════════════════════
+rk_link_key = gfx_getchar();
+mx = mouse_x; my = mouse_y;
+LMB = mouse_cap & 1; RMB = mouse_cap & 2;
+CTRL = mouse_cap & 4; SHIFT = mouse_cap & 8;
+lmb_down = LMB && !prev_LMB;
+rmb_down = RMB && !prev_RMB;
+frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
+timer = time_precise();
+
+dt = min(timer - frame_last_timer, 0.05);
+frame_last_timer = timer;
+hv_speed = 11;
+ret = max(1, gfx_ext_retina);
+rk_link_menu_gate();
+
+fl_skip = rk_embed_idle(0);   // nothing on the strip moves by itself: the curve and the knobs follow the sliders
+// Background
+!fl_skip ? (
+  gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
+  gfx_rect(0, 0, gfx_w, gfx_h);
+);
+
+// ═══════════════════════════════════════════════════════════════════════
+// SHARED: one filter's knob, by index (0 HP, 1 LP): the knob at (cx, cy, r), its value under it at vy (0 = none).
+// The knob runs over the travel 0..1000 (fl_pos / fl_hz); the slider takes whole steps of the readout's rounding,
+// so a drag reads as it moves. Right-click and double-click: OFF (the end of the range), the house default for an
+// unset filter. Returns 1 while the knob is hovered or held (the embed's click-through).
+// ═══════════════════════════════════════════════════════════════════════
+function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th, act) (
+  m = km + i * KS;
+  cur = i == 0 ? slider1 : slider2;
+  on = i == 0 ? fl_hp_on : fl_lp_on;
+  pos = fl_pos(cur);
+  nv = fl_block_knobs ? pos : ssl_knob_interact(m, cx, cy, r, pos, 0, 1000, i == 0 ? 0 : 1000, 0);
+  act = m[6];
+  nv != pos ? (
+    hz = fl_hz(nv);
+    hz = nv <= 0 || nv >= 1000 ? hz : max(FL_FMIN + 1, min(FL_FMAX - 1, fl_round_hz(hz)));   // inside: never OFF by accident
+    hz != cur ? (
+      i == 0 ? ( slider1 = hz; slider_automate(slider1); ) : ( slider2 = hz; slider_automate(slider2); );
+      atomic_set(dsp_dirty, 1);
+    );
+  );
+  i == 0 ? rk_role_col(2, on, hp_cr, hp_cg, hp_cb) : rk_role_col(2, on, lp_cr, lp_cg, lp_cb);   // FREQ role
+  rk_knob_draw(sk_kp, cx, cy, r, pos, 0, 1000, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  vy > 0 ? (
+    fl_fmt(cur, on, #fl_v);
+    on ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+    gfx_setfont(1, "Arial", vfont, vfont < 10 ? 0 : 'b');
+    gfx_measurestr(#fl_v, tw, th); gfx_x = cx - tw / 2; gfx_y = vy; gfx_drawstr(#fl_v);
+  );
+  act;
+);
+
+// one filter's LED (its light is on while the filter is in): a click switches the filter OFF (the end of the range)
+// and remembers where it was; a click while it is off brings that back (80 Hz / 12 kHz for one never set). Returns 1
+// while hovered.
+function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
+  mb = bm + i * BS;
+  on = i == 0 ? fl_hp_on : fl_lp_on;
+  nv = fl_block_knobs ? on : btn_led_interact(mb, cx, cy, r, on);
+  nv != on ? (
+    i == 0 ? (
+      on ? ( fl_hp_last = slider1; slider1 = FL_FMIN; ) : ( slider1 = max(FL_FMIN + 1, min(FL_FMAX - 1, fl_hp_last)); );
+      slider_automate(slider1);
+    ) : (
+      on ? ( fl_lp_last = slider2; slider2 = FL_FMAX; ) : ( slider2 = max(FL_FMIN + 1, min(FL_FMAX - 1, fl_lp_last)); );
+      slider_automate(slider2);
+    );
+    atomic_set(dsp_dirty, 1);
+  );
+  i == 0 ? ( cr = hp_lr; cg = hp_lg; cb = hp_lb; ) : ( cr = lp_lr; cg = lp_lg; cb = lp_lb; );
+  btn_led_draw(cx, cy, r, on, "", mb[0], cr, cg, cb, 0);
+  mb[6];
+);
+
+// the SLOPE key: 12 dB | 24 dB, two segments at (x, y), each sw wide, h tall. Returns 1 while hovered.
+function fl_slope_key(x, y, sw, h, fs) local(mb, nv) (
+  mb = bm + 2 * BS;
+  nv = fl_block_knobs ? slider3 : btn_segment_interact(mb, x, y, sw, h, 2, 0, slider3);
+  nv != slider3 ? ( slider3 = nv; slider_automate(slider3); atomic_set(dsp_dirty, 1); );
+  gfx_setfont(1, "Arial", fs, 'b');
+  btn_segment_draw(x, y, sw, h, 0, slider3, "12 dB", mb[0], ac_r, ac_g, ac_b);
+  btn_segment_draw(x + sw, y, sw, h, 1, slider3, "24 dB", mb[0], ac_r, ac_g, ac_b);
+  mb[6];
+);
+
+// ═══════════════════════════════════════════════════════════════════════
+// SHARED: the CURVE in (x, y, w, h): the response on rk_curve's log axis, +6 dB at the top, -42 at the floor (a
+// filter is read from 0 down), the grid, a shade under the trace from the HP's colour at the left to the LP's at the
+// right, the trace, and a node per filter at its corner ("HP" / "LP", rk_curve's badge) to drag sideways, scroll
+// (a semitone a tick) or double-click (OFF). A filter that is OFF shows its node at the plate's edge, dimmed, to be
+// dragged in. compact = 1: the strip's picture, the 0 dB line and 100 / 1k / 10k only, no nodes, no labels.
+// ev: 1 = this frame's click and wheel are the curve's (the caller took them from the knobs)
+// ═══════════════════════════════════════════════════════════════════════
+FL_TOP = 6; FL_BOT = -42;
+FL_SEMI = 2 ^ (1 / 12);
+function fl_dby(db, y, h) ( y + (FL_TOP - db) / (FL_TOP - FL_BOT) * h; );
+function fl_set_f(i, f) local(hz) (
+  hz = f <= FL_FMIN ? FL_FMIN : f >= FL_FMAX ? FL_FMAX : max(FL_FMIN + 1, min(FL_FMAX - 1, fl_round_hz(f)));
+  i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); atomic_set(dsp_dirty, 1); ); )
+         : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); atomic_set(dsp_dirty, 1); ); );
+);
+function fl_draw_curve(x, y, w, h, s, compact, ev)
+  local(i, f, gx_, gy_, tw, th, db, c, y0, y1, yb, t, cr, cg, cb, nr, nx0, nx1, ny0, ny1, hov, a, fs, on0, on1, lbl_f) (
+  fl_curves();
+  // the plate
+  gfx_set(0.07, 0.08, 0.10, 1); gfx_rect(x, y, w, h);
+  yb = y + h;
+  // the grid: the decade ladder (the nine stops in the window, 100 / 1k / 10k on the strip), 0 dB and every 12 under it
+  i = 0;
+  loop(9,
+    f = rk_curve_grid_f(i);
+    (!compact || f == 100 || f == 1000 || f == 10000) ? (
+      gx_ = rk_curve_f2x(f, x, w);
+      gfx_set(1, 1, 1, compact ? 0.10 : (f == 100 || f == 1000 || f == 10000) ? 0.14 : 0.07);
+      gfx_rect(gx_, y, 1, h);
+    );
+    i += 1;
+  );
+  db = 0;
+  loop(4,
+    gy_ = fl_dby(db, y, h);
+    (!compact || db == 0) ? ( gfx_set(1, 1, 1, db == 0 ? 0.22 : 0.09); gfx_rect(x, gy_, w, 1); );
+    db -= 12;
+  );
+  !compact ? (
+    fs = max(7, floor(9 * s));
+    gfx_setfont(1, "Arial", fs);
+    gfx_set(1, 1, 1, 0.40);
+    gfx_measurestr("100", tw, th);
+    gfx_x = rk_curve_f2x(100, x, w) + 2 * s; gfx_y = yb - th - 2 * s; gfx_drawstr("100");
+    gfx_x = rk_curve_f2x(1000, x, w) + 2 * s; gfx_drawstr("1k");
+    gfx_x = rk_curve_f2x(10000, x, w) + 2 * s; gfx_drawstr("10k");
+    db = 0;
+    loop(4,
+      db == 0 ? strcpy(#fl_s, "0") : sprintf(#fl_s, "%d", db);
+      gfx_measurestr(#fl_s, tw, th);
+      gfx_x = x + w - tw - 3 * s; gfx_y = fl_dby(db, y, h) - th - 1; gfx_drawstr(#fl_s);
+      db -= 12;
+    );
+  );
+  // the shade under the trace, one column a pixel (no seams), its colour sliding from the HP's to the LP's across
+  // the plate; then the trace, a shadow pass first (rk_curve's look)
+  c = 0;
+  loop(floor(w),
+    t = c / max(w - 1, 1);
+    y0 = min(max(fl_dby(fl_cv[min(floor(t * (FL_N - 1) + 0.5), FL_N - 1)], y, h), y + 1), yb - 1);
+    gfx_set(hp_lr + (lp_lr - hp_lr) * t, hp_lg + (lp_lg - hp_lg) * t, hp_lb + (lp_lb - hp_lb) * t, 0.16);
+    gfx_rect(x + c, y0, 1, yb - y0);
+    c += 1;
+  );
+  i = 0;
+  loop(2,
+    i == 0 ? gfx_set(0, 0, 0, 0.45) : gfx_set(0.95, 0.95, 0.92, 1);
+    c = 0;
+    y0 = min(max(fl_dby(fl_cv[0], y, h), y + 1), yb - 2);
+    loop(floor(w) - 1,
+      t = (c + 1) / max(w - 1, 1);
+      y1 = min(max(fl_dby(fl_cv[min(floor(t * (FL_N - 1) + 0.5), FL_N - 1)], y, h), y + 1), yb - 2);
+      gfx_line(x + c, y0 + (i == 0 ? 1 : 0), x + c + 1, y1 + (i == 0 ? 1 : 0));
+      y0 = y1; c += 1;
+    );
+    i += 1;
+  );
+  !compact ? (
+    // ── the nodes: at each filter's corner, on the curve; an OFF filter's at the plate's edge, dimmed ──
+    nr = 7 * s;
+    on0 = fl_hp_on; on1 = fl_lp_on;
+    nx0 = on0 ? rk_curve_f2x(slider1, x, w) : x + nr + 2 * s;
+    nx1 = on1 ? rk_curve_f2x(slider2, x, w) : x + w - nr - 2 * s;
+    ny0 = on0 ? fl_dby(fl_cv_at(slider1), y, h) : fl_dby(0, y, h);
+    ny1 = on1 ? fl_dby(fl_cv_at(slider2), y, h) : fl_dby(0, y, h);
+    hov = mx >= x && mx < x + w && my >= y && my < yb ? (
+      sqr(mx - nx0) + sqr(my - ny0) <= sqr(nr + 3 * s) ? 1
+      : sqr(mx - nx1) + sqr(my - ny1) <= sqr(nr + 3 * s) ? 2 : 0;
+    ) : 0;
+    fl_dd ? hov = fl_dd;
+    // the mouse: a press on a node starts a drag (sideways: decades of 1100, the axis is log(1100) wide; SHIFT fine);
+    // a double-click sets the filter OFF; the wheel over a node moves it a semitone a tick
+    ev && lmb_down && hov && !fl_dd ? (
+      timer - fl_dc_t < 0.3 && fl_dc_k == hov ? (
+        fl_set_f(hov - 1, hov == 1 ? FL_FMIN : FL_FMAX);
+        fl_dc_k = 0;
+      ) : (
+        fl_dd = hov; fl_dmx = mx;
+        fl_df = hov == 1 ? (on0 ? slider1 : FL_FMIN) : (on1 ? slider2 : FL_FMAX);
+        fl_dc_k = hov; fl_dc_t = timer;
+      );
+      lmb_down = 0;
+    );
+    fl_dd ? (
+      LMB ? (
+        a = (mx - fl_dmx) / w * (SHIFT ? 0.2 : 1);
+        fl_set_f(fl_dd - 1, fl_df * (RKCV_FMAX / RKCV_FMIN) ^ a);
+      ) : fl_dd = 0;
+    );
+    ev && frame_wheel != 0 && hov && !fl_dd ? (
+      f = hov == 1 ? slider1 : slider2;
+      fl_set_f(hov - 1, f * FL_SEMI ^ frame_wheel);
+      frame_wheel = 0;
+    );
+    fl_nh0 = hov == 1 ? min(1, fl_nh0 + dt * hv_speed) : max(0, fl_nh0 - dt * hv_speed);
+    fl_nh1 = hov == 2 ? min(1, fl_nh1 + dt * hv_speed) : max(0, fl_nh1 - dt * hv_speed);
+    rk_curve_style(0, 2);   // the badge: the filter's letters on its disc
+    rk_curve_node_paint_ex(nx0, ny0, nr, fl_nh0, fl_dd == 1, on0 ? 1 : 0.30, hp_lr, hp_lg, hp_lb, "HP");
+    rk_curve_node_paint_ex(nx1, ny1, nr, fl_nh1, fl_dd == 2, on1 ? 1 : 0.30, lp_lr, lp_lg, lp_lb, "LP");
+    // the hovered or held node's frequency, by it
+    hov ? (
+      lbl_f = hov == 1 ? slider1 : slider2;
+      fl_fmt(lbl_f, hov == 1 ? on0 : on1, #fl_s);
+      rk_curve_node_label(hov == 1 ? nx0 : nx1, hov == 1 ? ny0 : ny1, nr * RKCV_BADGE_K, x, y, w, h, #fl_s);
+    );
+    fl_cv_hov = hov;
+  ) : fl_cv_hov = 0;
+  // the border
+  gfx_set(0.20, 0.22, 0.27, 1);
+  gfx_rect(x, y, w, 1); gfx_rect(x, yb - 1, w, 1);
+  gfx_rect(x, y, 1, h); gfx_rect(x + w - 1, y, 1, h);
+);
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODE: embedded (MCP/TCP) vs standalone
+// ═══════════════════════════════════════════════════════════════════════
+fl_block_knobs = 0;
+gfx_ext_flags & 1 ? (
+  !fl_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  EMBEDDED — the two knobs (stacked, or side by side in a wide short    ║
+// ║  strip), a light and the value under each, the compact curve          ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  emb_widget_active = 0;
+  fl_wide = gfx_w > gfx_h * 1.15;   // a track panel: the knobs side by side
+
+  // the curve is this copy's option: shown, it takes the bottom (or the right, wide); folded, the knobs take the strip
+  // and a small CURVE tab sits at the bottom. Its place is known BEFORE the knobs run: a press on the tab is the
+  // tab's, not a knob's (Stereo Width's CORR tab, outside audit 2026-10-07).
+  fl_tab_h = max(10, min(13*ret, gfx_h * 0.25));
+  !fl_strip_curve ? (
+    gfx_setfont(1, "Arial", max(7, floor(9*ret)), 'b');
+    gfx_measurestr("CURVE", fl_tab_tw, fl_tab_th);
+    fl_tab_w = fl_tab_tw + 12*ret; fl_tab_x = (gfx_w - fl_tab_w) * 0.5; fl_tab_y = gfx_h - fl_tab_h - 1;
+    fl_tab_hov = mx >= fl_tab_x && mx <= fl_tab_x + fl_tab_w && my >= fl_tab_y && my <= gfx_h;
+  ) : fl_tab_hov = 0;
+  fl_tab_own = fl_tab_hov && !km[1] && !km[KS + 1];   // not while a knob is already being dragged
+
+  fl_wide ? (
+    // side by side: the knobs in the left part, the curve at the right (while shown and there is room)
+    fl_cv_w = fl_strip_curve ? min(gfx_w * 0.42, gfx_h * 1.6) : 0;
+    fl_cv_w > 0 && fl_cv_w < 36*ret ? fl_cv_w = 0;
+    fl_kz_w = gfx_w - fl_cv_w;
+    fl_kz_h = fl_strip_curve ? gfx_h : gfx_h - fl_tab_h - 2;
+    fl_cell_w = fl_kz_w * 0.5; fl_cell_h = fl_kz_h;
+    fl_cx0 = fl_cell_w * 0.5; fl_cx1 = fl_cell_w * 1.5; fl_cy0 = fl_cy1 = 0;
+  ) : (
+    // stacked: HP over LP, the curve under them (while shown)
+    fl_cv_h = fl_strip_curve ? max(30*ret, gfx_h * 0.26) : 0;
+    fl_cv_h > 0 && gfx_h - fl_cv_h < 80*ret ? fl_cv_h = max(0, gfx_h - 80*ret);
+    fl_cv_h > 0 && fl_cv_h < 24*ret ? fl_cv_h = 0;
+    fl_kz_w = gfx_w;
+    fl_kz_h = fl_strip_curve ? gfx_h - fl_cv_h : gfx_h - fl_tab_h - 2;
+    fl_cell_w = gfx_w; fl_cell_h = fl_kz_h * 0.5;
+    fl_cx0 = fl_cx1 = gfx_w * 0.5; fl_cy0 = 0; fl_cy1 = fl_cell_h;
+  );
+  // one cell: the knob, then the light and the name on a row, then the value
+  mcp_r = max(8, min(fl_cell_w * 0.24, fl_cell_h * 0.24));
+  mcp_lbl_font = max(7, floor(min(fl_cell_w * 0.13, fl_cell_h * 0.13) * ret));
+  mcp_val_font = max(7, floor(min(fl_cell_w * 0.11, fl_cell_h * 0.11) * ret));
+  mcp_led_r = max(2.5, min(mcp_r * 0.20, 5));
+  fl_blk = mcp_r * 2 + 6 + mcp_lbl_font + 2 + mcp_val_font;   // the cell's content, stacked
+  fl_blk_y = max(2, (fl_cell_h - fl_blk) * 0.5);
+
+  fl_tab_own ? ( fl_lmb_keep = lmb_down; fl_rmb_keep = rmb_down; lmb_down = rmb_down = 0; );   // the tab's press
+  i = 0;
+  loop(2,
+    cx = i == 0 ? fl_cx0 : fl_cx1; cy = (i == 0 ? fl_cy0 : fl_cy1) + fl_blk_y + mcp_r;
+    emb_widget_active |= fl_knob(i, cx, cy, mcp_r, 0, mcp_val_font);
+    // the name and its light
+    gfx_setfont(1, "Arial", mcp_lbl_font, 'b');
+    gfx_measurestr(i == 0 ? "HP" : "LP", tw, th);
+    lbl_y = cy + mcp_r + 6;
+    lbl_x = cx - (tw + mcp_led_r * 2 + 4) * 0.5 + mcp_led_r * 2 + 4;
+    emb_widget_active |= fl_led(i, lbl_x - mcp_led_r - 4, lbl_y + th * 0.5, mcp_led_r);
+    (i == 0 ? fl_hp_on : fl_lp_on) ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+    gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr(i == 0 ? "HP" : "LP");
+    // the value
+    fl_fmt(i == 0 ? slider1 : slider2, i == 0 ? fl_hp_on : fl_lp_on, #fl_v);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
+    gfx_measurestr(#fl_v, tw, th); gfx_x = cx - tw / 2; gfx_y = lbl_y + mcp_lbl_font + 2; gfx_drawstr(#fl_v);
+    i += 1;
+  );
+  fl_tab_own ? ( lmb_down = fl_lmb_keep; rmb_down = fl_rmb_keep; );
+
+  // ── Link badge ──
+  // the badge is a live control: a click on it must not arm 0x200 (REAPER would open the window instead of cycling
+  // the group -- the user, 2026-09-30; GainKit's pattern)
+  (mx - (gfx_w - 10*ret)) * (mx - (gfx_w - 10*ret)) + (my - 8*ret) * (my - 8*ret) <= (6*ret + 2) * (6*ret + 2) ? emb_widget_active = 1;
+  rk_link_draw_badge(gfx_w - 16*ret, 2*ret, 12*ret, ac_r, ac_g, ac_b, mx, my, lmb_down);
+
+  fl_strip_curve ? (
+    // ── the compact curve (a click on it folds it away: a live control, so the click does not open the window) ──
+    fl_wide ? (
+      fl_cv_w > 0 ? (
+        gfx_set(0.15, 0.18, 0.22, 0.5); gfx_line(fl_kz_w, 3, fl_kz_w, gfx_h - 3);
+        cv_x = fl_kz_w + 3*ret; cv_y = 3*ret; cv_w = fl_cv_w - 6*ret; cv_h = gfx_h - 6*ret;
+      ) : cv_w = 0;
+    ) : (
+      fl_cv_h > 0 ? (
+        gfx_set(0.15, 0.18, 0.22, 0.5); gfx_line(3, fl_kz_h, gfx_w - 3, fl_kz_h);
+        cv_x = 3*ret; cv_y = fl_kz_h + 3*ret; cv_w = gfx_w - 6*ret; cv_h = fl_cv_h - 6*ret;
+      ) : cv_w = 0;
+    );
+    cv_w > 0 ? (
+      fl_draw_curve(cv_x, cv_y, cv_w, cv_h, ret, 1, 0);
+      mx >= cv_x && mx <= cv_x + cv_w && my >= cv_y && my <= cv_y + cv_h ? (
+        emb_widget_active = 1;
+        lmb_down ? fl_strip_curve = 0;                               // BARE: no undo point (as the drawer)
+      );
+    );
+  ) : (
+    // ── the CURVE tab: a click brings the curve back ──
+    gfx_setfont(1, "Arial", max(7, floor(9*ret)), 'b');
+    gfx_measurestr("CURVE", tw, th);                                 // (placed above, before the knobs)
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, fl_tab_hov ? 0.35 : 0.18);
+    gfx_rect(fl_tab_x, fl_tab_y, fl_tab_w, fl_tab_h, 1);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, fl_tab_hov ? 1 : 0.75);
+    gfx_x = fl_tab_x + (fl_tab_w - tw) * 0.5; gfx_y = fl_tab_y + (fl_tab_h - th) * 0.5; gfx_drawstr("CURVE");
+    fl_tab_hov ? ( emb_widget_active = 1; lmb_down ? fl_strip_curve = 1; );
+  );
+
+  !emb_widget_active ? gfx_ext_flags |= 0x200;
+
+
+  );   // !fl_skip (rk_embed_idle)
+) : (
+  // House rule 3 (wiki 4.5): window up -> arm 0x200 always. The flag only routes clicks on the EMBED, which runs no
+  // @gfx pass while a window is open, so this is the only pass that can set it; a click on the strip then closes
+  // the window. An idle pass (& 2) leaves the flag alone.
+  !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;
+
+// ╔═══════════════════════════════════════════════════════════════════════╗
+// ║  STANDALONE — header, two columns (HIGH PASS, LOW PASS), the SLOPE    ║
+// ║  key, the meter; the CURVE drawer below                               ║
+// ╚═══════════════════════════════════════════════════════════════════════╝
+
+  hdr_h = 34*ret;
+  mtr_w = 44*ret;
+  body_w = gfx_w - mtr_w;
+
+  // ── the CURVE drawer (rk_drawer) ── The face is the two knobs and the meter; the drawer holds the response.
+  // Closed 244 + drawer 160 = 404, the @gfx size (so without EON Floatter the window opens with the drawer open:
+  // new copies and old projects open). GROW (a float EON Floatter serves): the face keeps the closed height rkdr_B
+  // and the drawer opens in the room the window gains below it, so the knobs and the meter never move. INWIN (any
+  // other window): the strip still works and an open drawer takes its room from the window in the same proportions;
+  // a window too small for both keeps the face and offers the CURVE chip. POP (the ReaKit FX dock): no strip; the
+  // CURVE chip pops the drawer's content over the face (not saved, starts shut).
+  rkdr_frame(fl_drawer);
+  fl_drawer != rkdr_open ? fl_drawer = rkdr_open;   // BARE: no undo point, the project not marked (rk_drawer)
+  fl_sh = rkdr_sh;
+  fl_fh = 0;                                         // the curve's room under the face (0 = none)
+  rkdr_mode == 0 ? (
+    fl_face_b = rkdr_B - fl_sh;                      // the closed face, less its strip, whatever the drawer does
+    fl_fh = rkdr_G;                                  // the room that has arrived
+  ) : rkdr_mode == 1 && rkdr_open ? (
+    // the design's proportions, the drawer allowed down to 60 % of its size here (rkdr_share never goes under it)
+    fl_fh = max(floor(rkdr_D * 0.6), floor((gfx_h - fl_sh) * rkdr_dh / (rkdr_ch - rkdr_sh1 + rkdr_dh) + 0.5));
+    gfx_h - fl_fh >= rkdr_minh * ret ? ( fl_face_b = gfx_h - fl_fh - fl_sh; ) : ( fl_fh = 0; fl_face_b = gfx_h - fl_sh; );
+  ) : (
+    fl_face_b = gfx_h - fl_sh;
+  );
+  fl_chip = rkdr_mode == 2 || (rkdr_mode == 1 && rkdr_open && fl_fh <= 0);
+  body_h = fl_face_b - hdr_h;
+
+  // ── Title bar ──
+  gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
+  gfx_setfont(1, "Arial", floor(max(11*ret, hdr_h * 0.48)), 'b');
+  gfx_x = 10*ret; gfx_y = (hdr_h - 14*ret) * 0.5 + 1;
+  gfx_drawstr("FILTER");
+  fl_tx = gfx_x;   // where the title ends
+  rkth_dock_name(0, 0, fl_tx, hdr_h);   // double-click the name: the ReaKit FX dock (rk_theme)
+  // ▸THEME sits in the header after the title, before the link badge, and under the header only in a window too
+  // narrow for it. Its width is the cluster's own (rkth_cl_hdr_w; a close guess on the very first frame).
+  rk_gear_r = max(5*ret, hdr_h * 0.20);
+  rk_gear_x = body_w - rk_gear_r - 8*ret;
+  rk_gear_y = hdr_h / 2;
+  rk_badge_sz = max(9*ret, hdr_h * 0.36);
+  fl_thw = rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56*rkth_scale;
+  fl_thr = rk_gear_x - rk_badge_sz - 13*ret;   // the badge's left edge, less a gap
+  fl_tx + 12*ret + fl_thw <= fl_thr ? (
+    fl_thx = fl_tx + 12*ret; fl_thy = (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2;
+  ) : (
+    fl_thx = 10*ret; fl_thy = hdr_h + 4*ret;
+  );
+
+  // Appearance cluster (THEME · KNOB): interaction runs inside, so an open panel swallows the click before the
+  // knobs see it. NAME BAR row: opt-in, per instance (rkth_namebar every frame so the chip tracks the slider).
+  rkth_namebar(fl_name_bar);
+  rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
+  rkth_cluster_hdr(fl_thx, fl_thy, 0, 0);
+  rkth_nb_pick >= 0 ? (
+    fl_name_bar = rkth_nb_pick; slider_automate(fl_name_bar); rkth_nb_pick = -1;
+  );
+
+  // ── Gear + Link badge (placed with the title, above) ──
+  rk_link_draw_gear(rk_gear_x, rk_gear_y, rk_gear_r, ac_r, ac_g, ac_b, mx, my, lmb_down);
+  rk_link_draw_badge(rk_gear_x - rk_badge_sz - 5*ret, rk_gear_y - rk_badge_sz / 2, rk_badge_sz, ac_r, ac_g, ac_b, mx, my, lmb_down);
+
+  gfx_set(0.15, 0.18, 0.22, 1);
+  gfx_line(0, hdr_h - 1, gfx_w, hdr_h - 1);
+
+  // ── the layout: two columns, the SLOPE key along the bottom of the face ──
+  col_w = body_w * 0.5;
+  sh_y = hdr_h + 5*ret;
+  sh_font = max(9*ret, floor(min(col_w * 0.10, 13*ret)));
+  led_r_hdr = max(3*ret, sh_font * 0.35);
+  gfx_setfont(1, "Arial", sh_font, 'b');
+  gfx_measurestr("HIGH PASS", tw, th);
+  bar_y = sh_y + th + 3*ret;
+  key_h = max(12*ret, min(16*ret, body_h * 0.09));
+  key_w = max(30*ret, min(44*ret, col_w * 0.42));
+  key_y = fl_face_b - key_h - 6*ret;
+  key_font = max(7*ret, floor(key_h * 0.6));
+  knob_top = bar_y + 8*ret;
+  knob_bot = key_y - 6*ret;
+  knob_zone_h = max(20*ret, knob_bot - knob_top);
+  knob_r = min(col_w * 0.30, knob_zone_h * 0.26);
+  knob_r = max(knob_r, 12*ret);
+  val_font = max(8*ret, floor(knob_r * 0.30));
+  // the block, the knob's scale (1.3 R up) to the value under it (1.45 R + the font): kept inside the zone, the knob
+  // made smaller rather than overlap (Saturation's rule)
+  fl_k = 2.75 + 0.30 * ret;
+  knob_r = min(knob_r, max(10*ret, (knob_zone_h - 4*ret) / fl_k));
+  knob_cy = knob_top + 1.3 * knob_r + max(0, (knob_zone_h - knob_r * fl_k) * 0.4);
+  val_y = knob_cy + knob_r * 1.45;
+
+  // ── the CURVE chip (the dock, or a window too small for the drawer): at the right of the SLOPE key, a click pops
+  // the curve over the face; a click on the chip or anywhere else closes it (a click inside it does nothing). Its
+  // clicks are read here, before the widgets', so the click that closes it does nothing else (Saturation's chip).
+  fl_chip ? (
+    gfx_setfont(1, "Arial", sh_font, 'b');
+    gfx_measurestr("CURVE", tw, th);
+    fl_cb_h = key_h;
+    fl_cb_w = tw + 14*ret;
+    fl_cb_w > body_w * 0.5 - key_w - 10*ret ? fl_cb_w = fl_cb_h;   // no room for the word: an arrow
+    fl_cb_x = body_w - fl_cb_w - 6*ret; fl_cb_y = key_y;
+    fl_pn_x = 8*ret; fl_pn_y = hdr_h + 6*ret;
+    fl_pn_w = max(40*ret, gfx_w - 16*ret);
+    fl_pn_h = max(40*ret, fl_face_b - fl_pn_y - 6*ret);
+    lmb_down ? (
+      mx >= fl_cb_x && mx < fl_cb_x + fl_cb_w && my >= fl_cb_y && my < fl_cb_y + fl_cb_h ? (
+        fl_pop = !fl_pop; lmb_down = 0;
+      ) : fl_pop ? (
+        // outside the panel: it closes and the click is spent; inside, the click is the curve's (its nodes drag)
+        !(mx >= fl_pn_x && mx < fl_pn_x + fl_pn_w && my >= fl_pn_y && my < fl_pn_y + fl_pn_h) ? ( fl_pop = 0; lmb_down = 0; );
+      );
+    );
+  ) : (
+    fl_pop = 0;
+  );
+  fl_block_knobs = fl_chip && fl_pop;   // the curve is over the face: the knobs and keys under it sleep
+
+  // ── the two columns ──
+  i = 0;
+  loop(2,
+    cx = col_w * (i + 0.5);
+    on = i == 0 ? fl_hp_on : fl_lp_on;
+    i == 0 ? ( cr = hp_lr; cg = hp_lg; cb = hp_lb; ) : ( cr = lp_lr; cg = lp_lg; cb = lp_lb; );
+    // the section header: the light, the name, the accent bar
+    gfx_setfont(1, "Arial", sh_font, 'b');
+    gfx_measurestr(i == 0 ? "HIGH PASS" : "LOW PASS", tw, th);
+    led_cx = cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+    fl_led(i, led_cx, led_cy, led_r_hdr);
+    on ? gfx_set(cr, cg, cb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
+    gfx_setfont(1, "Arial", sh_font, 'b');
+    gfx_x = cx - tw/2; gfx_y = sh_y; gfx_drawstr(i == 0 ? "HIGH PASS" : "LOW PASS");
+    on ? gfx_set(cr, cg, cb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
+    gfx_rect(cx - col_w * 0.33, bar_y, col_w * 0.66, 2*ret);
+    // the knob and its value
+    fl_knob(i, cx, knob_cy, knob_r, val_y, val_font);
+    i += 1;
+  );
+  // the column divider
+  gfx_set(0.18, 0.18, 0.20, 0.5);
+  gfx_line(col_w, hdr_h + 8*ret, col_w, key_y - 8*ret);
+
+  // ── the SLOPE key, centred along the bottom of the face ──
+  fl_slope_key(body_w * 0.5 - key_w, key_y, key_w, key_h, key_font);
+
+  // the CURVE chip: lit while the curve is popped open; the word, or an arrow where it does not fit
+  fl_chip ? (
+    fl_pop ? gfx_set(ac_r, ac_g, ac_b, 1) : gfx_set(0.20, 0.22, 0.26, 1);
+    gfx_rect(fl_cb_x, fl_cb_y, fl_cb_w, fl_cb_h);
+    fl_pop ? gfx_set(0.08, 0.08, 0.09, 1) : gfx_set(0.80, 0.82, 0.86, 1);
+    fl_cb_w > fl_cb_h ? (
+      gfx_setfont(1, "Arial", sh_font, 'b');
+      gfx_measurestr("CURVE", tw, th);
+      gfx_x = fl_cb_x + (fl_cb_w - tw) * 0.5; gfx_y = fl_cb_y + (fl_cb_h - th) * 0.5;
+      gfx_drawstr("CURVE");
+    ) : (
+      fl_ar = fl_cb_h * 0.25; fl_acx = fl_cb_x + fl_cb_w * 0.5; fl_acy = fl_cb_y + fl_cb_h * 0.5;
+      fl_pop ? gfx_triangle(fl_acx - fl_ar, fl_acy + fl_ar * 0.5, fl_acx + fl_ar, fl_acy + fl_ar * 0.5, fl_acx, fl_acy - fl_ar * 0.5)
+             : gfx_triangle(fl_acx - fl_ar, fl_acy - fl_ar * 0.5, fl_acx + fl_ar, fl_acy - fl_ar * 0.5, fl_acx, fl_acy + fl_ar * 0.5);
+    );
+  );
+
+  // Meter divider: down to the face's bottom
+  gfx_set(0.18, 0.18, 0.20, 0.5);
+  gfx_line(body_w, hdr_h + 2*ret, body_w, fl_face_b - 2*ret);
+
+  // ── Meter: the face's height ──
+  mtr_x = body_w + 5*ret; mtr_y = hdr_h + 8*ret;
+  mtr_h = fl_face_b - hdr_h - 16*ret;
+  mtr_bar_w = mtr_w - 18*ret;
+  mtr_led_bar_draw(mtr_x, mtr_y, mtr_bar_w, mtr_h, mtr_peak_l, mtr_peak_r, -60, 0);
+
+  // ── the CURVE drawer: in the room under the face, across the whole width. Nothing is drawn there before the room
+  // arrives, and no drawer work is done while it is shut. Its clicks are its own: the knobs sit above it. ──
+  fl_fh > 0 ? (
+    gfx_set(0.18, 0.18, 0.20, 0.5);
+    gfx_line(6*ret, fl_face_b, gfx_w - 6*ret, fl_face_b);
+    cv_pad = 8*ret;
+    fl_draw_curve(cv_pad, fl_face_b + cv_pad, gfx_w - 2 * cv_pad, fl_fh - 2 * cv_pad, ret, 0, !rk_menu_open);
+  );
+
+  // ── the CURVE strip along the bottom edge (GROW / INWIN; not in the dock): a click opens or closes it ──
+  rkdr_strip(gfx_h - fl_sh, gfx_w, "CURVE", _th_tx_r, _th_tx_g, _th_tx_b, _th_td_r, _th_td_g, _th_td_b,
+             _th_bg_r, _th_bg_g, _th_bg_b);
+
+  // ── the curve, popped open over the face (the CURVE chip), last so it is on top ──
+  fl_chip && fl_pop ? (
+    gfx_set(0, 0, 0, 0.45);
+    gfx_rect(fl_pn_x - 3*ret, fl_pn_y - 2*ret, fl_pn_w + 6*ret, fl_pn_h + 6*ret);   // a shadow
+    gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1); gfx_rect(fl_pn_x, fl_pn_y, fl_pn_w, fl_pn_h);
+    fl_draw_curve(fl_pn_x + 4*ret, fl_pn_y + 4*ret, fl_pn_w - 8*ret, fl_pn_h - 8*ret, ret, 0, !rk_menu_open);
+  );
+);
+
+// ── Options menu overlay ──
+rk_link_draw_menu(rk_gear_x - 165*ret, rk_gear_y + rk_gear_r + 4*ret, ret,
+                  ac_r, ac_g, ac_b, mx, my, lmb_down);
+
+rkth_cluster_overlay();   // open THEME/KNOB panels draw on top (floating only)
+
+// NAME BAR re-applied every VISIBLE pass -- that, not the @init line, is what makes the row take effect without a
+// reload. An idle pass (& 2) leaves the flag alone (house rule 4). ⚠️INVERTED SENSE: the row ON means 0x100 CLEARED.
+!(gfx_ext_flags & 2) ? (
+  fl_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+);
+rk_link_on_gfx_change();
+prev_LMB = LMB;
+prev_RMB = RMB;
