@@ -155,15 +155,15 @@ function recalc_dsp() local(sr) (
 
 recalc_dsp();
 fl_sr_seen = srate;
-dsp_dirty = 0;
 // the cutoffs start where they are set; later moves glide (@sample). The filters fade in from the input over 5 ms
 // (hp_mix, lp_mix at 0), so an instance inserted with a filter set does not click. The slope starts on its key.
 fl_hp_lf = fl_hp_lf_t; fl_lp_lf = fl_lp_lf_t;
 fl_hp_coefs(); fl_lp_coefs();
 fl_sm = fl_sm_t;
 hp_mix = lp_mix = 0; hp_run = lp_run = 0;
-// where a filter was before its LED switched it off (the LED brings it back here); the house defaults until then
-fl_hp_last = 80; fl_lp_last = 12000;
+// where a filter was before it went OFF (the LED brings it back here); the house defaults until then. Set once
+// (@serialize fills them from a saved chunk after this, and must not be undone by an @init re-run)
+!fl_last_set ? ( fl_hp_last = 80; fl_lp_last = 12000; fl_last_set = 1; );
 
 // ── Colours (the EQ's LOW / HIGH: the high-pass works on the low end, the low-pass on the high) ──
 hp_cr = 0.15; hp_cg = 0.30; hp_cb = 0.72;   // HP knob cap
@@ -252,7 +252,7 @@ rk_link_on_slider();
 
 @block
 srate != fl_sr_seen ? ( fl_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
-atomic_exch(dsp_dirty, 0) ? recalc_dsp();   // read and cleared in one step: an edit landing between the two is kept
+// a face write reaches here through slider_automate -> @slider (the house bridge, as the other six); no flag
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
@@ -378,7 +378,6 @@ function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th,
     hz = nv <= 0 || nv >= 1000 ? hz : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(hz)));   // inside: never OFF by accident
     hz != cur ? (
       i == 0 ? ( slider1 = hz; slider_automate(slider1); ) : ( slider2 = hz; slider_automate(slider2); );
-      atomic_set(dsp_dirty, 1);
     );
   );
   // the caps keep their own colours under a theme, as the EQ's band knobs do (the FREQ role would paint both the same)
@@ -409,7 +408,6 @@ function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
       on ? slider2 = FL_FMAX : slider2 = max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_lp_last));
       slider_automate(slider2);
     );
-    atomic_set(dsp_dirty, 1);
   );
   i == 0 ? ( cr = hp_lr; cg = hp_lg; cb = hp_lb; ) : ( cr = lp_lr; cg = lp_lg; cb = lp_lb; );
   btn_led_draw(cx, cy, r, on, "", mb[0], cr, cg, cb, 0);
@@ -420,7 +418,7 @@ function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
 function fl_slope_key(x, y, sw, h, fs) local(mb, nv) (
   mb = bm + 2 * BS;
   nv = fl_block_knobs ? slider3 : btn_segment_interact(mb, x, y, sw, h, 2, 0, slider3);
-  nv != slider3 ? ( slider3 = nv; slider_automate(slider3); atomic_set(dsp_dirty, 1); );
+  nv != slider3 ? ( slider3 = nv; slider_automate(slider3); );
   gfx_setfont(1, "Arial", fs, 'b');
   btn_segment_draw(x, y, sw, h, 0, slider3, "12 dB", mb[0], ac_r, ac_g, ac_b);
   btn_segment_draw(x + sw, y, sw, h, 1, slider3, "24 dB", mb[0], ac_r, ac_g, ac_b);
@@ -440,8 +438,8 @@ FL_SEMI = 2 ^ (1 / 12);
 function fl_dby(db, y, h) ( rk_curve_a2y(db, y, h, FL_TOP, FL_BOT); );   // rk_curve's absolute mapping, clamped to the plate
 function fl_set_f(i, f) local(hz) (
   hz = f <= FL_FMIN ? FL_FMIN : f >= FL_FMAX ? FL_FMAX : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(f)));
-  i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); atomic_set(dsp_dirty, 1); ); )
-         : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); atomic_set(dsp_dirty, 1); ); );
+  i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); ); )
+         : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); ); );
 );
 function fl_draw_curve(x, y, w, h, s, compact, ev)
   local(i, f, gx_, gy_, tw, th, db, c, y0, y1, yb, t, cr, cg, cb, nr, nx0, nx1, ny0, ny1, hov, a, fs, on0, on1, lbl_f) (
