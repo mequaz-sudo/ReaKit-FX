@@ -1199,15 +1199,21 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
     </reapack>
   </category>
   <category name="Templates">
-    <reapack name="ReaKit FX templates" type="projecttpl" desc="ReaKit FX templates - a 16 track board with the six on every track, and a one track demo on vocal presets">
+    <reapack name="ReaKit FX templates" type="projecttpl" desc="ReaKit FX templates - a 16 track board with the six on every track, a one track demo on vocal presets, and a track template with all six">
       <metadata>
-        <description><![CDATA[Two project templates for ReaKit FX (File > New project from template). "ReaKit FX - 16 track board": fourteen tracks and four buses (Vocals, Instruments, Bass, Drums), every track with the six, GainKit last on the master, ready for a mix. "ReaKit FX - One track demo": one Vocal track with the six in chain order on vocal presets, every window open and sized by EON Floatter for a 1920 x 1080 screen, to see the whole set at once. Both need the ReaKit FX package; the demo's windows need EON Floatter.]]></description>
+        <description><![CDATA[Two project templates and a track template for ReaKit FX. "ReaKit FX - 16 track board" (File > New project from template): fourteen tracks and four buses (Vocals, Instruments, Bass, Drums), every track with the six, GainKit last on the master, ready for a mix. "ReaKit FX - One track demo": one Vocal track with the six in chain order on vocal presets, every window open and sized by EON Floatter for a 1920 x 1080 screen, to see the whole set at once. "ReaKit FX - All six" (Track > Insert track from template): one track with GainKit, 3-Band EQ, DDC, De-Esser, Saturation and Stereo Width, each in the mixer strip. All need the ReaKit FX package; the demo's windows need EON Floatter.]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-10-06T09:50:02Z">
         <changelog><![CDATA[The first release: the 16 track board and the one track demo.]]></changelog>
         <source file="ReaKit FX - 16 track board.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/Templates/ReaKit%20FX%20-%2016%20track%20board.rpp</source>
         <source file="ReaKit FX - One track demo.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/Templates/ReaKit%20FX%20-%20One%20track%20demo.rpp</source>
+      </version>
+      <version name="1.0.1" author="Quaz (EON Studios)" time="2026-10-07T13:39:14Z">
+        <changelog><![CDATA[New: a track template, "ReaKit FX - All six" (Track > Insert track from template): one track with GainKit, 3-Band EQ, DDC, De-Esser, Saturation and Stereo Width, each in the mixer strip.]]></changelog>
+        <source file="ReaKit FX - 16 track board.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%2016%20track%20board.rpp</source>
+        <source file="ReaKit FX - One track demo.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%20One%20track%20demo.rpp</source>
+        <source type="tracktpl" file="ReaKit FX - All six.RTrackTemplate">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%20All%20six.RTrackTemplate</source>
       </version>
     </reapack>
   </category>
