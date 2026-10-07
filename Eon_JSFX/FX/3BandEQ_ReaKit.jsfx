@@ -1006,6 +1006,20 @@ gfx_ext_flags & 1 ? (
   );
   eq3_up = lbl_gap + xo_font + 2*ret; stack_h = lbl_gap + lbl_val_gap + val_font + 4*ret;
   knob_cy = max(eq3_top + eq3_up, min(knob_cy, eq3_fh - 4*ret - stack_h));
+  // COMPACT (2026-10-07; the user: all six stacked in a side dock, about 155 px each): under 150 px of face body the
+  // section-name row goes (the knobs' colours and the crossover labels name the bands; the LEDs move to the left of
+  // those labels, OUTPUT keeps its word there), GAIN / LEVEL under the knobs go (the value alone, right under), the
+  // fonts may fall to 8 px and the knob to 14; the block (the crossover label, 1.45 R, the knob, R + 3, the value) is
+  // fitted and centred between the header and the face's bottom
+  eq3_cmp = body_h < 150*ret;
+  eq3_cmp ? (
+    eq3_top = hdr_h + 2*ret;
+    main_r = max(14*ret, min(sec_w * 0.30, (eq3_fh - 4*ret - eq3_top - 24*ret) / 2.45));
+    lbl_font = max(8*ret, floor(main_r * 0.32)); val_font = max(8*ret, floor(main_r * 0.27)); xo_font = val_font;
+    lbl_gap = main_r * 1.45; lbl_val_gap = 0;
+    eq3_up = lbl_gap + xo_font + 2*ret; stack_h = main_r + 3*ret + val_font + 4*ret;
+    knob_cy = eq3_top + eq3_up + max(0, (eq3_fh - 4*ret - eq3_top) - (eq3_up + stack_h)) * 0.5;
+  );
 
   // Title
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
@@ -1065,46 +1079,48 @@ gfx_ext_flags & 1 ? (
   // Section headers + LEDs
   sh_y = hdr_h + 6*ret;
   sh_font = max(9*ret, floor(min(sec_w * 0.10, 13*ret)));
+  eq3_cmp ? ( sh_font = xo_font; gfx_setfont(1, "Arial", sh_font, 'b'); gfx_measurestr("0", tw, th); sh_y = knob_cy - lbl_gap - th; );   // COMPACT: on the crossover labels' line
   led_r_hdr = max(3*ret, sh_font * 0.35);
   gfx_setfont(1, "Arial", sh_font, 'b');
 
   mb0 = bm + 0 * BS;
   gfx_measurestr("LOW", tw, th); sh_cx = sec_w * 0.5;
-  led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+  led_cx = eq3_cmp ? sh_cx - sec_w * 0.5 + 4*ret + led_r_hdr : sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;   // COMPACT: at the section's left
   nv = btn_led_interact(mb0, led_cx, led_cy, led_r_hdr, slider7);
   nv != slider7 ? ( slider7 = nv; mark_dirty(64); );
   btn_led_draw(led_cx, led_cy, led_r_hdr, slider7, "", mb0[0], lo_lr, lo_lg, lo_lb, 0);
   slider7 ? gfx_set(lo_lr, lo_lg, lo_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
-  gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("LOW");
+  !eq3_cmp ? ( gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("LOW"); );
 
   mb1 = bm + 1 * BS;
   gfx_measurestr("MID", tw, th); sh_cx = sec_w * 1.5;
-  led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+  led_cx = eq3_cmp ? sh_cx - sec_w * 0.5 + 4*ret + led_r_hdr : sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;   // COMPACT: at the section's left
   nv = btn_led_interact(mb1, led_cx, led_cy, led_r_hdr, slider8);
   nv != slider8 ? ( slider8 = nv; mark_dirty(128); );
   btn_led_draw(led_cx, led_cy, led_r_hdr, slider8, "", mb1[0], md_lr, md_lg, md_lb, 0);
   slider8 ? gfx_set(md_lr, md_lg, md_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
-  gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("MID");
+  !eq3_cmp ? ( gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("MID"); );
 
   mb2 = bm + 2 * BS;
   gfx_measurestr("HIGH", tw, th); sh_cx = sec_w * 2.5;
-  led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+  led_cx = eq3_cmp ? sh_cx - sec_w * 0.5 + 4*ret + led_r_hdr : sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;   // COMPACT: at the section's left
   nv = btn_led_interact(mb2, led_cx, led_cy, led_r_hdr, slider9);
   nv != slider9 ? ( slider9 = nv; mark_dirty(256); );
   btn_led_draw(led_cx, led_cy, led_r_hdr, slider9, "", mb2[0], hi_lr, hi_lg, hi_lb, 0);
   slider9 ? gfx_set(hi_lr, hi_lg, hi_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
-  gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("HIGH");
+  !eq3_cmp ? ( gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("HIGH"); );
 
   mb3 = bm + 3 * BS;
   gfx_measurestr("OUTPUT", tw, th); sh_cx = sec_w * 3.5;
-  led_cx = sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;
+  led_cx = eq3_cmp ? sh_cx - sec_w * 0.5 + 4*ret + led_r_hdr : sh_cx - tw/2 - led_r_hdr - 5*ret; led_cy = sh_y + th * 0.5;   // COMPACT: at the section's left
   nv = btn_led_interact(mb3, led_cx, led_cy, led_r_hdr, slider10);
   nv != slider10 ? ( slider10 = nv; mark_dirty(512); );
   btn_led_draw(led_cx, led_cy, led_r_hdr, slider10, "", mb3[0], ou_lr, ou_lg, ou_lb, 0);
   slider10 ? gfx_set(ou_lr, ou_lg, ou_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
   gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("OUTPUT");
 
-  // Accent bars
+  // Accent bars (not COMPACT)
+  !eq3_cmp ? (
   gfx_setfont(1, "Arial", sh_font); gfx_measurestr("X", tw, th);
   bar_y = sh_y + th + 3*ret;
   slider7 ? gfx_set(lo_lr, lo_lg, lo_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
@@ -1115,6 +1131,7 @@ gfx_ext_flags & 1 ? (
   gfx_rect(sec_w * 2 + sec_w * 0.15, bar_y, sec_w * 0.70, 2*ret);
   slider10 ? gfx_set(ou_lr, ou_lg, ou_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
   gfx_rect(sec_w * 3 + sec_w * 0.15, bar_y, sec_w * 0.70, 2*ret);
+  );
 
   // Dividers
   gfx_set(0.18, 0.18, 0.20, 0.5);
@@ -1157,10 +1174,10 @@ gfx_ext_flags & 1 ? (
   nv != slider1 ? ( slider1 = nv; mark_dirty(1); );
   rk_knob_draw(sk_kp,cx, knob_cy, main_r, slider1, -24, 24, 1, m[0], lo_cr, lo_cg, lo_cb, 9, _th_bg_r, _th_bg_g, _th_bg_b);
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
-  gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN");
+  !eq3_cmp ? ( gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN"); );
   sprintf(#lv, "%+.1f dB", slider1);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
-  gfx_measurestr(#lv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#lv);
+  gfx_measurestr(#lv, tw, th); gfx_x = cx - tw/2; gfx_y = eq3_cmp ? knob_cy + main_r + 3*ret : knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#lv);
 
   // MID knob
   cx = sec_w * 1.5; m = km + 1 * KS;
@@ -1169,10 +1186,10 @@ gfx_ext_flags & 1 ? (
   nv != slider3 ? ( slider3 = nv; mark_dirty(4); );
   rk_knob_draw(sk_kp,cx, knob_cy, main_r, slider3, -24, 24, 1, m[0], md_cr, md_cg, md_cb, 9, _th_bg_r, _th_bg_g, _th_bg_b);
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
-  gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN");
+  !eq3_cmp ? ( gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN"); );
   sprintf(#mv, "%+.1f dB", slider3);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
-  gfx_measurestr(#mv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#mv);
+  gfx_measurestr(#mv, tw, th); gfx_x = cx - tw/2; gfx_y = eq3_cmp ? knob_cy + main_r + 3*ret : knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#mv);
 
   // HIGH knob
   cx = sec_w * 2.5; m = km + 2 * KS;
@@ -1181,10 +1198,10 @@ gfx_ext_flags & 1 ? (
   nv != slider5 ? ( slider5 = nv; mark_dirty(16); );
   rk_knob_draw(sk_kp,cx, knob_cy, main_r, slider5, -24, 24, 1, m[0], hi_cr, hi_cg, hi_cb, 9, _th_bg_r, _th_bg_g, _th_bg_b);
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
-  gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN");
+  !eq3_cmp ? ( gfx_measurestr("GAIN", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("GAIN"); );
   sprintf(#hv, "%+.1f dB", slider5);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
-  gfx_measurestr(#hv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#hv);
+  gfx_measurestr(#hv, tw, th); gfx_x = cx - tw/2; gfx_y = eq3_cmp ? knob_cy + main_r + 3*ret : knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#hv);
 
   // OUTPUT knob
   cx = sec_w * 3.5; m = km + 3 * KS;
@@ -1194,10 +1211,10 @@ gfx_ext_flags & 1 ? (
   rk_role_col(1, 1, 0.62, 0.62, 0.65);  // OUTPUT — gain role
   rk_knob_draw(sk_kp,cx, knob_cy, main_r, slider6, -24, 24, 1, m[0], sk_kbr, sk_kbg, sk_kbb, 9, _th_bg_r, _th_bg_g, _th_bg_b);
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
-  gfx_measurestr("LEVEL", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("LEVEL");
+  !eq3_cmp ? ( gfx_measurestr("LEVEL", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("LEVEL"); );
   sprintf(#ov, "%+.1f dB", slider6);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
-  gfx_measurestr(#ov, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#ov);
+  gfx_measurestr(#ov, tw, th); gfx_x = cx - tw/2; gfx_y = eq3_cmp ? knob_cy + main_r + 3*ret : knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#ov);
 
   // Meter: the face's height (the display runs under it too)
   mtr_x = body_w + 6*ret; mtr_y = hdr_h + 8*ret;

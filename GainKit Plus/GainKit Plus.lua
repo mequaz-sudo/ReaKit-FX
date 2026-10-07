@@ -44,6 +44,12 @@ if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, 1); r.RefreshT
 r.gmem_attach("Swing_Media_Transfer")
 
 local last, gen = {}, {}
+-- req_seen[idx]: the rename mailbox counter (slot +290) as last read. A GainKit that gets a name typed on its meter
+-- writes the name into its slot (+291 length, +292.. bytes) and bumps the counter; rename_tick renames the TRACK
+-- (one undo step), so the meter, the dock and REAPER hold ONE name (the user, 2026-10-07). The counter is taken as
+-- read when a slot is first published in this run, so a request from before this run never fires.
+local req_seen = {}
+local REQ, REQLEN, REQNAME = 290, 291, 292
 -- This run's GENs start past every earlier run's in this REAPER session. GainKit rereads a slot only
 -- when the GEN (or its track) changed, and every run used to count from 1 again: a GainKit whose window
 -- was closed while Plus stopped and started kept generation 1 from the old run, took the new run's 1
@@ -149,6 +155,7 @@ local function publish(idx, tr, name)
   end
   local icon = icon_path(tr)
   local key = name .. "|" .. packed .. "|" .. icon
+  if req_seen[idx] == nil then req_seen[idx] = r.gmem_read(base + REQ) end   -- first sight: as read, nothing old fires
   if last[idx] ~= key then
     last[idx] = key
     r.gmem_write(base + 1, packed)
@@ -160,7 +167,36 @@ local function publish(idx, tr, name)
 end
 
 local function clear(idx)
-  if last[idx] then last[idx] = nil; r.gmem_write(BASE + idx * STRIDE, 0) end
+  if last[idx] then last[idx] = nil; req_seen[idx] = nil; r.gmem_write(BASE + idx * STRIDE, 0) end
+end
+
+-- A name typed on a GainKit's meter: its slot's counter moved -> the track takes the name (every defer, so it lands
+-- within a frame or two; one gmem read per published slot). The master's slot is not a track: left alone.
+local function rename_tick()
+  for idx in pairs(last) do
+    if idx < MASTER then
+      local base = BASE + idx * STRIDE
+      local c = r.gmem_read(base + REQ)
+      if c ~= req_seen[idx] then
+        req_seen[idx] = c
+        local n, t = math.max(0, math.min(NAME_MAX, math.floor(r.gmem_read(base + REQLEN)))), {}
+        for i = 0, n - 1 do
+          local v = math.floor(r.gmem_read(base + REQNAME + i))
+          if v >= 32 and v ~= 127 and v <= 255 then t[#t + 1] = string.char(v) end
+        end
+        local name, tr = clean(table.concat(t)), r.GetTrack(0, idx)
+        if tr then
+          local _, cur = r.GetTrackName(tr)
+          if name ~= cur then
+            r.Undo_BeginBlock()
+            r.GetSetMediaTrackInfo_String(tr, "P_NAME", name, true)
+            r.Undo_EndBlock("GainKit: track renamed " .. (name ~= "" and ("to " .. name) or "(cleared)"), -1)
+            r.TrackList_AdjustWindows(false)
+          end
+        end
+      end
+    end
+  end
 end
 
 -- EMBED: the THEME panel's EMBED row (MCP / TCP / OFF) in the free plugins. A JSFX cannot move its
@@ -503,6 +539,7 @@ local function loop()
   local wall = os.time()
   if wall - wall_t >= 5 then wall_t = wall; r.SetExtState(EXT, "wall", tostring(wall), true) end   -- the dock's reopen
   if dock_reopen_at and now >= dock_reopen_at then dock_reopen_at = nil; reopen_dock() end
+  rename_tick()
   embed_tick(now)
   if now - t_last >= 0.3 then t_last = now; tick() end
   r.defer(loop)

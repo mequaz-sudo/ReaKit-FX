@@ -400,6 +400,11 @@ gfx_ext_flags & 1 ? (
   body_cx = body_w * 0.5;
 
   sat_av = hdr_h + knob_zone_h - 2 * ret - sat_top;          // the room for the block
+  // FOLDED (2026-10-07; the user: all six stacked in a side dock, about 155 px each): a body too short for the
+  // DRIVE row AND the smallest knob (under 44 px left for the block) keeps both by folding the row onto the knob's
+  // line (the LED and the word at the left, the chip at the right, no accent bar; drawn below)
+  sat_fold = sat_av < 44 * ret;
+  sat_fold ? ( sat_top = hdr_h + 2 * ret; sat_av = hdr_h + knob_zone_h - 2 * ret - sat_top; );
   // the knob alone in its zone is drawn bigger (COMPACT), except in GROW: there it keeps the size it had over
   // the curve, so a project from before the drawer opens with today's knob
   sat_kw = curve_zone_h > 0 || rkdr_mode == 0 ? 0.18 : 0.22;
@@ -411,6 +416,22 @@ gfx_ext_flags & 1 ? (
   val_font = max(8, floor(knob_r * 0.26 * ret));
   lbl_gap = knob_r * 1.45;
   lbl_val_gap = lbl_font + 4 * ret;
+  // fitted exactly (2026-10-07; the fonts floor at 8 px, so the block per R above undershoots at a small knob and the
+  // value ran under the strip in a short window -- the size prints of 2026-10-07): the block with its real fonts, the
+  // knob shrunk to 12 * ret at least; still too tall: TIGHT, no AMOUNT under the knob (the row above names it), the
+  // value right under it
+  sat_tight = 0;
+  loop(3,
+    sat_blk = 1.4 * knob_r + 1.45 * knob_r + lbl_font + 4 * ret + val_font;
+    sat_blk > sat_av - 4 * ret && knob_r > 12 * ret ? (
+      knob_r = max(12 * ret, knob_r * (sat_av - 4 * ret) / sat_blk);
+      lbl_font = max(8, floor(knob_r * 0.32 * ret)); val_font = max(8, floor(knob_r * 0.26 * ret));
+      lbl_gap = knob_r * 1.45; lbl_val_gap = lbl_font + 4 * ret;
+    );
+  );
+  sat_blk = 1.4 * knob_r + 1.45 * knob_r + lbl_font + 4 * ret + val_font;
+  sat_blk > sat_av - 4 * ret ? ( sat_tight = 1; sat_blk = 1.4 * knob_r + knob_r + 3 * ret + val_font; );
+  knob_cy = sat_top + 1.4 * knob_r + max(0, sat_av - sat_blk - 4 * ret) * 0.5;
 
   // ── Title bar ──────────────────────────────────────────────────────
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1);
@@ -458,6 +479,8 @@ gfx_ext_flags & 1 ? (
   sh_y = hdr_h + 5 * ret;
   sh_font = max(9, floor(min(body_w * 0.05, 13) * ret));
   led_r_hdr = max(3, sh_font * 0.35);
+  // folded (2026-10-07): the LED and the word at the left of the knob's line, no accent bar; the chip keeps its right
+  sat_fold ? ( gfx_setfont(1, "Arial", sh_font, 'b'); gfx_measurestr("DRIVE", tw, th); sh_y = knob_cy - th * 0.5; );
   gfx_setfont(1, "Arial", sh_font, 'b');
 
   // ── CURVE, popped open (COMPACT only) ──────────────────────────────
@@ -489,7 +512,7 @@ gfx_ext_flags & 1 ? (
   );
 
   mb0 = bm;
-  gfx_measurestr("DRIVE", tw, th); sh_cx = body_cx;
+  gfx_measurestr("DRIVE", tw, th); sh_cx = sat_fold ? 6 * ret + 2 * led_r_hdr + 5 * ret + tw / 2 : body_cx;   // folded: at the left
   led_cx = sh_cx - tw/2 - led_r_hdr - 5 * ret; led_cy = sh_y + th * 0.5;
   nv = btn_led_interact(mb0, led_cx, led_cy, led_r_hdr, slider2);
   nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
@@ -498,11 +521,13 @@ gfx_ext_flags & 1 ? (
   slider2 ? gfx_set(drv_lr, drv_lg, drv_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
   gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("DRIVE");
 
+  !sat_fold ? (
   // Accent bar
   gfx_setfont(1, "Arial", sh_font); gfx_measurestr("X", tw, th);
   bar_y = sh_y + th + 3 * ret;
   slider2 ? gfx_set(drv_lr, drv_lg, drv_lb, 0.45) : gfx_set(0.20, 0.20, 0.22, 0.30);
   gfx_rect(body_cx - body_w * 0.25, bar_y, body_w * 0.50, 2 * ret);
+  );
 
   // the CURVE chip (COMPACT, the dock): lit while the curve is open; the word, or an arrow where it does not fit
   sat_chip ? (
@@ -534,10 +559,10 @@ gfx_ext_flags & 1 ? (
   rk_role_col(0, 1, drv_cr, drv_cg, drv_cb);  // DRIVE — drive role
   rk_knob_draw(sk_kp,cx, knob_cy, knob_r, slider1, 0, 100, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 11, _th_bg_r, _th_bg_g, _th_bg_b);
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_setfont(1, "Arial", lbl_font, 'b');
-  gfx_measurestr("AMOUNT", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("AMOUNT");
+  !sat_tight ? ( gfx_measurestr("AMOUNT", tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap; gfx_drawstr("AMOUNT"); );
   sprintf(#dv, "%.0f%%", slider1);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", val_font);
-  gfx_measurestr(#dv, tw, th); gfx_x = cx - tw/2; gfx_y = knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#dv);
+  gfx_measurestr(#dv, tw, th); gfx_x = cx - tw/2; gfx_y = sat_tight ? knob_cy + knob_r + 3 * ret : knob_cy + lbl_gap + lbl_val_gap; gfx_drawstr(#dv);
 
   curve_zone_h > 0 ? (
     // ── Horizontal divider between knob and curve ──

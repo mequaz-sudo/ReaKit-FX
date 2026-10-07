@@ -281,6 +281,22 @@ function de_prime() (
 );
 de_prime();
 
+// ── The compact layout (2026-10-07; the user: all six stacked in a side dock, about 155 px each). Two rows of
+// controls under the display need about 230 px of window; under that, ONE row: the five knobs, OUT and a column of
+// the three switches (de_rows = 1), the display taking what is left above the row and going when under 28 px. Every
+// knob and switch takes its place from de_place / de_btn_place; two rows, when they fit, come out exactly as before.
+function de_place(n) (                      // knob n (0 THRESH 1 FREQ 2 BW 3 RATIO 4 LOOK 5 OUT): k_cx, k_cy, kk
+  de_rows == 2 ? (
+    n <= 4 ? ( k_cx = main_x + r1_slot * n + r1_slot / 2; k_cy = row1_cy; kk = kr1; )
+    : ( k_cx = main_x + r2_slot * 3 + r2_slot / 2; k_cy = row2_cy; kk = kr2; );
+  ) : ( k_cx = main_x + de_sp * (n + 0.5); k_cy = de_cy; kk = de_kk; );
+);
+function de_btn_place(i) (                  // switch i (0 TIME 1 TARGET 2 MONITOR): b_x, and in one row its box too
+  de_rows == 2 ? ( b_x = main_x + r2_slot * i + (r2_slot - btn_w) / 2; )
+  : ( b_x = de_bx; btn_w = de_bw; btn_h = de_bh; btn_y = de_by0 + i * (de_bh + 2*ret); );
+);
+
+
 @slider
 recalc_dsp();
 rk_link_on_slider();
@@ -617,7 +633,27 @@ is_embedded ? (
   // ── FFT spectrum analyzer (dual: input + output, FabFilter Pro-DS style) ─
   spec_x = main_x; spec_w = main_w;
   spec_y = hdr_h + 4*ret;
-  spec_h = max(60*ret, min(floor((WIN_H - hdr_h - 16*ret) * 0.32), 130*ret));
+  de_rows = (WIN_H - hdr_h) < 230*ret ? 1 : 2;
+  de_rows == 2 ? (
+    spec_h = max(60*ret, min(floor((WIN_H - hdr_h - 16*ret) * 0.32), 130*ret));
+  ) : (
+    // one row: the knob as big as its slot (6 knobs + the switches' column) or the window's height allows with its
+    // label and value; the display gets the rest above it, none when under 28 px
+    de_sp = main_w / 7;
+    de_tx = 1.15 * (max(8, 18 * 0.32) + max(7, 18 * 0.27)) * ret + 6*ret;     // the texts at an 18 px knob (the cap below)
+    de_kk = max(9, min(floor(de_sp * 0.34), floor((WIN_H - hdr_h - 12*ret - de_tx) / 2)));
+    de_kk = min(de_kk, 18);
+    de_tx = 1.15 * (max(8, de_kk * 0.32) + max(7, de_kk * 0.27)) * ret + 6*ret;
+    de_band = 2 * de_kk + de_tx + 8*ret;
+    spec_h = WIN_H - hdr_h - 8*ret - de_band - 4*ret;
+    spec_h < 28*ret ? spec_h = 0;
+    de_by0 = hdr_h + 4*ret + (spec_h > 0 ? spec_h + 4*ret : 0);               // the row's band: its top and height
+    de_bh = WIN_H - de_by0 - 4*ret;
+    de_cy = de_by0 + (de_bh - de_band) / 2 + 4*ret + de_kk;
+    de_bx = main_x + de_sp * 6 + 3*ret; de_bw = de_sp - 6*ret;                 // the switches, a column of three
+    de_bh = max(10*ret, min(18*ret, (de_bh - 8*ret) / 3 - 2*ret));
+    de_by0 = de_by0 + (WIN_H - 4*ret - de_by0 - (3 * de_bh + 4*ret)) / 2;
+  );
   spec_dblo = -80; spec_dbhi = 0;
   num_bins = fft_half;   // bins 0..511 (de_spectrum); the drawing below clamps to num_bins - 1
   bin_hz = srate / fft_size;
@@ -628,6 +664,7 @@ is_embedded ? (
   de_spectrum(ring_buf_out, ring_out_r, fft_buf_out, spec_mag_out, spec_wr);
   de_spectrum(ring_buf_in,  ring_in_r,  fft_buf_in,  spec_mag_in,  spec_wr);
 
+  spec_h > 0 ? (                      // (one row in a very short window: no display)
   // ── Background ─────────────────────────────────────────────────────────
   gfx_set(0.07, 0.08, 0.11, 1);
   gfx_rect(spec_x, spec_y, spec_w, spec_h);
@@ -738,6 +775,7 @@ is_embedded ? (
   gfx_rect(spec_x, spec_y + spec_h - 1, spec_w, 1);
   gfx_rect(spec_x, spec_y, 1, spec_h);
   gfx_rect(spec_x + spec_w - 1, spec_y, 1, spec_h);
+  );                                   // spec_h > 0
 
   // ── GR meter strip ────────────────────────────────────────────────────────
   strip_x = meter_x; strip_w = 16*ret;
@@ -769,86 +807,85 @@ is_embedded ? (
   kr1 = max(12, min(r1_slot * 0.34, row1_h * 0.40));
   kr2 = max(10, min(r2_slot * 0.28, row2_h * 0.36));
 
-  // Row divider
-  gfx_set(0.14, 0.15, 0.18, 0.5);
-  gfx_line(main_x + 4*ret, knob_y + row1_h, main_x + main_w - 4*ret, knob_y + row1_h);
+  // Row divider (two rows)
+  de_rows == 2 ? ( gfx_set(0.14, 0.15, 0.18, 0.5); gfx_line(main_x + 4*ret, knob_y + row1_h, main_x + main_w - 4*ret, knob_y + row1_h); );
 
   // ── ROW 1: THRESH  FREQ  BW  RATIO  LOOK ─────────────────────────────────
 
   // K0 THRESHOLD (green)
-  k_cx = main_x + r1_slot * 0 + r1_slot / 2;
+  de_place(0);                        // k_cx, k_cy, kk
   m = km + 0 * KS;
-  nv = ssl_knob_interact(m, k_cx, row1_cy, kr1, slider1, -60, 0, -20, 0);
+  nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider1, -60, 0, -20, 0);
   nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
   rk_role_col(4, 1, 0.20, 0.78, 0.35);  // THRESHOLD — dynamics role
-  rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider1, -60, 0, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-  gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+  rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider1, -60, 0, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("THRESH", tw, th);
-  gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("THRESH");
-  gfx_setfont(1, "Arial", floor(max(7, kr1 * 0.27) * ret), 0);
+  gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("THRESH");
+  gfx_setfont(1, "Arial", floor(max(7, kk * 0.27) * ret), 0);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); sprintf(#val, "%.1f dB", slider1);
   gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
 
   // K1 FREQUENCY (gold)
-  k_cx = main_x + r1_slot * 1 + r1_slot / 2;
+  de_place(1);                        // k_cx, k_cy, kk
   m = km + 1 * KS;
-  nv = ssl_knob_interact(m, k_cx, row1_cy, kr1, slider2, 2000, 16000, 7500, 0);
+  nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider2, 2000, 16000, 7500, 0);
   nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider2, 2000, 16000, 0, m[0], 0.85, 0.65, 0.15, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-  gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+  rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider2, 2000, 16000, 0, m[0], 0.85, 0.65, 0.15, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("FREQ", tw, th);
-  gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("FREQ");
-  gfx_setfont(1, "Arial", floor(max(7, kr1 * 0.27) * ret), 0);
+  gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("FREQ");
+  gfx_setfont(1, "Arial", floor(max(7, kk * 0.27) * ret), 0);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   slider2 >= 1000 ? sprintf(#val, "%.1f kHz", slider2/1000) : sprintf(#val, "%.0f Hz", slider2);
   gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
 
   // K2 BANDWIDTH (gold) — only shown/active in BP mode
-  k_cx = main_x + r1_slot * 2 + r1_slot / 2;
+  de_place(2);                        // k_cx, k_cy, kk
   m = km + 2 * KS;
   slider6 == 0 ? (
-    nv = ssl_knob_interact(m, k_cx, row1_cy, kr1, slider3, 0.1, 3.1, 1.5, 0);
+    nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider3, 0.1, 3.1, 1.5, 0);
     nv != slider3 ? ( slider3 = nv; slider_automate(4); atomic_set(dsp_dirty, 1); );
-    rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider3, 0.1, 3.1, 0, m[0], 0.85, 0.65, 0.15, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-    gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+    rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider3, 0.1, 3.1, 0, m[0], 0.85, 0.65, 0.15, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+    gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
     gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("BW", tw, th);
-    gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("BW");
-    gfx_setfont(1, "Arial", floor(max(7, kr1 * 0.27) * ret), 0);
+    gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("BW");
+    gfx_setfont(1, "Arial", floor(max(7, kk * 0.27) * ret), 0);
     gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); sprintf(#val, "%.1f oct", slider3);
     gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
   ) : (
     // Greyed out in HP mode
-    rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider3, 0.1, 3.1, 0, 0, 0.30, 0.32, 0.36, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-    gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+    rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider3, 0.1, 3.1, 0, 0, 0.30, 0.32, 0.36, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+    gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
     gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("BW", tw, th);
-    gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("BW");
+    gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("BW");
   );
 
   // K3 RATIO (teal)
-  k_cx = main_x + r1_slot * 3 + r1_slot / 2;
+  de_place(3);                        // k_cx, k_cy, kk
   m = km + 3 * KS;
-  nv = ssl_knob_interact(m, k_cx, row1_cy, kr1, slider4, 1, 20, 4, 0);
+  nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider4, 1, 20, 4, 0);
   nv != slider4 ? ( slider4 = nv; slider_automate(8); atomic_set(dsp_dirty, 1); );
   rk_role_col(4, 1, 0.00, 0.70, 0.85);  // RATIO — dynamics role
-  rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider4, 1, 20, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-  gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+  rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider4, 1, 20, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("RATIO", tw, th);
-  gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("RATIO");
-  gfx_setfont(1, "Arial", floor(max(7, kr1 * 0.27) * ret), 0);
+  gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("RATIO");
+  gfx_setfont(1, "Arial", floor(max(7, kk * 0.27) * ret), 0);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); sprintf(#val, "%.0f:1", slider4);
   gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
 
   // K4 LOOKAHEAD (teal)
-  k_cx = main_x + r1_slot * 4 + r1_slot / 2;
+  de_place(4);                        // k_cx, k_cy, kk
   m = km + 4 * KS;
-  nv = ssl_knob_interact(m, k_cx, row1_cy, kr1, slider7, 0, 5, 1.0, 0);
+  nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider7, 0, 5, 1.0, 0);
   nv != slider7 ? ( slider7 = nv; slider_automate(64); atomic_set(dsp_dirty, 1); );
   rk_role_col(5, 1, 0.00, 0.70, 0.85);  // LOOKAHEAD — time role
-  rk_knob_draw(sk_kp,k_cx, row1_cy, kr1, slider7, 0, 5, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-  gfx_setfont(1, "Arial", floor(max(8, kr1 * 0.32) * ret), 'b');
+  rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider7, 0, 5, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(max(8, kk * 0.32) * ret), 'b');
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("LOOK", tw, th);
-  gfx_x = k_cx - tw/2; gfx_y = row1_cy + kr1 + 5*ret; gfx_drawstr("LOOK");
-  gfx_setfont(1, "Arial", floor(max(7, kr1 * 0.27) * ret), 0);
+  gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("LOOK");
+  gfx_setfont(1, "Arial", floor(max(7, kk * 0.27) * ret), 0);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); sprintf(#val, "%.1f ms", slider7);
   gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
 
@@ -858,48 +895,54 @@ is_embedded ? (
   btn_y = row2_cy - btn_h / 2;
 
   // B0 TIME — cycle through Fast / Med / Slow on click
-  b_x = main_x + r2_slot * 0 + (r2_slot - btn_w) / 2;
+  de_btn_place(0);                    // b_x (and the box, in one row)
   mb = bm;
   nv = btn_rect_interact(mb, b_x, btn_y, btn_w, btn_h, 0);
   nv ? ( slider5 = (slider5 + 1) % 3; slider_automate(16); atomic_set(dsp_dirty, 1); );
   slider5 == 0 ? btn_lbl = "FAST" : slider5 == 1 ? btn_lbl = "MED" : btn_lbl = "SLOW";
   btn_rect_draw(b_x, btn_y, btn_w, btn_h, slider5 > 0, btn_lbl, mb[0], 0.00, 0.70, 0.85);
-  gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("TIME", tw2, th2);
-  gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("TIME");
+  de_rows == 2 ? (                     // the caption under the switch (no room in one row: the switch says its state)
+    gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("TIME", tw2, th2);
+    gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("TIME");
+  );
 
   // B1 TARGET — Bandpass / Hipass
-  b_x = main_x + r2_slot * 1 + (r2_slot - btn_w) / 2;
+  de_btn_place(1);                    // b_x (and the box, in one row)
   mb = bm + BS;
   nv = btn_rect_interact(mb, b_x, btn_y, btn_w, btn_h, slider6 == 1);
   nv != (slider6 == 1) ? ( slider6 = nv ? 1 : 0; slider_automate(32); atomic_set(dsp_dirty, 1); );
   btn_rect_draw(b_x, btn_y, btn_w, btn_h, slider6 == 1,
                 slider6 == 0 ? "BP" : "HP", mb[0], 0.85, 0.65, 0.15);
-  gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("TARGET", tw2, th2);
-  gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("TARGET");
+  de_rows == 2 ? (                     // the caption under the switch (no room in one row: the switch says its state)
+    gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("TARGET", tw2, th2);
+    gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("TARGET");
+  );
 
   // B2 MONITOR — SC listen
-  b_x = main_x + r2_slot * 2 + (r2_slot - btn_w) / 2;
+  de_btn_place(2);                    // b_x (and the box, in one row)
   mb = bm + 2 * BS;
   nv = btn_rect_interact(mb, b_x, btn_y, btn_w, btn_h, slider8 == 1);
   nv != (slider8 == 1) ? ( slider8 = nv ? 1 : 0; slider_automate(128); atomic_set(dsp_dirty, 1); );
   btn_rect_draw(b_x, btn_y, btn_w, btn_h, slider8 == 1, "SC", mb[0], 0.90, 0.35, 0.15);
-  gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
-  gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("MONITOR", tw2, th2);
-  gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("MONITOR");
+  de_rows == 2 ? (                     // the caption under the switch (no room in one row: the switch says its state)
+    gfx_setfont(1, "Arial", floor(max(7, btn_h * 0.28) * ret), 0);
+    gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_measurestr("MONITOR", tw2, th2);
+    gfx_x = b_x + (btn_w - tw2)/2; gfx_y = btn_y + btn_h + 3*ret; gfx_drawstr("MONITOR");
+  );
 
   // K5 OUTPUT GAIN (grey, bipolar)
-  k_cx = main_x + r2_slot * 3 + r2_slot / 2;
+  de_place(5);                        // k_cx, k_cy, kk
   m = km + 5 * KS;
-  nv = ssl_knob_interact(m, k_cx, row2_cy, kr2, slider9, -24, 24, 0, 0);
+  nv = ssl_knob_interact(m, k_cx, k_cy, kk, slider9, -24, 24, 0, 0);
   nv != slider9 ? ( slider9 = nv; slider_automate(256); atomic_set(dsp_dirty, 1); );
   rk_role_col(1, 1, 0.60, 0.62, 0.66);  // OUTPUT GAIN — gain role (true bipolar)
-  rk_knob_draw(sk_kp,k_cx, row2_cy, kr2, slider9, -24, 24, 1, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
-  gfx_setfont(1, "Arial", floor(max(7, kr2 * 0.32) * ret), 'b');
+  rk_knob_draw(sk_kp,k_cx, k_cy, kk, slider9, -24, 24, 1, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
+  gfx_setfont(1, "Arial", floor(max(7, kk * 0.32) * ret), 'b');
   gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1); gfx_measurestr("OUT", tw, th);
-  gfx_x = k_cx - tw/2; gfx_y = row2_cy + kr2 + 5*ret; gfx_drawstr("OUT");
-  gfx_setfont(1, "Arial", floor(max(6, kr2 * 0.27) * ret), 0);
+  gfx_x = k_cx - tw/2; gfx_y = k_cy + kk + 5*ret; gfx_drawstr("OUT");
+  gfx_setfont(1, "Arial", floor(max(6, kk * 0.27) * ret), 0);
   gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); sprintf(#val, "%.1f dB", slider9);
   gfx_measurestr(#val, tw, th); gfx_x = k_cx - tw/2; gfx_y += th + 1; gfx_drawstr(#val);
 

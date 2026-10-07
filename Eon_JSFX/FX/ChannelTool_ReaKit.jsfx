@@ -108,10 +108,16 @@ GS_THEME_ID = 2649; GS_THEME_BASE = 2650; GS_THEME_KNOB_P = 2676;
 // name, colour and icon path, keyed by the track index this instance reads
 // with get_host_placement(). Band EON_GKPLUS, declared in
 // .refs/gmem_regions_supplement.tsv (blocks 476..478, after EON_PADPCM).
-// GEN 0 = nothing published = today's face; the typed name always wins.
+// GEN 0 = nothing published = today's face. ONE name (the user, 2026-10-07: a name typed on the meter and a track
+// renamed in the dock "dont change one another"): the face prints the TRACK's name (REAPER 7.81+ hands it over, else
+// the script's slot), and a name typed on the face RENAMES THE TRACK through the script: the slot's mailbox (+290 a
+// counter this instance bumps, +291 the length, +292.. the bytes); the script sets the track's name in one undo step.
+// Without Plus the private typed name (#gk_name) works as before (it wins, nothing could rename the track): the two
+// names can only drift apart where the dock is, and the dock needs Plus.
 GK_PLUS_BASE = 31195136; GK_PLUS_STRIDE = 320; GK_PLUS_MAX = 512;
 GK_PLUS_MASTER = 512;                 // the master's slot, after the 512 tracks' (get_host_placement() = -1)
 GK_PLUS_COLOR = 1; GK_PLUS_NAMELEN = 2; GK_PLUS_NAME = 3; GK_PLUS_ICONLEN = 27; GK_PLUS_ICON = 28;
+GK_PLUS_REQ = 290; GK_PLUS_RQLEN = 291; GK_PLUS_RQNAME = 292;   // the rename mailbox (24 bytes: ends at 315 < 320)
 GK_IMG_ICON = 7;                      // the gfx image slot the track icon loads into
 gk_pl_track = -3; gk_pl_gen = -1;     // "never read": the first pass takes the slot
 
@@ -414,9 +420,23 @@ function gk_ne_commit() local(n, a, b) (
     while (a < b && str_getchar(#gk_ne_buf, a) == 32) ( a += 1; );
     while (b > a && str_getchar(#gk_ne_buf, b - 1) == 32) ( b -= 1; );
     strcpy_substr(#gk_ne_t, #gk_ne_buf, a, b - a);
-    strcmp(#gk_ne_t, #gk_name) != 0 ? (
-      strcpy(#gk_name, #gk_ne_t);
-      slider16 = (slider16 + 1) % 1000000; slider_automate(slider16);   // saved, and one undo step
+    strcmp(#gk_ne_t, #gk_dname) != 0 ? (
+      // the track's name is known (REAPER 7.81+, or the script's slot) and this is a track, not the master:
+      // the name goes to the TRACK, through GainKit Plus's mailbox (it renames in one undo step; the face
+      // follows from REAPER). Without the script the request waits in the slot until one runs (the script
+      // takes a counter it has not seen; a fresh script start takes the counter as read, so nothing old fires).
+      gk_pl_gen > 0 && gk_pl_track >= 0 && gk_pl_track < GK_PLUS_MASTER ? (   // Plus alive (its slot published)
+        b = GK_PLUS_BASE + gk_pl_track * GK_PLUS_STRIDE;
+        n = min(strlen(#gk_ne_t), GK_NAME_MAX);          // bytes; never cut inside a UTF-8 letter
+        while (n > 0 && n < strlen(#gk_ne_t) && (str_getchar(#gk_ne_t, n, 'cu') & 0xC0) == 0x80) ( n -= 1; );
+        a = 0; loop(n, gmem[b + GK_PLUS_RQNAME + a] = str_getchar(#gk_ne_t, a, 'cu'); a += 1; );
+        gmem[b + GK_PLUS_RQLEN] = n;
+        gmem[b + GK_PLUS_REQ] = (gmem[b + GK_PLUS_REQ] | 0) + 1;    // the counter LAST: the script takes the name whole
+        strlen(#gk_name) > 0 ? ( strcpy(#gk_name, ""); slider16 = (slider16 + 1) % 1000000; slider_automate(slider16); );
+      ) : (                                // nothing knows the track's name: the private name, saved, one undo step
+        strcpy(#gk_name, #gk_ne_t);
+        slider16 = (slider16 + 1) % 1000000; slider_automate(slider16);
+      );
     );
     gk_ne_on = 0;
   );
@@ -448,10 +468,10 @@ function gk_name_face() local(sc, f, zw, zh, zx, zy, hov, c, n, tw, th, i, best,
   hov = mx >= zx && mx <= zx + zw && my >= zy && my <= zy + zh;
   // The name changed under an open box (undo, a preset, the project reloaded):
   // theirs wins, the edit is dropped (Swing's rule).
-  gk_ne_on && strcmp(#gk_name, #gk_ne_orig) != 0 ? gk_ne_on = 0;
+  gk_ne_on && strcmp(#gk_dname, #gk_ne_orig) != 0 ? gk_ne_on = 0;
   !gk_ne_on ? (
-    hov && lmb_down ? (
-      strcpy(#gk_ne_buf, #gk_name); strcpy(#gk_ne_orig, #gk_name);
+    hov && lmb_down ? (                                    // the edit starts from the name SHOWN (the track's)
+      strcpy(#gk_ne_buf, #gk_dname); strcpy(#gk_ne_orig, #gk_dname);
       gk_ne_caret = strlen(#gk_ne_buf);
       gk_ne_on = 1; gk_ne_unfocus = 0; gk_ne_i0 = 0; lmb_down = 0;
     ) : hov && strlen(#gk_dname) == 0 ? (
@@ -611,8 +631,15 @@ function gk_plus_read() local(t, b, g, n, i, j, c, p, fl) (
   ) : (
     gk_pl_col = 0; strcpy(#gk_tname, ""); gk_icon_ok = 0;
   );
-  strlen(#gk_name) > 0 ? strcpy(#gk_dname, #gk_name) :
-    strlen(#gk_hname) > 0 ? strcpy(#gk_dname, #gk_hname) : strcpy(#gk_dname, #gk_tname);
+  // With GainKit Plus alive (this slot published): the TRACK's name (REAPER's own, else the slot's), the one name a
+  // typed one renames. Without Plus, as before: the private typed name wins, then REAPER's own (nothing could rename
+  // the track, so a typed name must still show; and no dock means no second place to rename).
+  gk_pl_gen > 0 ? (
+    strlen(#gk_hname) > 0 ? strcpy(#gk_dname, #gk_hname) :
+      strlen(#gk_tname) > 0 ? strcpy(#gk_dname, #gk_tname) : strcpy(#gk_dname, #gk_name);
+  ) : (
+    strlen(#gk_name) > 0 ? strcpy(#gk_dname, #gk_name) : strcpy(#gk_dname, #gk_hname);
+  );
 );
 // The track colour as gfx_r/g/b: packed r*65536 + g*256 + b, plus 1 so black
 // is not "none" (arithmetic, not shifts: EEL2's are 32-bit).
