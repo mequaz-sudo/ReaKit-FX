@@ -47,8 +47,9 @@ window (with a trim knob for each side) and in the strip. In the mixer strip it 
 the knob, the VU alone, or the knob alone, with numerals or ticks only, and the VU grows flatter as
 you drag the strip wider. The VU alone keeps its own STEREO / MONO key under the name (ST/MONO
 hides it; MONO then shows as a small cyan dot) and prints the value under the meter while you set
-it, or all the time. Click the middle of the window's meter face and
-type, and the name is printed on the meter like a legend and on top of the strip, in every view:
+it, or all the time. The track's name is printed on the meter like a legend and on top of the
+strip. Click the middle of the window's meter face and type, and that renames the track itself
+(with GainKit Plus running), so the meter, the dock and REAPER always agree. The name shows in every view:
 as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
 M/S modes it used to show are still there as parameters, so old projects sound the same.
 
@@ -74,7 +75,7 @@ in the Actions list as `Script: GainKit Plus…`):
   of the strip and as the meter's legend, the track's colour along the top of the strip or as the
   name's band (and under the window's header), and the track's icon in the window's header; the
   meter can take the colour too. The master's GainKit shows the project's name. A name typed on
-  the meter still wins. Run it again to stop; put it on a toolbar and the button lights while it
+  the meter renames the track. Run it again to stop; put it on a toolbar and the button lights while it
   runs. On REAPER 7.81 and later every GainKit reads its track's name from REAPER itself, so
   the name needs no script there; the colour, the icon and the master's project name still come
   from GainKit Plus, which serves the first 512 tracks. It also carries out the THEME panel's EMBED
@@ -109,7 +110,8 @@ in the Actions list as `Script: GainKit Plus…`):
   tab (see [The ReaKit FX dock](#the-reakit-fx-dock) below).
 - **ReaKit FX - Docker tabs off-on** — REAPER's tab bar off for every docker holding one window
   (a docker holding two keeps its tabs, to switch between them); run it again and the tabs are
-  back as they were. It is REAPER's own setting, so it holds for every docker and after a restart.
+  back as they were. It is REAPER's own setting, so it holds for every docker and after a restart;
+  when the dock closes with the tabs hidden they come back, and the dock hides them again when it opens.
 
 The actions and the names reach a GainKit inside an FX container too.
 
@@ -141,7 +143,8 @@ The LED bypasses it. In a short window, as in the dock, the display
 steps aside and the knob takes the room; the CURVE button opens the display over the knob, and a
 click anywhere else closes it. In its own window, the strip along the bottom edge drops a CURVE
 drawer under the knob: the window grows for it (EON Floatter running) and the knob keeps its place.
-In the dock the knob stands alone and a CURVE chip pops the curve over it.
+In the dock the knob stands alone and a CURVE chip pops the curve over it. In a very short window
+the DRIVE row folds onto the knob's line, so the knob stays whole.
 
 ![The three drawers: Saturation's CURVE, the 3-Band EQ's band display, Stereo Width's STEREO FIELD](screenshots/session/drawers.png)
 
@@ -158,7 +161,8 @@ on the crossover lines. The strip along the bottom edge
 drops a band display: the curve, a dot per band to drag (up and down for the gain, sideways for the
 crossover; the MID dot slides its whole band, and the wheel over it widens or narrows the band),
 and the two crossover lines to drag. The standalone window draws everything at one scale, so a
-wider window gets bigger knobs, not more empty space.
+wider window gets bigger knobs, not more empty space. In a short window the band names go (the
+knobs' colours and the crossover labels say which is which), and the values sit right under the knobs.
 
 ### DDC
 
@@ -176,7 +180,8 @@ or to one row of all twelve with the switches at its end, and go back to three w
 
 Built on Liteon's de-esser: threshold, frequency, bandwidth, ratio and lookahead, a fast time
 setting, a band-pass target instead of the broadband one, and a switch to monitor the sidechain.
-The display shows the band it is listening to.
+The display shows the band it is listening to. In a short window the controls go to one row, with
+the switches stacked at the right, and the display takes whatever room is left above them.
 
 ### Stereo Width
 
@@ -188,7 +193,8 @@ correlation meter under the knob shows how the two channels agree. The strip alo
 drops a STEREO FIELD drawer: the stereo picture of the signal, live, with the correlation meter
 above it. The WIDTH light runs blue at mono, green at 100 % and yellow at 200 %. In a mixer strip
 it is the WIDTH knob at the bottom of the channel; a click on its correlation meter folds the meter
-away and gives the knob the strip, and the small CORR tab brings it back (each copy remembers).
+away and gives the knob the strip, and the small CORR tab brings it back (each copy remembers). In a
+very short window the WIDTH row folds onto the knob's line, so the knob stays whole.
 
 ### Filter
 
@@ -268,7 +274,9 @@ colour, close this track's or every track's windows, pin.
 - the pin — the dock stays on this track (or the master) whatever you select;
 - **HIDE TABS** / **SHOW TABS** (**TABS** in a narrow dock) — the same as the Docker tabs action
   below;
-- the gear — the bar's options: the track number, the track icon, the colour (off, a stripe, a
+- the gear — the bar's options: the layout (Auto lays the effects side by side in a docker under
+  the tracks and stacks them, each the dock's full width, in a side docker or any dock taller than
+  it is wide; Across and Down force one), the track number, the track icon, the colour (off, a stripe, a
   band), full or short effect names, whether a double-click pops an effect out, whether the bar
   folds to a thin handle (the chevron folds it, a click on the handle drops it back down), the
   track colour on that handle, and whether the menu stays open until you close it. **Pick a track
@@ -293,7 +301,8 @@ colour, close this track's or every track's windows, pin.
   highlight and Enter picks it; an icon another selected track wears gets a thin outline; "All
   selected tracks" sets every selected track at once; "Close after a pick" does what it says; and the
   window remembers where you left it. **Icons follow the track
-  colour** (off to start) paints a coloured track's icon in its colour: a copy of the icon, made once
+  colour** (off to start) paints a coloured track's icon in its colour, the light body coloured and
+  the outline and shading left as drawn: a copy of the icon, made once
   per colour and icon for the whole machine and shared by every track and project that uses that
   pair; the plain icon comes back when the colour goes or the option goes off. The picker's Colour
   slider sets how strongly the colour paints the icon, from a light wash to the full colour. The menu and the picker need

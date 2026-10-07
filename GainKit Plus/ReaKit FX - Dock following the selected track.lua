@@ -57,12 +57,17 @@ end
 -- off the dock (3-Band EQ 250: at 226 its three crossover labels ran into each other, seen in the release
 -- pictures); src = the file as it is spelled on disk (a right-click adds one).
 local KINDS = {
-  { key = "gk",  name = "GainKit",      long = "GAINKIT",  short = "GK",  file = "channeltool_reakit.jsfx", w = 450, minw = 230, src = "ChannelTool_ReaKit.jsfx" },
-  { key = "eq3", name = "3-Band EQ",    long = "3-BAND",   short = "EQ",  file = "3bandeq_reakit.jsfx",     w = 460, minw = 250, src = "3BandEQ_ReaKit.jsfx" },
-  { key = "ddc", name = "DDC",          long = "DDC",      short = "DDC", file = "ddc_reakit.jsfx",         w = 600, minw = 260, src = "DDC_ReaKit.jsfx" },
-  { key = "des", name = "De-Esser",     long = "DE-ESSER", short = "DE",  file = "deesser_reakit.jsfx",     w = 540, minw = 240, src = "DeEsser_ReaKit.jsfx" },
-  { key = "sat", name = "Saturation",   long = "SAT",      short = "SAT", file = "saturation_reakit.jsfx",  w = 280, minw = 260, src = "Saturation_ReaKit.jsfx" },
-  { key = "wid", name = "Stereo Width", long = "WIDTH",    short = "W",   file = "stereowidth_reakit.jsfx", w = 300, minw = 280, src = "StereoWidth_ReaKit.jsfx" },
+  -- w / minw: the natural and the smallest width when the effects stand side by side (ACROSS); h / minh: the same
+  -- for the dock laid out DOWN (a side docker: the effects stacked, each the dock's full width; the user, 2026-10-07).
+  -- h = the window the Add-a-track action opens; minh = the shortest window that still reads whole (the size prints
+  -- of 2026-10-07, after the six's compact layouts: one row / folded rows from about 140), so all six stack on a 1080
+  -- screen (about 155 each).
+  { key = "gk",  name = "GainKit",      long = "GAINKIT",  short = "GK",  file = "channeltool_reakit.jsfx", w = 450, minw = 230, h = 546, minh = 150, src = "ChannelTool_ReaKit.jsfx" },
+  { key = "eq3", name = "3-Band EQ",    long = "3-BAND",   short = "EQ",  file = "3bandeq_reakit.jsfx",     w = 460, minw = 250, h = 228, minh = 140, src = "3BandEQ_ReaKit.jsfx" },
+  { key = "ddc", name = "DDC",          long = "DDC",      short = "DDC", file = "ddc_reakit.jsfx",         w = 600, minw = 260, h = 319, minh = 140, src = "DDC_ReaKit.jsfx" },
+  { key = "des", name = "De-Esser",     long = "DE-ESSER", short = "DE",  file = "deesser_reakit.jsfx",     w = 540, minw = 240, h = 376, minh = 150, src = "DeEsser_ReaKit.jsfx" },
+  { key = "sat", name = "Saturation",   long = "SAT",      short = "SAT", file = "saturation_reakit.jsfx",  w = 280, minw = 260, h = 506, minh = 140, src = "Saturation_ReaKit.jsfx" },
+  { key = "wid", name = "Stereo Width", long = "WIDTH",    short = "W",   file = "stereowidth_reakit.jsfx", w = 300, minw = 280, h = 364, minh = 140, src = "StereoWidth_ReaKit.jsfx" },
 }
 local kind = 1
 for i, k in ipairs(KINDS) do if k.key == r.GetExtState(EXT, "kind") then kind = i end end
@@ -187,7 +192,8 @@ local ICONS = { [ICON_CLOSE_TRACK] = true, [ICON_CLOSE_ALL] = true, [ICON_PIN] =
 -- The gear's options, saved like STRIP and PIN (ExtState opt_<key>); tests set one with opt_req = "key=value"
 local opt = {}
 local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", dblclick = "1", fold = "1", fold_color = "1",
-                  menu_stay = "1", tint = "0", tintk = "50" }   -- tintk: the icon colour's strength, % (TINT.pct)
+                  menu_stay = "1", tint = "0", tintk = "50",   -- tintk: the icon colour's strength, % (TINT.pct)
+                  layout = "auto" }                            -- layout: auto (taller than wide = down) | across | down
 local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
 for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
 local FOLD_H = 8                       -- the folded bar's handle, px at 100 %
@@ -635,16 +641,23 @@ local function layout()
   local want = {}
   on_view, more_left, more_right = {}, false, false
   if #list > 0 and w >= 2 and h >= b + 2 then
+    -- ACROSS (side by side, the dock's full height each) or DOWN (stacked, the dock's full width each: a side
+    -- docker; the user, 2026-10-07). The gear's Layout: auto = down when the plugin area is taller than wide.
+    -- lay_down is a GLOBAL on purpose (the 200-local limit; publish() reads it).
+    local body = h - b
+    lay_down = opt.layout == "down" or (opt.layout == "auto" and body > w)
     if not strip then
-      want[1] = { e = list[1], x = 0, w = w }
+      want[1] = { e = list[1], x = 0, y = b, w = w, h = body }
     else
       local gap = math.max(1, math.floor(GAP * sc + 0.5))
-      local function minw(e) return math.floor(KINDS[e.kind].minw * sc + 0.5) end
+      local span = lay_down and body or w                             -- the axis the effects line up on
+      local function mn(e) local k = KINDS[e.kind]; return math.floor((lay_down and k.minh or k.minw) * sc + 0.5) end
+      local function nat(e) local k = KINDS[e.kind]; return (lay_down and k.h or k.w) * sc end
       local function fits_from(s)
         local n, used = 0, 0
         for i = s, #list do
-          local need = minw(list[i]) + (n > 0 and gap or 0)
-          if n > 0 and used + need > w then break end
+          local need = mn(list[i]) + (n > 0 and gap or 0)
+          if n > 0 and used + need > span then break end
           n, used = n + 1, used + need
         end
         return n
@@ -654,20 +667,22 @@ local function layout()
       local n = fits_from(first)
       local last = first + n - 1
       more_left, more_right = first > 1, last < #list
-      local room = w - gap * (n - 1)
+      local room = span - gap * (n - 1)
       local smin, snat = 0, 0
-      for i = first, last do smin = smin + minw(list[i]); snat = snat + KINDS[list[i].kind].w * sc end
-      local x = 0
+      for i = first, last do smin = smin + mn(list[i]); snat = snat + nat(list[i]) end
+      local pos = 0
       for i = first, last do
         local e = list[i]
-        local mn, nat = minw(e), KINDS[e.kind].w * sc
+        local m, nt = mn(e), nat(e)
         local cw
-        if room <= smin then cw = mn
-        elseif room <= snat then cw = mn + (nat - mn) * (room - smin) / (snat - smin)
-        else cw = nat * room / snat end
-        cw = i == last and w - x or math.floor(cw + 0.5)
-        want[#want + 1] = { e = e, x = x, w = math.max(2, cw) }
-        x = x + cw + gap
+        if room <= smin then cw = m
+        elseif room <= snat then cw = m + (nt - m) * (room - smin) / (snat - smin)
+        else cw = nt * room / snat end
+        cw = i == last and span - pos or math.floor(cw + 0.5)
+        cw = math.max(2, cw)
+        if lay_down then want[#want + 1] = { e = e, x = 0, y = b + pos, w = w, h = cw }
+        else want[#want + 1] = { e = e, x = pos, y = b, w = cw, h = body } end
+        pos = pos + cw + gap
         on_view[e.fg] = true
       end
     end
@@ -683,7 +698,7 @@ local function layout()
       s = { proj = cur.proj, tg = cur.tg, tr = cur.tr, fg = v.e.fg, fx = v.e.fx, kind = v.e.kind, name = cur.name }
       fresh[#fresh + 1] = s
     end
-    s.x, s.y, s.w, s.h = v.x, b, v.w, h - b
+    s.x, s.y, s.w, s.h = v.x, v.y, v.w, v.h
     new[#new + 1] = s
   end
   for _, s in pairs(have) do release(s) end
@@ -1511,7 +1526,8 @@ local function gear_pick(pick)
   elseif pick == 10 then picker_open()
   elseif pick == 11 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true)
   elseif pick >= 12 and pick <= 14 then                           -- the icon colour's strength (TINT.soft)
-    opt_set("tintk", ({ "30", "50", "100" })[pick - 11]); if opt.tint == "1" then TINT.pass(true) end end
+    opt_set("tintk", ({ "30", "50", "100" })[pick - 11]); if opt.tint == "1" then TINT.pass(true) end
+  elseif pick >= 15 and pick <= 17 then opt_set("layout", ({ "auto", "across", "down" })[pick - 14]) end
   has_key = ""
 end
 -- The EON palette (EON Floatter's P; the Swing FX picker's slate): 0xRRGGBBAA
@@ -1605,7 +1621,8 @@ local function menu_open(sx, sy)
   -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
-    local mh, mw = math.floor(320 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured
+    local mh, mw = math.floor(346 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured,
+                                                                -- + the Layout row (2026-10-07, ~26)
                                                                 -- (2026-10-06; the old 300 x 300 guess let it hang off
                                                                 -- a screen's right edge by ~100 px), physical here
     if vb and sy + mh > vb then sy = sy - bar_h() - mh end
@@ -1720,8 +1737,13 @@ function TINT.paint(src, cr, cg, cb, dst)                         -- the icon pa
     if a > 0 then
       -- clamped: a faint edge pixel can be brighter than top (top comes from the opaque ones) and an unclamped
       -- channel over 255 spills into its neighbour, the alpha included (outside audit 2026-10-06)
-      local l = math.min(1, math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF) / top)
-      local col = (a << 24) | (math.floor(cr * l + 0.5) << 16) | (math.floor(cg * l + 0.5) << 8) | math.floor(cb * l + 0.5)
+      -- the shade left out (the user, 2026-10-07: "we tint the whole thing. Can we leave the shade out"): the light
+      -- body takes the colour, and the darker a pixel is the more it keeps its own grey, so the outline and the
+      -- shading stay as drawn (the whole icon used to be the colour scaled by brightness: a dark-blue outline)
+      local g = math.max((v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF)
+      local l = math.min(1, g / top)
+      local function mix(c) return math.floor(g * (1 - l) + c * l * l + 0.5) end
+      local col = (a << 24) | (mix(cr) << 16) | (mix(cg) << 8) | mix(cb)
       r.JS_LICE_PutPixel(b, x, y, col, 1.0, "COPY")
     end
   end end
@@ -1749,8 +1771,9 @@ end
 function TINT.name(orig, cr, cg, cb)                              -- the painted copy's file: <rrggbb>_<hash>_<stamp>_<file name>;
   local key, h = pick_norm(orig):lower(), 2166136261              -- the hash (FNV-1a) of the whole own name, case-folded
   for i = 1, #key do h = ((h ~ key:byte(i)) * 16777619) & 0xFFFFFFFF end   -- (Windows folds case):
-  return string.format("%s/%02x%02x%02x_%08x_%08x_%s", TINT.dir, cr, cg, cb, h, TINT.stamp(TINT.resolve(orig)),
+  return string.format("%s/%02x%02x%02x_%08x_%08x_p2_%s", TINT.dir, cr, cg, cb, h, TINT.stamp(TINT.resolve(orig)),
     (pick_norm(orig):gsub("^.*/", ""):gsub("[^%w%.%-]", "_")))   -- "Drums/Kick.png" and "Drums_Kick.png" made ONE file
+                                                                  -- p2 = the paint's second recipe (the shade left out)
 end                                                               -- before it (outside audit 2026-10-06)
 function TINT.own(tr)                                             -- the track's own icon (for the picker: the one to mark)
   local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
@@ -2717,6 +2740,14 @@ local function menu_frame()
     ImGui.Separator(ctx)
     ImGui.Dummy(ctx, 0, 1)
     heading("BAR", hue_b)
+    ImGui.AlignTextToFramePadding(ctx)                       -- the effects' layout: auto (a window taller than wide
+    ImGui.TextColored(ctx, MP.muted, "    Layout"); ImGui.SameLine(ctx, 0, 30)   -- stacks them), across, down
+    if pill("##lay_auto", "Auto", opt.layout == "auto", 48, nil) then opt_set("layout", "auto"); picked = true end
+    ImGui.SameLine(ctx, 0, 4)
+    if pill("##lay_across", "Across", opt.layout == "across", 62, nil) then opt_set("layout", "across"); picked = true end
+    ImGui.SameLine(ctx, 0, 4)
+    if pill("##lay_down", "Down", opt.layout == "down", 54, nil) then opt_set("layout", "down"); picked = true end
+    ImGui.Dummy(ctx, 0, 2)
     row("Fold the bar to a handle", opt.fold == "1", function() opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true end, hue_b, "fold")
     row("Track colour on the folded handle", opt.fold_color == "1", function() opt_set("fold_color", opt.fold_color == "1" and "0" or "1") end, hue_b, "handle")
     row("Menu stays open until closed", opt.menu_stay == "1", function() opt_set("menu_stay", opt.menu_stay == "1" and "0" or "1") end, hue_b, "stay")
@@ -2763,7 +2794,10 @@ local function gear_menu(mx, my)
     .. on(opt.tint == "1") .. "Icons follow the track colour|"
     .. on(TINT.pct() == 30) .. "Icon colour: light (30 %)|"             -- no slider in REAPER's menu: three of its values
     .. on(TINT.pct() == 50) .. "Icon colour: medium (50 %)|"
-    .. on(TINT.pct() == 100) .. "Icon colour: full (100 %)"
+    .. on(TINT.pct() == 100) .. "Icon colour: full (100 %)|"
+    .. on(opt.layout == "auto") .. "Layout: automatic (down when taller than wide)|"
+    .. on(opt.layout == "across") .. "Layout: effects side by side|"
+    .. on(opt.layout == "down") .. "Layout: effects stacked down"
   gfx.x, gfx.y = mx, my
   local pick = gfx.showmenu(m)
   if pick and pick > 0 then gear_pick(pick) end
@@ -3146,6 +3180,10 @@ local function publish()
   if v ~= pub_held then pub_held = v; r.SetExtState(EXT, "held", v, false) end
   v = string.format("%d %d %d", first, #slots, cur and #cur.list or 0)   -- first on view, on view, on the track
   if v ~= pub_view then pub_view = v; r.SetExtState(EXT, "view", v, false) end
+  local sl = {}                                                              -- the slots' places, for tests (layout)
+  for _, s in ipairs(slots) do sl[#sl + 1] = string.format("%s:%d,%d,%d,%d", KINDS[s.kind].key, s.x or 0, s.y or 0, s.w or 0, s.h or 0) end
+  v = (lay_down and "down " or "across ") .. table.concat(sl, ";")
+  if v ~= pub_slots then pub_slots = v; r.SetExtState(EXT, "slots", v, false) end   -- (pub_slots a global: the 200-local limit)
   v = string.format("%d %d %d", bar_h(), folded() and 1 or 0, bar_rows)    -- the bar: height, folded, rows
   if v ~= pub_bar then pub_bar = v; r.SetExtState(EXT, "bar", v, false) end
   v = hover_act or ""                                                        -- what the pointer rests on
@@ -3180,6 +3218,14 @@ end
 
 local function quit()
   pcall(save_dock)
+  -- the docker tabs come back when the dock goes (the user, 2026-10-07: "can the tabs come back to all docks when
+  -- gainkit is closed?"): HIDE TABS is REAPER-wide and outlived the dock; now a dock that closes with the tabs hidden
+  -- shows them again and remembers to hide them at its next start (tabs_rehide)
+  if not quit_tabs_done then                                       -- once: quit runs again from atexit, after the
+    quit_tabs_done = true                                          -- tabs are back (a global: the 200-local limit)
+    if tabs_hidden() then r.SetExtState(EXT, "tabs_rehide", "1", true); pcall(set_tabs_hidden, false)
+    else r.SetExtState(EXT, "tabs_rehide", "0", true) end
+  end
   release_all()
   r.SetExtState(EXT, "held", "", false)
   r.SetExtState(EXT, "view", "", false)
@@ -3438,6 +3484,7 @@ local function find_own_window()
 end
 
 local dockstate = tonumber(r.GetExtState(EXT, "dockstate")) or 1    -- docked, in the first docker
+if r.GetExtState(EXT, "tabs_rehide") == "1" and not tabs_hidden() then pcall(set_tabs_hidden, true) end   -- hidden when it last closed (quit)
 gfx.ext_retina = 1                                                  -- sizes in real pixels; the scale comes back here
 gfx.init(TITLE, W0, H0, dockstate)
 gfx.update()

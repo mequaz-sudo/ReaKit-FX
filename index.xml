@@ -786,38 +786,36 @@
         <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/636657c35aea693eb024d5344a6824417841738a/LICENSE.md</source>
         <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/636657c35aea693eb024d5344a6824417841738a/THIRD_PARTY_CREDITS.md</source>
       </version>
-      <version name="1.5.0" author="Quaz (EON Studios)" time="2026-10-07T19:43:51Z">
-        <changelog><![CDATA[New: Filter, the seventh effect. A high-pass and a low-pass, each 20 Hz to 20 kHz, Butterworth at 12 or 24 dB per octave (the SLOPE key), built on Andrew Simper's trapezoidal state-variable stages, the same stages as the 3-Band EQ's SMOOTH voice. The corner lands exactly on the knob's value; the cutoff glides over 5 ms and is recomputed every sample, so a knob sweep or an automation ramp is continuous, with no zipper. A knob at the end of its travel is OFF and its light goes out (a click on the light switches the filter off and back); switching on or off fades over 5 ms, the slope crossfades over 10 ms, so nothing clicks. The strip along the bottom edge drops a CURVE drawer with a node per filter to drag, scroll or double-click; the mixer strip shows the two knobs stacked with the compact curve under them (a click folds it, the CURVE tab brings it back); the dock pops the curve over the knobs. Link groups, the THEME panel, the play-state gate and the strip idle rule as in the others. Ten presets, from Rumble 40 Hz to Telephone.]]></changelog>
-        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/Filter_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/Filter_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/Filter_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/Filter_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl</source>
-        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx</source>
-        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl</source>
-        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/buttons_kbsg.jsfx-inc</source>
-        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/knobs_kbsg.jsfx-inc</source>
-        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/meters_kbsg.jsfx-inc</source>
-        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/oversample_kbsg.jsfx-inc</source>
-        <source file="ReaKit/rk_curve.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_curve.jsfx-inc</source>
-        <source file="ReaKit/rk_drawer.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_drawer.jsfx-inc</source>
-        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_gmem_link.jsfx-inc</source>
-        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_playstate.jsfx-inc</source>
-        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_theme.jsfx-inc</source>
-        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/rk_vu.jsfx-inc</source>
-        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/sliders_kbsg.jsfx-inc</source>
-        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/smooth_kbsg.jsfx-inc</source>
-        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/ReaKit/utils_kbsg.jsfx-inc</source>
-        <source file="LICENSE">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/LICENSE</source>
-        <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/LICENSE.md</source>
-        <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c92c039df87559c39c7752704e36c12eeff8e62c/THIRD_PARTY_CREDITS.md</source>
+      <version name="1.4.23" author="Quaz (EON Studios)" time="2026-10-07T19:20:09Z">
+        <changelog><![CDATA[Every one of the six now fits a short window, so all six stack in a side dock on a 1080 screen: the De-Esser puts its controls in one row with the switches stacked at the right and keeps whatever display room is left; the 3-Band EQ drops its band-name row (the colours and the crossover labels say which is which) and tucks the values right under the knobs; Saturation and Stereo Width fold their DRIVE and WIDTH rows onto the knob's line. All look as before once the window is tall enough. GainKit: with GainKit Plus running, the meter prints the track's name, and a name typed on the meter renames the track, so the meter, the dock and REAPER always agree.]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_curve.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_curve.jsfx-inc</source>
+        <source file="ReaKit/rk_drawer.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_drawer.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/ReaKit/utils_kbsg.jsfx-inc</source>
+        <source file="LICENSE">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/LICENSE</source>
+        <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/LICENSE.md</source>
+        <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/THIRD_PARTY_CREDITS.md</source>
       </version>
     </reapack>
   </category>
@@ -1210,6 +1208,25 @@
         <source main="main" file="ReaKit FX - Add a track with all six.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/fd8917a8343a42736b9484fff6848c7256e69c62/GainKit%20Plus/ReaKit%20FX%20-%20Add%20a%20track%20with%20all%20six.lua</source>
         <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/fd8917a8343a42736b9484fff6848c7256e69c62/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
         <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/fd8917a8343a42736b9484fff6848c7256e69c62/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
+      </version>
+      <version name="1.0.24" author="Quaz (EON Studios)" time="2026-10-07T19:20:09Z">
+        <changelog><![CDATA[The dock lays its effects out ACROSS or DOWN: Auto (the gear's Layout) stacks them, each the dock's full width, when the dock is taller than wide, as in a side docker, and lines them up when it is wider; Across and Down force one. The docker tabs come back when the dock closes and go again when it opens. Icons that follow the track colour keep their outline and shading as drawn; only the light body takes the colour. A name typed on a GainKit's meter renames the track (with ReaKit FX 1.4.23).]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="ReaKit FX - Add a track with all six.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Add%20a%20track%20with%20all%20six.lua</source>
+        <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
+        <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
       </version>
     </reapack>
   </category>
