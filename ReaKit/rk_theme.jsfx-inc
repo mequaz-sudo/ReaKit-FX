@@ -118,7 +118,10 @@ function rkth_name(i) (
 function rkth_bridge_alive() ( gmem[GS_THEME_ID] > 0 && gmem[GS_THEME_ID] != gmem[RKTH_SELF_GEN]; );
 // The themes the picker may set right now: all of them under a bridge, the
 // built-in three without one.
-function rkth_n_avail() ( rkth_bridge_alive() ? RKTH_N : RKTH_SELF_N; );
+// A host that sets rkth_free_only = 1 in its @init (the free ReaKit FX six) lists the built-in three ONLY, a bridge
+// or not: the other eleven are Swing's (the user, 2026-10-07: "Only our 3 free should show up" -- a user with Swing
+// installed saw all fourteen in the free effects). Default 0: every other importer is unchanged.
+function rkth_n_avail() ( (rkth_free_only || !rkth_bridge_alive()) ? RKTH_SELF_N : RKTH_N; );
 // The built-in palettes: t = 1 EON, 2 Dark, 3 Light; slot 0..7 = BG PANEL TEXT
 // TEXT_DIM ACCENT ACCENT2 GRID BORDER; ch 0..2 = r g b, 0..1. Verbatim from
 // rk_lua_theme.lua T.FIXED (2026-09-30) -- keep the two in step.

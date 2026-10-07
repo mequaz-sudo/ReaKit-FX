@@ -57,6 +57,7 @@ options:gmem=Swing_Media_Transfer
 @init
 // once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
 ext_noinit = 1;
+rkth_free_only = 1;   // the free six list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
 eq3_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 cDenorm = 10^-30;
 cAmpDB = 8.65617025;

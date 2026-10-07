@@ -57,6 +57,7 @@ slider16:0<0,5,0.1>-Lookahead (ms)
 // envelope and emptying the lookahead -- a click (popcheck rig, 2026-10-01). A sample-rate
 // change is caught in @block instead.
 ext_noinit = 1;
+rkth_free_only = 1;   // the free six list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x100 | 0x400;   // borderless embed; no MCP hover tooltip (7.79+)
 ext_tail_size = -1;

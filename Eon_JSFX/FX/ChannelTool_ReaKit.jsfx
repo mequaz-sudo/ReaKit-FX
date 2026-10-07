@@ -71,6 +71,7 @@ import ../../ReaKit/rk_theme.jsfx-inc
 @init
 // once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
 ext_noinit = 1;
+rkth_free_only = 1;   // the free six list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
 ct_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 tau = 2 * $pi;
 cDenorm = pow(10,-30);

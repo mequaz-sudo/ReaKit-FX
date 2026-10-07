@@ -59,6 +59,7 @@ import ../../ReaKit/rk_theme.jsfx-inc
 // once, at load: REAPER would re-run it on play start and on enable, zeroing the lookahead and every
 // filter mid-signal (a pop); a rate change is caught in @block (de_prime)
 ext_noinit = 1.0;
+rkth_free_only = 1;   // the free six list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
 de_native = rkth_local_off;   // NATIVE: a new instance starts in the current mode (a saved one is restored over it)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)

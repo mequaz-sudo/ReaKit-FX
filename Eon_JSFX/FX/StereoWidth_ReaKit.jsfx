@@ -34,6 +34,7 @@ options:gmem=Swing_Media_Transfer
 @init
 // once, at load (REAPER would re-run it on every play start); a rate change is caught in @block
 ext_noinit = 1;
+rkth_free_only = 1;   // the free six list EON / Dark / Light only, Swing running or not (rk_theme, 2026-10-07)
 ext_tail_size = -1;
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;   // no MCP hover tooltip (7.79+)
