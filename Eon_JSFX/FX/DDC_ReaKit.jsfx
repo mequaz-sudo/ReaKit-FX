@@ -86,8 +86,9 @@ bm  = freemem; freemem += 2 * BS;
 
 // The lookahead: one ring per channel holds the input, and the audio and the Mix's dry are both
 // read from it la_size samples back, so both halves are the same moment. The lookahead is at
-// most 2048 samples (5 ms up to 409.6 kHz); 4096 is a power of two ABOVE that (equal, the read
-// would land on the sample just written). ⚠ Widen slider16 past 5 ms and grow the ring.
+// most 4095 samples, the ring less one (equal, the read would land on the sample just written):
+// 5 ms up to 819 kHz, as the De-Esser (outside audit 2026-10-07: the old 2048 cap gave 2.67 ms at
+// 768 kHz). ⚠ Widen slider16 past 5 ms and grow the ring.
 dry_buf_L = freemem; freemem += 4096;
 dry_buf_R = freemem; freemem += 4096;
 dry_pos = 0;
@@ -229,7 +230,7 @@ function recalc_dsp() (
 
   // Lookahead: only the read point moves; @sample fades to it over 10 ms
   la_ms = slider16;
-  la_size = min(floor(la_ms * 0.001 * srate + 0.5), 2048);
+  la_size = min(floor(la_ms * 0.001 * srate + 0.5), 4095);
   la_xf_step = 1 / max(0.01 * srate, 1);
   vol_s.smooth_init(10);
 );

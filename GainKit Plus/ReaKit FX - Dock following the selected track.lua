@@ -187,7 +187,7 @@ local ICONS = { [ICON_CLOSE_TRACK] = true, [ICON_CLOSE_ALL] = true, [ICON_PIN] =
 -- The gear's options, saved like STRIP and PIN (ExtState opt_<key>); tests set one with opt_req = "key=value"
 local opt = {}
 local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", dblclick = "1", fold = "1", fold_color = "1",
-                  menu_stay = "1", tint = "0" }
+                  menu_stay = "1", tint = "0", tintk = "50" }   -- tintk: the icon colour's strength, % (TINT.pct)
 local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
 for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
 local FOLD_H = 8                       -- the folded bar's handle, px at 100 %
@@ -1509,7 +1509,9 @@ local function gear_pick(pick)
   elseif pick == 8 then opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true
   elseif pick == 9 then opt_set("fold_color", opt.fold_color == "1" and "0" or "1")
   elseif pick == 10 then picker_open()
-  elseif pick == 11 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true) end
+  elseif pick == 11 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true)
+  elseif pick >= 12 and pick <= 14 then                           -- the icon colour's strength (TINT.soft)
+    opt_set("tintk", ({ "30", "50", "100" })[pick - 11]); if opt.tint == "1" then TINT.pass(true) end end
   has_key = ""
 end
 -- The EON palette (EON Floatter's P; the Swing FX picker's slate): 0xRRGGBBAA
@@ -1567,6 +1569,29 @@ function DPI.settle(o, ImGui, ctx)
   dbg("placed again for a screen scaled " .. real .. " at " .. sx .. "," .. sy)
   return true
 end
+-- A press of the left button ANYWHERE on the screen outside this ImGui window (call between its Begin and End). ImGui
+-- hears no click on REAPER's own windows, so its IsMouseClicked never fired there and the palette and the gear menu
+-- stayed open over the track area (the user, 2026-10-07: "the color menu dont wanna close easy"; colp_close_run.py:
+-- seven real clicks, none closed it). The button is read for the whole screen (js_ReaScriptAPI) and the pointer is
+-- compared, in screen pixels, with the window's corners. o.gdown starts true at the open, so the opening click (still
+-- down) is no press.
+function DPI.outside_press(o, ImGui, ctx)
+  if not r.JS_Mouse_GetState then return false end
+  local down = (r.JS_Mouse_GetState(1) & 1) == 1
+  local press = down and not o.gdown
+  o.gdown = down
+  if not press then return false end
+  local wx, wy = ImGui.GetWindowPos(ctx)
+  local ww, wh = ImGui.GetWindowSize(ctx)
+  local ok0, x0, y0 = pcall(ImGui.PointConvertNative, ctx, wx, wy, true)
+  local ok1, x1, y1 = pcall(ImGui.PointConvertNative, ctx, wx + ww, wy + wh, true)
+  if ok0 and ok1 and x0 and x1 then
+    local mx, my = r.GetMousePosition()
+    return not (mx >= math.min(x0, x1) and mx < math.max(x0, x1) and my >= math.min(y0, y1) and my < math.max(y0, y1))
+  end
+  local ix, iy = ImGui.GetMousePos(ctx)                           -- no conversion: ImGui's own idea of the pointer
+  return not (ix >= wx and ix < wx + ww and iy >= wy and iy < wy + wh)
+end
 local function menu_open(sx, sy)
   local ImGui = menu_imgui()
   if not ImGui then return false end
@@ -1580,7 +1605,8 @@ local function menu_open(sx, sy)
   -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
-    local mh, mw = math.floor(320 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured
+    local mh, mw = math.floor(345 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured, + the
+                                                                -- Icon colour row (2026-10-07, ~24)
                                                                 -- (2026-10-06; the old 300 x 300 guess let it hang off
                                                                 -- a screen's right edge by ~100 px), physical here
     if vb and sy + mh > vb then sy = sy - bar_h() - mh end
@@ -1588,13 +1614,14 @@ local function menu_open(sx, sy)
     if vl and sx < vl then sx = vl end
   end
   local lx, ly = DPI.to_logical(sx, sy, sc)
-  MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing, MENU.frames = true, lx, ly, false, false, 0
+  MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing, MENU.frames, MENU.gdown = true, lx, ly, false, false, 0, true
   MENU.dp = { px = sx, py = sy, lw = 400, lh = 320, used = sc }   -- placed again if its screen is scaled otherwise
   dbg("menu: open at " .. sx .. "," .. sy .. " (ImGui " .. math.floor(lx) .. "," .. math.floor(ly) .. ", scale " .. sc .. ")")
   return true
 end
 local function menu_close()
   MENU.on, MENU.ctx = false, nil              -- the context is dropped: ReaImGui frees one that gets no more frames
+  MENU.shut_t = r.time_precise()              -- see the gear's click: the press that shut it does not open it again
   MENU.rows_pub = nil; r.SetExtState(EXT, "menu_rows", "", false)
 end
 
@@ -1647,6 +1674,21 @@ end
 function TINT.resolve(orig)                                       -- the own name's full path
   if orig:match("^%a:") or orig:sub(1, 1) == "/" then return orig end
   return ICON_ROOT .. "/" .. orig
+end
+-- The paint colour: the track colour taken part of the way from the icons' own light grey (200), so a strong track
+-- colour (pure blue) can give a soft blue icon, not a saturated one (the user, 2026-10-07: "the recolor ... is pretty
+-- strong can we kinda turn it down" ... "make it a slider"). The gear's "Icon colour" slider = opt.tintk, 10..100 % in
+-- steps of 5; 50 % (halfway) to start, 100 % = the track colour itself (the look before). The copy is NAMED by the
+-- colour it is painted in, so a change of strength makes new copies and never repaints an old one.
+TINT.grey = 200
+function TINT.pct()                                               -- the strength in %, 10..100, steps of 5
+  local v = math.floor((tonumber(opt.tintk) or 50) / 5 + 0.5) * 5
+  return math.max(10, math.min(100, v))
+end
+function TINT.soft(cr, cg, cb)
+  local k = TINT.pct() / 100
+  local function f(c) return math.floor(TINT.grey + (c - TINT.grey) * k + 0.5) end
+  return f(cr), f(cg), f(cb)
 end
 function TINT.paint(src, cr, cg, cb, dst)                         -- the icon painted in the colour; false when it cannot be
   if not r.JS_LICE_LoadPNG then return false end
@@ -1729,7 +1771,7 @@ function TINT.pass(force)                                         -- every track
     end
     local col = math.floor(r.GetMediaTrackInfo_Value(tr, "I_CUSTOMCOLOR"))
     if on and orig ~= "" and (col & 0x1000000) ~= 0 then
-      local cr, cg, cb = r.ColorFromNative(col & 0xFFFFFF)
+      local cr, cg, cb = TINT.soft(r.ColorFromNative(col & 0xFFFFFF))
       local dst = TINT.name(orig, cr, cg, cb)
       if not r.file_exists(dst) then
         local src = TINT.resolve(orig)
@@ -2190,7 +2232,11 @@ local function picker_frame()
     -- the real paint, which scales them up)
     local LBL = PICK.size == 3 and 14 or 0
     local CH = CELL + LBL
-    local tintc = (opt.tint == "1" and has) and mp_rgba(cr, cg, cb) or 0xFFFFFFFF
+    local tintc = 0xFFFFFFFF
+    if opt.tint == "1" and has then                               -- the same soft colour as the paint (TINT.soft, 0..255)
+      local sr, sg, sb = TINT.soft(cr * 255, cg * 255, cb * 255)
+      tintc = mp_rgba(sr / 255, sg / 255, sb / 255)
+    end
     if ImGui.BeginChild(ctx, "##grid", 0, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
       local cdl = ImGui.GetWindowDrawList(ctx)
       local x0, y0 = ImGui.GetCursorScreenPos(ctx)
@@ -2460,6 +2506,29 @@ local function menu_frame()
     if pill("##col_stripe", "Stripe", opt.color == "stripe", 76, prev_stripe) then opt_set("color", "stripe"); picked = true end
     ImGui.SameLine(ctx, 0, 4)
     if pill("##col_band", "Band", opt.color == "band", 68, prev_band) then opt_set("color", "band"); picked = true end
+    ImGui.Dummy(ctx, 0, 1)
+    ImGui.AlignTextToFramePadding(ctx)                       -- how strongly the track colour paints the icons (TINT.soft)
+    ImGui.TextColored(ctx, MP.muted, "    Icon colour"); ImGui.SameLine(ctx, 0, 21)
+    ImGui.SetNextItemWidth(ctx, 176)                         -- 10..100 % of the track colour, in steps of 5 (each
+    local tk = TINT.pct()                                    -- value is its own set of painted copies)
+    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBg, 0x283644FF)         -- the pills' colours, not ImGui's blue
+    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgHovered, 0x34465AFF)
+    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgActive, 0x34465AFF)
+    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrab, hue_t)
+    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrabActive, hue_t)
+    ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameRounding, 9)
+    ImGui.PushStyleVar(ctx, ImGui.StyleVar_GrabRounding, 7)
+    local ch, nv = ImGui.SliderInt(ctx, "##tintk", tk, 10, 100, "%d %%")
+    ImGui.PopStyleVar(ctx, 2)
+    ImGui.PopStyleColor(ctx, 5)
+    if ch then
+      nv = math.max(10, math.min(100, math.floor(nv / 5 + 0.5) * 5))
+      if nv ~= tk then opt_set("tintk", tostring(nv)) end
+    end
+    local sx0, sy0 = ImGui.GetItemRectMin(ctx)               -- published for tests, as the rows and pills
+    rows_pub[#rows_pub + 1] = string.format("tintk:%d,%d,176,%d", math.floor(sx0), math.floor(sy0), math.floor(lh + 4))
+    -- repainted once, when the drag ends (a repaint per step would paint every icon at every value on the way)
+    if ImGui.IsItemDeactivatedAfterEdit(ctx) and opt.tint == "1" then TINT.pass(true) end
     ImGui.Dummy(ctx, 0, 2)
     ImGui.Separator(ctx)
     ImGui.Dummy(ctx, 0, 1)
@@ -2486,6 +2555,7 @@ local function menu_frame()
     if MENU.frames == 3 then dbg(string.format("menu frame 3: ImGui pos %d,%d size %dx%d, dpi scale %s", wx, wy, ww, wh, tostring(ImGui.GetWindowDpiScale and ImGui.GetWindowDpiScale(ctx)))) end
     local inside = mxs >= wx and mxs < wx + ww and mys >= wy and mys < wy + wh
     if MENU.armed and ImGui.IsMouseClicked(ctx, 0) and not inside then MENU.closing = true end
+    if DPI.outside_press(MENU, ImGui, ctx) then MENU.closing = true end   -- a click on REAPER's own windows too
     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then MENU.closing = true end
     if not ImGui.IsMouseDown(ctx, 0) then MENU.armed = true end
     ImGui.End(ctx)                                       -- only after a true Begin (ReaImGui ends a hidden window itself)
@@ -2512,7 +2582,10 @@ local function gear_menu(mx, my)
     .. on(opt.fold == "1") .. "Fold the bar to a handle|"
     .. on(opt.fold_color == "1") .. "Track colour on the folded handle|"
     .. "Pick a track icon...|"
-    .. on(opt.tint == "1") .. "Icons follow the track colour"
+    .. on(opt.tint == "1") .. "Icons follow the track colour|"
+    .. on(TINT.pct() == 30) .. "Icon colour: light (30 %)|"             -- no slider in REAPER's menu: three of its values
+    .. on(TINT.pct() == 50) .. "Icon colour: medium (50 %)|"
+    .. on(TINT.pct() == 100) .. "Icon colour: full (100 %)"
   gfx.x, gfx.y = mx, my
   local pick = gfx.showmenu(m)
   if pick and pick > 0 then gear_pick(pick) end
@@ -2562,12 +2635,12 @@ function COLP.open(sx, sy)
     if vl and sx < vl then sx = vl end
   end
   local lx, ly = DPI.to_logical(sx, sy, sc)
-  COLP.on, COLP.x, COLP.y, COLP.armed, COLP.closing = true, lx, ly, false, false
+  COLP.on, COLP.x, COLP.y, COLP.armed, COLP.closing, COLP.gdown = true, lx, ly, false, false, true
   COLP.dp = { px = sx, py = sy, lw = 230, lh = 110, used = sc }   -- placed again if its screen is scaled otherwise
   local tr = shown_track()                                        -- the track it was opened for: when the dock
   COLP.for_guid = tr and r.GetTrackGUID(tr) or ""                -- follows another one, the palette closes (outside
 end                                                               -- audit 2026-10-07: a swatch coloured the new track)
-function COLP.close() COLP.on, COLP.ctx = false, nil end
+function COLP.close() COLP.on, COLP.ctx, COLP.shut_t = false, nil, r.time_precise() end   -- shut_t: see the swatch's click
 function COLP.frame()
   local ImGui, ctx = MENU.ImGui, COLP.ctx
   if not (ImGui and ctx) then COLP.on = false; return end
@@ -2615,6 +2688,7 @@ function COLP.frame()
     local mxs, mys = ImGui.GetMousePos(ctx)
     local inside = mxs >= wx and mxs < wx + ww and mys >= wy and mys < wy + wh   -- by the rectangle (see the menu)
     if COLP.armed and ImGui.IsMouseClicked(ctx, 0) and not inside then COLP.closing = true end
+    if DPI.outside_press(COLP, ImGui, ctx) then COLP.closing = true end   -- a click on REAPER's own windows too
     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then COLP.closing = true end
     if not ImGui.IsMouseDown(ctx, 0) then COLP.armed = true end
     ImGui.End(ctx)
@@ -2765,9 +2839,13 @@ local function bar_mouse()
         drag = { i = ci, kind = c.kind, fg = c.fg, x0 = mx, y0 = my, dx = mx - c.x0 }
       elseif a == "closetrack" then close_floats("track")
       elseif a == "closeall" then close_floats("all")
-      elseif a == "num" then
-        local sx, sy = r.JS_Window_ClientToScreen(dock, h[1], bar_h())
-        COLP.open(sx, sy)
+      elseif a == "num" then                              -- a toggle: a click on the swatch while the palette is up
+        if COLP.on or r.time_precise() - (COLP.shut_t or 0) < 0.3 then   -- (or that press just shut it) closes it
+          COLP.close()
+        else
+          local sx, sy = r.JS_Window_ClientToScreen(dock, h[1], bar_h())
+          COLP.open(sx, sy)
+        end
       elseif a == "ticon" then
         local ok, err = pcall(picker_open)
         if not ok then dbg("picker open error: " .. tostring(err)); picker_close() end
@@ -2783,9 +2861,11 @@ local function bar_mouse()
           end
           NAME.cur = best
         else name_edit_start(shown_track()) end
-      elseif a == "gear" then
-        local ok, err = pcall(gear_menu, mx, my)         -- never the dock's end
-        if not ok then dbg("menu open error: " .. tostring(err)); menu_close() end
+      elseif a == "gear" then                            -- a toggle, as the swatch
+        if MENU.on or r.time_precise() - (MENU.shut_t or 0) < 0.3 then menu_close() else
+          local ok, err = pcall(gear_menu, mx, my)       -- never the dock's end
+          if not ok then dbg("menu open error: " .. tostring(err)); menu_close() end
+        end
       elseif a == "fold" then fold_open = false
       elseif a == "close" then want_close = true
       elseif a == "handle" then fold_open = true
@@ -3024,7 +3104,7 @@ local function loop()
   if req ~= "" then
     r.SetExtState(EXT, "opt_req", "", false)
     local k, v = req:match("^(%w+)=(.*)$")
-    if k and OPT_DEF[k] then opt_set(k, v); if k == "fold" then fold_open = true end; if k == "tint" then TINT.pass(true) end; has_key = "" end
+    if k and OPT_DEF[k] then opt_set(k, v); if k == "fold" then fold_open = true end; if k == "tint" or k == "tintk" then TINT.pass(true) end; has_key = "" end
   end
   if r.GetExtState(EXT, "tint_req") == "1" then r.SetExtState(EXT, "tint_req", "", false); TINT.pass(true) end
   req = r.GetExtState(EXT, "gear_req")                             -- tests: the gear's menu, picked by number

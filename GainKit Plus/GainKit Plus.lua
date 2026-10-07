@@ -467,13 +467,30 @@ local function embed_tick(now)
   end
 end
 
+-- Past MAXT tracks a GainKit gets nothing from Plus (README: "serves the first 512 tracks"). Say so ONCE per project
+-- per session, and only when a GainKit really sits past it; looked for at most every 10 s (outside audit 2026-10-07)
+local over = { told = {}, t = -10 }
 local function tick()
-  local n = math.min(r.CountTracks(0), MAXT)
+  local total = r.CountTracks(0)
+  local n = math.min(total, MAXT)
   for i = 0, n - 1 do
     local tr = r.GetTrack(0, i)
     if has_gainkit(tr) then publish(i, tr) else clear(i) end
   end
   for i = n, MAXT - 1 do if last[i] then clear(i) end end
+  local proj, now = tostring(r.EnumProjects(-1)), r.time_precise()
+  if total > MAXT and not over.told[proj] and now - over.t >= 10 then
+    over.t = now
+    for i = MAXT, total - 1 do
+      if has_gainkit(r.GetTrack(0, i)) then
+        over.told[proj] = true
+        r.ShowConsoleMsg(("GainKit Plus: this project has %d tracks. GainKit Plus gives the track colour and icon "
+          .. "to the GainKits on the first %d tracks and the master only; the GainKit on track %d and any after it go "
+          .. "without them.\n"):format(total, MAXT, i + 1))
+        break
+      end
+    end
+  end
   local m = r.GetMasterTrack(0)
   if has_gainkit(m) then publish(MASTER, m, project_name()) else clear(MASTER) end
 end
