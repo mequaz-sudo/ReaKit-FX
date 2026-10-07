@@ -1,3 +1,16 @@
+This repository holds code under more than one licence.
+
+The MIT licence below covers EON Studios' own work here: GainKit, Stereo Width, Filter,
+the GainKit Plus scripts, EON Floatter, the ReaKit/ includes, the templates and the track
+icons.
+
+It does NOT cover the four effects built on other authors' DSP. Saturation, 3-Band EQ
+and DDC keep Michael Gruhn's (LOSER) terms; the De-Esser keeps Lubomir I. Ivanov's
+(Liteon) GPL. Each of those plugin files carries its author's original header, and
+LICENSE.md gives the details.
+
+----------------------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2026 EON Studios
