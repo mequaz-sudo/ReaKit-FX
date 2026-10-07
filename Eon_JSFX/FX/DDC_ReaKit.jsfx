@@ -231,6 +231,10 @@ function recalc_dsp() (
   // Lookahead: only the read point moves; @sample fades to it over 10 ms
   la_ms = slider16;
   la_size = min(floor(la_ms * 0.001 * srate + 0.5), 4095);
+  // DET 2x reads the input a sample late (the upsampler's direct point is x[n-1], its interpolated one sits
+  // between x[n-2] and x[n-1]), so the audio waits at least 2 samples for it: without that, a spike's first
+  // sample passed untouched at Lookahead 0 (ddc_det2x.py, 2026-10-07). Reported as PDC like any lookahead.
+  os_on ? la_size = max(la_size, 2);
   la_xf_step = 1 / max(0.01 * srate, 1);
   vol_s.smooth_init(10);
 );
@@ -403,7 +407,7 @@ atomic_get(dsp_dirty) ? (
   recalc_dsp();
   atomic_set(dsp_dirty, 0);
 );
-pdc_delay = la_size;   // PDC at block rate (house rule); 2x adds no latency
+pdc_delay = la_size;   // PDC at block rate (house rule); 2x makes it at least 2 samples (recalc_dsp)
 pdc_bot_ch = 0; pdc_top_ch = 2;
 
 // GR meter: the block's lowest gain, in dB, to slider10 and REAPER's meter -- only when it moved

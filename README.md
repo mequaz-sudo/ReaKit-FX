@@ -170,7 +170,7 @@ knobs' colours and the crossover labels say which is which), and the values sit 
 
 LOSER's Digital Drum Compressor: threshold, ratio, attack, hold and release, knee, mix, a
 sidechain high-pass, stereo link, lookahead, RMS or peak detection, feed-forward, feedback or an
-external sidechain, auto makeup, a detector that can run at double rate (DET 2x: the level detector, not the audio), and a gain-reduction meter.
+external sidechain, auto makeup, a detector that can run at double rate (DET 2x: the level detector, not the audio; it reads some peaks that fall between samples a little higher, in the upper mids, and holds the audio back two samples so it never acts late), and a gain-reduction meter.
 In a short, wide window, as in a docker under the tracks, the knobs move from three rows to two,
 or to one row of all twelve with the switches at its end, and go back to three when there is room.
 
