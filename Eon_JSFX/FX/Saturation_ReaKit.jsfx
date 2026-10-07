@@ -97,6 +97,22 @@ snap_params = 1;
 drv_cr = 0.72; drv_cg = 0.28; drv_cb = 0.15;
 drv_lr = 0.90; drv_lg = 0.45; drv_lb = 0.15;
 
+// The DRIVE switch's light follows the drive while it is on (the user, 2026-10-06: "make that glow as it gets more
+// saturated"): its own warm ramp, a dim ember at no drive up to a hot orange at 100 %, and a halo that grows with
+// the drive, drawn UNDER the light (sat_lmp_halo first, then btn_led_draw with sat_lmp_r/g/b). Not the theme's
+// ACCENT2: in the EON theme that is a dark grey, and the light barely changed. Off: the switch's own dark look.
+function sat_lmp_col() local(g) (
+  g = min(max(slider1 / 100, 0), 1);
+  sat_lmp_r = lerp(0.45, 1.00, g); sat_lmp_g = lerp(0.22, 0.52, g); sat_lmp_b = lerp(0.08, 0.12, g);
+);
+function sat_lmp_halo(cx, cy, r) local(g) (
+  g = min(max(slider1 / 100, 0), 1);
+  slider2 && g > 0 ? (
+    gfx_set(1.00, 0.50, 0.12, 0.14 * g); gfx_circle(cx, cy, r * (2 + 1.6 * g), 1);
+    gfx_set(1.00, 0.55, 0.15, 0.22 * g); gfx_circle(cx, cy, r * (1.4 + 0.8 * g), 1);
+  );
+);
+
 @serialize
 
 // Play-state enable toggles (persist across sessions)
@@ -311,7 +327,8 @@ gfx_ext_flags & 1 ? (
   nv = btn_led_interact(mb0, led_x, led_y, mcp_led_r, slider2);
   emb_widget_active |= mb0[6];
   nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
-  btn_led_draw(led_x, led_y, mcp_led_r, slider2, "", mb0[0], drv_lr, drv_lg, drv_lb, 0);
+  sat_lmp_halo(led_x, led_y, mcp_led_r); sat_lmp_col();             // the light follows the drive
+  btn_led_draw(led_x, led_y, mcp_led_r, slider2, "", mb0[0], sat_lmp_r, sat_lmp_g, sat_lmp_b, 0);
   slider2 ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
   gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr("DRIVE");
 
@@ -475,7 +492,8 @@ gfx_ext_flags & 1 ? (
   led_cx = sh_cx - tw/2 - led_r_hdr - 5 * ret; led_cy = sh_y + th * 0.5;
   nv = btn_led_interact(mb0, led_cx, led_cy, led_r_hdr, slider2);
   nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
-  btn_led_draw(led_cx, led_cy, led_r_hdr, slider2, "", mb0[0], drv_lr, drv_lg, drv_lb, 0);
+  sat_lmp_halo(led_cx, led_cy, led_r_hdr); sat_lmp_col();           // the light follows the drive
+  btn_led_draw(led_cx, led_cy, led_r_hdr, slider2, "", mb0[0], sat_lmp_r, sat_lmp_g, sat_lmp_b, 0);
   slider2 ? gfx_set(drv_lr, drv_lg, drv_lb, 0.90) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 0.75);
   gfx_x = sh_cx - tw/2; gfx_y = sh_y; gfx_drawstr("DRIVE");
 

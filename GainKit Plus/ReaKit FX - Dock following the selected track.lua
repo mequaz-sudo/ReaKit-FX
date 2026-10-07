@@ -848,7 +848,8 @@ local TIPS = {
   closetrack = "Close this track's FX windows", closeall = "Close all FX windows",
   strip = "STRIP: every effect side by side", pin = "PIN: stay on this track", tabs = "The docker's tabs",
   gear = "Options", fold = "Fold the bar", close = "Close the dock", left = "Earlier effects", right = "Later effects",
-  handle = "Click: open the bar", ticon = "Track icon: click to pick one", name = "Click to rename the track",
+  handle = "Click: open the bar", ticon = "Track icon: click to pick one; right-click for the track's menu", name = "Click to rename the track; right-click for its menu",
+  num = "Track colour: click for the palette",
 }
 
 -- ── renaming the track on the bar ─────────────────────────────────────────────────────────────────
@@ -1106,11 +1107,19 @@ local function draw_bar()
       pub_ticon_hit = string.format("%d,%d,%d,%d", x, y, x + iw, y + row)
       x = x + iw + math.floor(5 * sc)
     end
-    if num then
-      gfx.set(0.55, 0.58, 0.63, 1)
-      gfx.x, gfx.y = x, y + (row - th) / 2
+    if num then                                                -- a small swatch in the track's colour: the palette's door
+      local has, cr, cg, cb = track_color(tr)
+      local nw, p2 = gfx.measurestr(num), math.floor(4 * sc)
+      local y0, ih2 = y + math.floor(5 * sc), row - math.floor(10 * sc)
+      local hot = hover_act == "num"
+      if has then gfx.set(cr, cg, cb, hot and 1 or 0.85); gfx.rect(x, y0, nw + 2 * p2, ih2, 1)
+      else gfx.set(1, 1, 1, hot and 0.35 or 0.16); gfx.rect(x, y0, nw + 2 * p2, ih2, 0) end
+      local lum = has and (0.3 * cr + 0.59 * cg + 0.11 * cb) or 0
+      if has and lum > 0.55 then gfx.set(0.08, 0.08, 0.09, 1) elseif has then gfx.set(0.97, 0.97, 0.98, 1) else gfx.set(0.55, 0.58, 0.63, 1) end
+      gfx.x, gfx.y = x + p2, y + (row - th) / 2
       gfx.drawstr(num)
-      x = x + gfx.measurestr(num) + math.floor(5 * sc)
+      hits[#hits + 1] = { x, x + nw + 2 * p2, y, y + row, "num" }
+      x = x + nw + 2 * p2 + math.floor(5 * sc)
     end
     local left = room - (x - nx)
     if left <= 10 * sc then return true end
@@ -1518,6 +1527,46 @@ local function menu_imgui()
   MENU.ImGui = mod
   return mod
 end
+-- ReaImGui lays its windows out in LOGICAL screen units: on a monitor scaled s (150 % = 1.5) the unit (x, y) stands at
+-- physical origin + (x - origin) * s, origin being that monitor's top-left, and sizes are scaled the same, fonts
+-- with them (measured 2026-10-06 on the user's 3440 x 1440 at 150 %: the picker asked for 3000,200 640 x 520 stood
+-- at 3540,387 960 x 780 with GetWindowDpiScale 1.5, and looked right; the gear menu asked for at the dock's physical
+-- 4910 opened at 6405, off the screen). REAPER's own calls (JS_Window_*, ClientToScreen, gfx) speak physical pixels.
+-- So a physical point is converted before it goes to SetNextWindowPos, with the scale of the monitor it is on: the
+-- dock's own (gfx.ext_retina, sc) for the menu, the palette and a fresh picker, which open at the bar; a remembered
+-- picker place is saved physical with the scale it was seen at and corrected on its first frames when that monitor
+-- is scaled otherwise now. Sizes inside ImGui are logical and NOT multiplied by sc (ReaImGui scales them).
+-- DPI is a global on purpose (the 200-local limit, see TINT).
+DPI = {}
+function DPI.origin(px, py)                                       -- the monitor under a physical point: its top-left
+  local vl, vt = r.JS_Window_GetViewportFromRect(px, py, px + 1, py + 1, false)
+  return vl or 0, vt or 0
+end
+function DPI.to_logical(px, py, s)
+  local ox, oy = DPI.origin(px, py)
+  return ox + (px - ox) / s, oy + (py - oy) / s
+end
+-- A window placed with the DOCK's scale can land on a monitor scaled otherwise (a dock across two monitors; outside
+-- audit 2026-10-07: the menu 376 px off the bottom of a 150 % screen). Once it is up, the scale of the monitor it
+-- really stands on is read and it is placed again from its physical anchor, kept on that monitor. Only in its first
+-- frames: later the user's own moves stand. o = { px, py, lw, lh (its logical size), used (the scale it was placed
+-- with) }; returns true when o.x, o.y were set anew.
+function DPI.settle(o, ImGui, ctx)
+  o.n = (o.n or 0) + 1
+  if o.n > 6 or not (ImGui.GetWindowDpiScale and r.JS_Window_GetViewportFromRect) then return false end
+  local real = ImGui.GetWindowDpiScale(ctx)
+  if not real or real <= 0 or math.abs(real - (o.used or real)) <= 0.01 then return false end
+  o.used = real
+  local sx, sy = o.px, o.py
+  local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)
+  if vr and sx + o.lw * real > vr then sx = vr - math.floor(o.lw * real) end
+  if vb and sy + o.lh * real > vb then sy = vb - math.floor(o.lh * real) end
+  if vl and sx < vl then sx = vl end
+  if vt and sy < vt then sy = vt end
+  o.x, o.y = DPI.to_logical(sx, sy, real)
+  dbg("placed again for a screen scaled " .. real .. " at " .. sx .. "," .. sy)
+  return true
+end
 local function menu_open(sx, sy)
   local ImGui = menu_imgui()
   if not ImGui then return false end
@@ -1531,13 +1580,17 @@ local function menu_open(sx, sy)
   -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
-    local mh, mw = math.floor(300 * sc), math.floor(300 * sc)   -- about the menu's size
+    local mh, mw = math.floor(320 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured
+                                                                -- (2026-10-06; the old 300 x 300 guess let it hang off
+                                                                -- a screen's right edge by ~100 px), physical here
     if vb and sy + mh > vb then sy = sy - bar_h() - mh end
     if vr and sx + mw > vr then sx = vr - mw end
     if vl and sx < vl then sx = vl end
   end
-  MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing = true, sx, sy, false, false
-  dbg("menu: open at " .. sx .. "," .. sy)
+  local lx, ly = DPI.to_logical(sx, sy, sc)
+  MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing, MENU.frames = true, lx, ly, false, false, 0
+  MENU.dp = { px = sx, py = sy, lw = 400, lh = 320, used = sc }   -- placed again if its screen is scaled otherwise
+  dbg("menu: open at " .. sx .. "," .. sy .. " (ImGui " .. math.floor(lx) .. "," .. math.floor(ly) .. ", scale " .. sc .. ")")
   return true
 end
 local function menu_close()
@@ -1550,7 +1603,7 @@ end
 -- REAPER's own folder (<resource>/Data/track_icons) and any folder the user adds (the + Folder button, a folder
 -- browser; kept in ExtState pick_dirs). A folder is a folder: every subfolder is a category, nothing skipped (the
 -- user, 2026-10-05). Category pills: All, Favourites, Recent, the built-in groups for REAPER's own set (by file
--- name, BUILTIN below), the user's own groups (a text file, GROUPS_FILE: "[Group]" then one icon per line; a
+-- name, BUILTIN below) joined by our icon set's own groups (EON/groups.txt, shipped with the icons; 2026-10-06), the user's own groups (a text file, GROUPS_FILE: "[Group]" then one icon per line; a
 -- right-click on a cell adds it to or removes it from a group; "+ Group" makes one; right-click a group's pill to
 -- rename or delete it), then the folders. A click sets the shown track's icon (or every selected track's, with
 -- "All selected") in one undo step; double-click sets and closes; Enter in the search box picks the first match;
@@ -1564,7 +1617,8 @@ local PICK = { on = false, ctx = nil, font = nil, font_b = nil, list = {}, cat =
                x = 0, y = 0, w = 0, h = 0, first = false, cells_pub = nil, cats_pub = nil, dirs = {}, groups = {},
                gorder = {}, fav = {}, recent = {}, enter = false, rect = nil, ask = nil,
                size = 2, side = false, close_after = false,            -- pick_size 1..3, pick_side, pick_close (saved)
-               sel = 1, sig = "", qact = false, key_req = nil, sel_pub = nil, lbl = {} }   -- the keyboard highlight
+               sel = 1, sig = "", qact = false, key_req = nil, sel_pub = nil, lbl = {},    -- the keyboard highlight
+               eon = {}, border = {} }                                     -- our set's shipped groups, the pills' order
 local function pick_norm(pth) return (pth:gsub("[\\]", "/")) end
 local ICON_ROOT = pick_norm(r.GetResourcePath() .. "/Data/track_icons")
 local GROUPS_FILE = pick_norm(r.GetResourcePath() .. "/Data/ReaKit_FX_icon_groups.txt")
@@ -1627,12 +1681,28 @@ function TINT.paint(src, cr, cg, cb, dst)                         -- the icon pa
   r.JS_LICE_DestroyBitmap(b)
   return ok and r.file_exists(dst)
 end
-function TINT.name(orig, cr, cg, cb)                              -- the painted copy's file: <rrggbb>_<hash>_<file name>;
+TINT.stamps = {}                                                  -- source file -> { size, hash, checked at }
+function TINT.stamp(src)                                          -- the icon FILE's own fingerprint: a copy is never repainted,
+  local key, now = pick_norm(src):lower(), r.time_precise()       -- so a redrawn icon (an icon-package update) must get a
+  local c = TINT.stamps[key]                                      -- new copy's NAME or coloured tracks keep the old drawing
+  if c and now - c.t < 5 then return c.h end                      -- (2026-10-06). The size is re-read every 5 s per file;
+  local fh = io.open(src, "rb")                                   -- the whole file is hashed (FNV-1a) when the size
+  if not fh then TINT.stamps[key] = { s = -1, h = 0, t = now }; return 0 end   -- changes, on the first look and once a
+  local size = fh:seek("end")                                     -- minute (a same-size redraw: outside review D, 2026-10-07)
+  if not c or c.s ~= size or now - (c.f or 0) >= 60 then
+    fh:seek("set"); local d, h = fh:read("*a") or "", 2166136261
+    for i = 1, #d do h = ((h ~ d:byte(i)) * 16777619) & 0xFFFFFFFF end
+    c = { s = size, h = h, f = now }
+  end
+  fh:close(); c.t = now; TINT.stamps[key] = c
+  return c.h
+end
+function TINT.name(orig, cr, cg, cb)                              -- the painted copy's file: <rrggbb>_<hash>_<stamp>_<file name>;
   local key, h = pick_norm(orig):lower(), 2166136261              -- the hash (FNV-1a) of the whole own name, case-folded
   for i = 1, #key do h = ((h ~ key:byte(i)) * 16777619) & 0xFFFFFFFF end   -- (Windows folds case):
-  return string.format("%s/%02x%02x%02x_%08x_%s", TINT.dir, cr, cg, cb, h,   -- "Drums/Kick.png" and "Drums_Kick.png" made
-    (pick_norm(orig):gsub("^.*/", ""):gsub("[^%w%.%-]", "_")))   -- ONE file before it (outside audit 2026-10-06)
-end
+  return string.format("%s/%02x%02x%02x_%08x_%08x_%s", TINT.dir, cr, cg, cb, h, TINT.stamp(TINT.resolve(orig)),
+    (pick_norm(orig):gsub("^.*/", ""):gsub("[^%w%.%-]", "_")))   -- "Drums/Kick.png" and "Drums_Kick.png" made ONE file
+end                                                               -- before it (outside audit 2026-10-06)
 function TINT.own(tr)                                             -- the track's own icon (for the picker: the one to mark)
   local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
   if icon ~= "" and TINT.in_dir(icon) then
@@ -1703,8 +1773,28 @@ local function pick_load_state()
   PICK.side = r.GetExtState(EXT, "pick_side") == "1"
   PICK.close_after = r.GetExtState(EXT, "pick_close") == "1"
   local rect = r.GetExtState(EXT, "pick_rect")
-  local x, y, w, h = rect:match("^(%-?%d+) (%-?%d+) (%d+) (%d+)$")
-  PICK.rect = x and { tonumber(x), tonumber(y), tonumber(w), tonumber(h) } or nil
+  local x, y, w, h, ds = rect:match("^(%-?%d+) (%-?%d+) (%d+) (%d+) ?([%d%.]*)$")   -- physical px + the scale seen
+  PICK.rect = x and { tonumber(x), tonumber(y), tonumber(w), tonumber(h), tonumber(ds) } or nil   -- (an old place: 4 numbers)
+  -- our icon set's own groups (2026-10-06): the icons package ships <icon folder>/EON/groups.txt ("[Group]" then one
+  -- icon name per line, written by rkfx_icons_draw.py with the icons, so a set that grows brings its own grouping and
+  -- the dock needs no update). Its icons join the built-in pill of the same name (Drums = REAPER's drums AND ours);
+  -- a group REAPER's set lacks (Percussion, Amps, Meters...) becomes a new pill; the file's order is the pills'
+  -- order, any built-in group it leaves out follows. No file (an older icons package): the built-in pills as before.
+  PICK.eon, PICK.border = {}, {}
+  local fh = io.open(ICON_ROOT .. "/EON/groups.txt", "r")
+  if fh then
+    local g
+    for line in fh:lines() do
+      line = line:gsub("[\r]$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+      local name = line:match("^%[(.+)%]$")
+      if name then g = name; if not PICK.eon[g] then PICK.eon[g] = {}; PICK.border[#PICK.border + 1] = g end
+      elseif g and line ~= "" and not line:match("^#") then PICK.eon[g][line] = true end
+    end
+    fh:close()
+  end
+  local have = {}
+  for _, g in ipairs(PICK.border) do have[g] = true end
+  for _, g in ipairs(BUILTIN_ORDER) do if not have[g] then PICK.border[#PICK.border + 1] = g end end
   -- the user's own groups
   PICK.groups, PICK.gorder = {}, {}
   local fh = io.open(GROUPS_FILE, "r")
@@ -1793,7 +1883,7 @@ local function pick_cats()                                      -- the pills, in
   local t = { { "", "All" } }
   if next(PICK.fav) then t[#t + 1] = { "*fav", "Favourites" } end
   if #PICK.recent > 0 then t[#t + 1] = { "*recent", "Recent" } end
-  for _, g in ipairs(BUILTIN_ORDER) do t[#t + 1] = { "b:" .. g, g } end
+  for _, g in ipairs(#PICK.border > 0 and PICK.border or BUILTIN_ORDER) do t[#t + 1] = { "b:" .. g, g } end
   for _, g in ipairs(PICK.gorder) do t[#t + 1] = { "g:" .. g, g } end
   local seen, folders = {}, {}
   for _, e in ipairs(PICK.list) do if e.cat ~= "" and not seen[e.cat] then seen[e.cat] = true; folders[#folders + 1] = e.cat end end
@@ -1807,7 +1897,10 @@ local function pick_in_cat(e, key)
   if key == "*fav" then return PICK.fav[k] == true end
   if key == "*recent" then for _, v in ipairs(PICK.recent) do if v == k then return true end end; return false end
   local kind, name = key:match("^(%a):(.*)$")
-  if kind == "b" then return e.src == 1 and e.cat == "" and (" " .. (BUILTIN[name] or "") .. " "):find(" " .. e.name .. " ", 1, true) ~= nil
+  if kind == "b" then
+    if e.src ~= 1 then return false end
+    if e.cat == "" then return (" " .. (BUILTIN[name] or "") .. " "):find(" " .. e.name .. " ", 1, true) ~= nil end
+    return e.cat == "EON" and PICK.eon[name] ~= nil and PICK.eon[name][e.name] == true   -- ours, by the shipped groups
   elseif kind == "g" then return PICK.groups[name] and PICK.groups[name][k] == true
   elseif kind == "f" then return e.cat == name end
   return false
@@ -1850,7 +1943,7 @@ local function picker_set(e)                                      -- e = an entr
   dbg("picker: " .. (e and e.store or "none") .. " on " .. #trs .. " track(s)")
 end
 local function picker_close()
-  if PICK.on and PICK.rect then r.SetExtState(EXT, "pick_rect", string.format("%d %d %d %d", PICK.rect[1], PICK.rect[2], PICK.rect[3], PICK.rect[4]), true) end
+  if PICK.on and PICK.rect then r.SetExtState(EXT, "pick_rect", string.format("%d %d %d %d %.2f", PICK.rect[1], PICK.rect[2], PICK.rect[3], PICK.rect[4], PICK.rect[5] or sc), true) end
   PICK.on, PICK.ctx, PICK.img = false, nil, {}
   PICK.cells_pub, PICK.cats_pub = nil, nil
   r.SetExtState(EXT, "picker_cells", "", false); r.SetExtState(EXT, "picker_cats", "", false); r.SetExtState(EXT, "picker_sel", "", false)
@@ -1889,10 +1982,12 @@ picker_open = function()
   if PICK.font then pcall(ImGui.Attach, PICK.ctx, PICK.font) end
   if PICK.font_b then pcall(ImGui.Attach, PICK.ctx, PICK.font_b) end
   PICK.img, PICK.q, PICK.cat, PICK.enter = {}, "", "", false
-  -- where it was last time; else under the bar around the dock's middle; kept on the screen
+  -- where it was last time (physical, with the scale it was seen at); else under the bar around the dock's middle
+  -- (400 x 440 logical, so sc of it physical); kept on the screen in physical pixels, then handed to ImGui logical
+  local s = sc
   local pw, ph = math.floor(400 * sc), math.floor(440 * sc)
   local sx, sy = r.JS_Window_ClientToScreen(dock, math.floor(gfx.w / 2) - math.floor(pw / 2), bar_h())
-  if PICK.rect then sx, sy, pw, ph = PICK.rect[1], PICK.rect[2], PICK.rect[3], PICK.rect[4] end
+  if PICK.rect then sx, sy, pw, ph, s = PICK.rect[1], PICK.rect[2], PICK.rect[3], PICK.rect[4], PICK.rect[5] or sc end
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)
     if vb and sy + ph > vb then sy = math.max(vt or 0, vb - ph) end
@@ -1900,8 +1995,11 @@ picker_open = function()
     if vl and sx < vl then sx = vl end
     if vt and sy < vt then sy = vt end
   end
-  PICK.x, PICK.y, PICK.w, PICK.h = sx, sy, pw, ph
-  PICK.on, PICK.first = true, true
+  PICK.phys, PICK.dpi, PICK.fix = { sx, sy, pw, ph }, s, 2
+  PICK.x, PICK.y = DPI.to_logical(sx, sy, s)
+  PICK.w, PICK.h = pw / s, ph / s
+  PICK.hwnd = nil
+  PICK.on, PICK.first, PICK.again, PICK.frames = true, true, false, 0
   dbg("picker: open, " .. #PICK.list .. " icons, " .. #PICK.dirs .. " folders, " .. #PICK.gorder .. " groups")
   return true
 end
@@ -1911,9 +2009,9 @@ local function picker_frame()
   local tr = shown_track()
   local has, cr, cg, cb = track_color(tr)
   local hue = has and mp_rgba(cr, cg, cb) or MP.accent
-  local CELL = math.floor(({ 34, 44, 72 })[PICK.size] * sc)       -- S / M / L
-  if PICK.first then ImGui.SetNextWindowPos(ctx, PICK.x, PICK.y); ImGui.SetNextWindowSize(ctx, PICK.w, PICK.h) end
-  ImGui.SetNextWindowSizeConstraints(ctx, math.max(CELL * 4 + 30, math.floor(330 * sc)), CELL * 3 + 140, 4000, 4000)
+  local CELL = ({ 34, 44, 72 })[PICK.size]                          -- S / M / L, logical (ReaImGui scales with the fonts)
+  if PICK.first or PICK.again then ImGui.SetNextWindowPos(ctx, PICK.x, PICK.y); ImGui.SetNextWindowSize(ctx, PICK.w, PICK.h); PICK.again = false end
+  ImGui.SetNextWindowSizeConstraints(ctx, math.max(CELL * 4 + 30, 330), CELL * 3 + 140, 4000, 4000)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
   ImGui.PushStyleColor(ctx, ImGui.Col_ChildBg, 0x161F28FF)
   ImGui.PushStyleColor(ctx, ImGui.Col_Border, MP.line)
@@ -1940,7 +2038,42 @@ local function picker_frame()
     local dl = ImGui.GetWindowDrawList(ctx)
     local wx, wy = ImGui.GetWindowPos(ctx)
     local ww, wh = ImGui.GetWindowSize(ctx)
-    PICK.rect = { math.floor(wx), math.floor(wy), math.floor(ww), math.floor(wh) }
+    PICK.frames = (PICK.frames or 0) + 1
+    local real = ImGui.GetWindowDpiScale and ImGui.GetWindowDpiScale(ctx) or PICK.dpi
+    -- only while it settles (its first frames): a picker the user later drags onto a screen scaled otherwise is
+    -- NOT snapped back (outside audit 2026-10-07)
+    if PICK.frames > 8 then PICK.fix = 0 end
+    if PICK.frames >= 2 and PICK.fix > 0 and math.abs(real - PICK.dpi) > 0.01 then   -- it stands on a monitor scaled
+      PICK.dpi, PICK.fix = real, PICK.fix - 1                       -- otherwise than it was placed for: placed again
+      -- its size with the window's own minimum applied FIRST, then kept on the monitor (a minimum applied after
+      -- the clamp pushed a saved place 95 px off a screen's right edge -- outside audit 2026-10-07)
+      PICK.w = math.max(PICK.phys[3] / real, math.max(CELL * 4 + 30, 330))
+      PICK.h = math.max(PICK.phys[4] / real, CELL * 3 + 140)
+      local px, py = PICK.phys[1], PICK.phys[2]
+      if r.JS_Window_GetViewportFromRect then
+        local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(px, py, px + 1, py + 1, true)
+        if vr and px + PICK.w * real > vr then px = vr - math.floor(PICK.w * real) end
+        if vb and py + PICK.h * real > vb then py = vb - math.floor(PICK.h * real) end
+        if vl and px < vl then px = vl end
+        if vt and py < vt then py = vt end
+      end
+      PICK.x, PICK.y = DPI.to_logical(px, py, real)
+      PICK.again = true
+      dbg("picker: the screen is scaled " .. real .. ", placed again")
+    end
+    if PICK.frames == 2 or (PICK.hwnd and not r.JS_Window_IsWindow(PICK.hwnd)) then   -- its own OS window, for the
+      PICK.hwnd = nil                                                                  -- physical place it is saved at
+      local _, list = r.JS_Window_ListFind("Track icon", true)
+      for a in (list or ""):gmatch("[^,]+") do
+        local h = r.JS_Window_HandleFromAddress(tonumber(a))
+        if h and r.JS_Window_GetRelated(h, "OWNER") == r.GetMainHwnd() then PICK.hwnd = h end   -- this REAPER's
+      end
+    end
+    if PICK.hwnd then
+      local okr, L, T, R, B = r.JS_Window_GetRect(PICK.hwnd)
+      if okr then PICK.rect = { L, T, R - L, B - T, real } end
+    end
+    if PICK.frames == 3 then dbg(string.format("picker frame 3: ImGui pos %d,%d size %dx%d, dpi scale %s, sc %s, own window %s", wx, wy, ww, wh, tostring(real), tostring(sc), PICK.rect and (PICK.rect[1] .. "," .. PICK.rect[2] .. " " .. PICK.rect[3] .. "x" .. PICK.rect[4]) or "?")) end
     ImGui.DrawList_AddRectFilled(dl, wx, wy, wx + ww, wy + 3, hue)             -- the track's stripe
     local cur = ""                                                   -- the track's icon field (an "and" would keep one value)
     if tr then cur = TINT.own(tr) end                                -- a tinted copy stands for the track's own icon
@@ -1951,7 +2084,7 @@ local function picker_frame()
     if PICK.font_b then ImGui.PushFont(ctx, PICK.font_b, 12) end
     ImGui.TextColored(ctx, hue, tr and track_name(tr) or "no track")
     if PICK.font_b then ImGui.PopFont(ctx) end
-    ImGui.SameLine(ctx, ww - 196 * sc)
+    ImGui.SameLine(ctx, ww - 196)
     if ImGui.SmallButton(ctx, "+ Folder") and r.JS_Dialog_BrowseForFolder then PICK.ask = { "folder" } end
     if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Add a folder of icons; its subfolders become categories") end
     ImGui.SameLine(ctx)
@@ -2015,7 +2148,7 @@ local function picker_frame()
       end
     end
     if PICK.side then
-      if ImGui.BeginChild(ctx, "##side", math.floor(150 * sc), 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
+      if ImGui.BeginChild(ctx, "##side", 150, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
         for i, c in ipairs(cats) do
           local key, label = c[1], c[2]
           local on = PICK.cat == key
@@ -2055,7 +2188,7 @@ local function picker_frame()
     -- (Up / Down always, Left / Right when the search box is not typing) and Enter picks; with the colour follow
     -- on, every icon is drawn in the shown track's colour (a multiply: REAPER's dark icons come out darker than
     -- the real paint, which scales them up)
-    local LBL = PICK.size == 3 and math.floor(14 * sc) or 0
+    local LBL = PICK.size == 3 and 14 or 0
     local CH = CELL + LBL
     local tintc = (opt.tint == "1" and has) and mp_rgba(cr, cg, cb) or 0xFFFFFFFF
     if ImGui.BeginChild(ctx, "##grid", 0, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
@@ -2081,7 +2214,7 @@ local function picker_frame()
       if PICK.enter and vis[PICK.sel] then picker_set(vis[PICK.sel]); if PICK.close_after then open = false end end
       PICK.enter = false
       local cells = {}
-      local pad = math.floor(6 * sc)
+      local pad = 6
       for n0, e in ipairs(vis) do
         local n = n0 - 1
         local cx, cy = x0 + (n % cols) * CELL, y0 + (n // cols) * CH
@@ -2214,6 +2347,7 @@ local function menu_frame()
   local visible = ImGui.Begin(ctx, "##rkdock_menu", nil, flags)
   local picked = false
   if visible then
+    if MENU.dp and DPI.settle(MENU.dp, ImGui, ctx) then MENU.x, MENU.y = MENU.dp.x, MENU.dp.y end
     local dl = ImGui.GetWindowDrawList(ctx)
     local wx, wy = ImGui.GetWindowPos(ctx)
     local ww = ImGui.GetWindowSize(ctx)
@@ -2348,6 +2482,8 @@ local function menu_frame()
     -- foreground window: the first click then closed the menu and picked nothing; measured 2026-10-05)
     local mxs, mys = ImGui.GetMousePos(ctx)
     local wh = select(2, ImGui.GetWindowSize(ctx))
+    MENU.frames = (MENU.frames or 0) + 1
+    if MENU.frames == 3 then dbg(string.format("menu frame 3: ImGui pos %d,%d size %dx%d, dpi scale %s", wx, wy, ww, wh, tostring(ImGui.GetWindowDpiScale and ImGui.GetWindowDpiScale(ctx)))) end
     local inside = mxs >= wx and mxs < wx + ww and mys >= wy and mys < wy + wh
     if MENU.armed and ImGui.IsMouseClicked(ctx, 0) and not inside then MENU.closing = true end
     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then MENU.closing = true end
@@ -2380,6 +2516,195 @@ local function gear_menu(mx, my)
   gfx.x, gfx.y = mx, my
   local pick = gfx.showmenu(m)
   if pick and pick > 0 then gear_pick(pick) end
+end
+
+-- ── The track colour palette and the bar's right-click menus (the user, 2026-10-06: "a way to recolor the track
+-- quickly, and we dont have any right click menu options") ─────────────────────────────────────────────────────
+-- COLP and RMENU are GLOBAL tables on purpose: the main chunk sits at Lua's 200-local limit (see TINT).
+-- The palette: a click on the track number (drawn as a small swatch in the track's colour) or "Track colour..." in
+-- the track's right-click menu opens 16 colours, None and "More..." (REAPER's colour dialog). It colours the shown
+-- track, or every selected track when the shown one is among them (REAPER's own rule), in one undo step; the icon
+-- colour follow repaints from there. A click outside or Escape closes it. Tests: colp_req = "open" | "close" |
+-- "<n>" (1..16) | "none"; published colp ("1" open).
+COLP = { on = false, ctx = nil, x = 0, y = 0, armed = false, closing = false, ask = false,
+  cols = { { 220, 60, 50 }, { 235, 135, 40 }, { 240, 190, 50 }, { 225, 220, 70 }, { 150, 210, 60 }, { 70, 180, 90 },
+           { 40, 170, 150 }, { 50, 180, 220 }, { 60, 120, 230 }, { 95, 95, 215 }, { 150, 90, 220 }, { 210, 80, 200 },
+           { 235, 120, 160 }, { 150, 100, 60 }, { 130, 135, 140 }, { 215, 215, 215 } } }
+function COLP.targets()
+  local tr = shown_track()
+  if not tr then return {} end
+  if r.IsTrackSelected(tr) and r.CountSelectedTracks2(0, false) > 1 then
+    local t = {}
+    for i = 0, r.CountSelectedTracks2(0, false) - 1 do t[#t + 1] = r.GetSelectedTrack2(0, i, false) end
+    return t
+  end
+  return { tr }
+end
+function COLP.set(native)                                         -- native = REAPER's colour | 0x1000000, or 0 = none
+  local trs = COLP.targets()
+  if #trs == 0 then return end
+  r.Undo_BeginBlock()
+  for _, tr in ipairs(trs) do r.SetMediaTrackInfo_Value(tr, "I_CUSTOMCOLOR", native) end
+  r.Undo_EndBlock(native == 0 and "ReaKit FX dock: track colour removed" or "ReaKit FX dock: track colour", -1)
+  r.TrackList_AdjustWindows(false); r.UpdateArrange()
+  tcol.t = 0                                                      -- the bar reads the colour again at once
+  if opt.tint == "1" then TINT.pass(true) end
+  dbg("colour " .. string.format("%x", native) .. " on " .. #trs .. " track(s)")
+end
+function COLP.open(sx, sy)
+  local ImGui = menu_imgui()
+  if not ImGui then COLP.ask = true; return end                   -- no ReaImGui: REAPER's colour dialog straight away
+  COLP.ctx = ImGui.CreateContext("ReaKit FX Dock colours")
+  if r.JS_Window_GetViewportFromRect then                         -- kept on the screen (about 230 x 110)
+    local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)
+    if vr and sx + 230 * sc > vr then sx = vr - math.floor(230 * sc) end
+    if vb and sy + 110 * sc > vb then sy = sy - bar_h() - math.floor(110 * sc) end
+    if vl and sx < vl then sx = vl end
+  end
+  local lx, ly = DPI.to_logical(sx, sy, sc)
+  COLP.on, COLP.x, COLP.y, COLP.armed, COLP.closing = true, lx, ly, false, false
+  COLP.dp = { px = sx, py = sy, lw = 230, lh = 110, used = sc }   -- placed again if its screen is scaled otherwise
+  local tr = shown_track()                                        -- the track it was opened for: when the dock
+  COLP.for_guid = tr and r.GetTrackGUID(tr) or ""                -- follows another one, the palette closes (outside
+end                                                               -- audit 2026-10-07: a swatch coloured the new track)
+function COLP.close() COLP.on, COLP.ctx = false, nil end
+function COLP.frame()
+  local ImGui, ctx = MENU.ImGui, COLP.ctx
+  if not (ImGui and ctx) then COLP.on = false; return end
+  local now_tr = shown_track()                                    -- the dock moved on to another track: closed
+  if (now_tr and r.GetTrackGUID(now_tr) or "") ~= (COLP.for_guid or "") then COLP.close(); return end
+  ImGui.SetNextWindowPos(ctx, COLP.x, COLP.y)
+  ImGui.SetNextWindowFocus(ctx)
+  ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Border, MP.line)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Text, MP.text)
+  ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0x283644FF)
+  ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0x34465AFF)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowRounding, 5)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 8, 8)
+  ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 4, 4)
+  local flags = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoResize | ImGui.WindowFlags_NoMove
+    | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_AlwaysAutoResize | ImGui.WindowFlags_NoDocking
+    | ImGui.WindowFlags_NoSavedSettings | ImGui.WindowFlags_TopMost
+  local visible = ImGui.Begin(ctx, "##rkdock_colours", nil, flags)
+  local picked = false
+  if visible then
+    if COLP.dp and DPI.settle(COLP.dp, ImGui, ctx) then COLP.x, COLP.y = COLP.dp.x, COLP.dp.y end
+    local has, cr, cg, cb = track_color(shown_track())
+    local cur = has and string.format("%d,%d,%d", math.floor(cr * 255 + 0.5), math.floor(cg * 255 + 0.5), math.floor(cb * 255 + 0.5)) or ""
+    local dl = ImGui.GetWindowDrawList(ctx)
+    local sw = 22                                                   -- logical: ReaImGui scales it
+    for i, c in ipairs(COLP.cols) do
+      if (i - 1) % 8 ~= 0 then ImGui.SameLine(ctx) end
+      local x0, y0 = ImGui.GetCursorScreenPos(ctx)
+      if ImGui.InvisibleButton(ctx, "##c" .. i, sw, sw) then COLP.set(r.ColorToNative(c[1], c[2], c[3]) | 0x1000000); picked = true end
+      local hov = ImGui.IsItemHovered(ctx)
+      local rgba = (c[1] << 24) | (c[2] << 16) | (c[3] << 8) | 0xFF
+      ImGui.DrawList_AddRectFilled(dl, x0, y0, x0 + sw, y0 + sw, rgba, 4)
+      if hov or cur == string.format("%d,%d,%d", c[1], c[2], c[3]) then
+        ImGui.DrawList_AddRect(dl, x0 - 1, y0 - 1, x0 + sw + 1, y0 + sw + 1, 0xF0F2F5FF, 4, 0, hov and 2 or 1.5)
+      end
+    end
+    if ImGui.Button(ctx, "None") then COLP.set(0); picked = true end
+    ImGui.SameLine(ctx)
+    if ImGui.Button(ctx, "More...") then COLP.ask = true; picked = true end
+    local n = #COLP.targets()
+    if n > 1 then ImGui.SameLine(ctx); ImGui.TextColored(ctx, MP.muted, n .. " selected tracks") end
+    local wx, wy = ImGui.GetWindowPos(ctx)
+    local ww, wh = ImGui.GetWindowSize(ctx)
+    local mxs, mys = ImGui.GetMousePos(ctx)
+    local inside = mxs >= wx and mxs < wx + ww and mys >= wy and mys < wy + wh   -- by the rectangle (see the menu)
+    if COLP.armed and ImGui.IsMouseClicked(ctx, 0) and not inside then COLP.closing = true end
+    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then COLP.closing = true end
+    if not ImGui.IsMouseDown(ctx, 0) then COLP.armed = true end
+    ImGui.End(ctx)
+  end
+  ImGui.PopStyleVar(ctx, 3)
+  ImGui.PopStyleColor(ctx, 5)
+  if picked or COLP.closing then COLP.close() end
+end
+function COLP.after()                                             -- REAPER's colour dialog, outside any ImGui frame
+  if not COLP.ask then return end
+  COLP.ask = false
+  local tr = shown_track()
+  if not tr then return end
+  local ok, c = r.GR_SelectColor(r.GetMainHwnd())                -- (the dialog takes no starting colour)
+  if ok == 1 and c then COLP.set((c & 0xFFFFFF) | 0x1000000) end
+end
+
+-- The right-click menus (REAPER's own menus, flat: no separators, so a pick's number is its row; see gear_pick).
+RMENU = {}
+function RMENU.track(mx, my, forced)       -- forced: the pick's number (tests), no menu shown
+  local tr = shown_track()
+  if not tr then return end
+  local master = tr == r.GetMasterTrack(0)
+  local _, icon = r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", false)
+  local function on(b) return b and "!" or "" end
+  local function grey(b) return b and "" or "#" end
+  local m = grey(not master) .. "Rename the track|"
+    .. grey(not master) .. "Track colour...|"
+    .. grey(not master and r.GetTrackColor(tr) ~= 0) .. "Remove the track colour|"
+    .. grey(not master) .. "Pick a track icon...|"
+    .. grey(not master and icon ~= "") .. "Remove the track icon|"
+    .. on(opt.tint == "1") .. "Icons follow the track colour|"
+    .. "Close this track's effect windows|"
+    .. "Close every track's effect windows|"
+    .. on(pin ~= "") .. "Keep the dock on this track (pin)"
+  gfx.x, gfx.y = mx, my
+  local pick = forced or gfx.showmenu(m)
+  if pick == 1 then                                               -- the keyboard must be on the dock, or the field closes at once
+    if r.JS_Window_SetFocus then r.JS_Window_SetFocus(dock) end
+    name_edit_start(tr)
+  elseif pick == 2 then local sx, sy = r.JS_Window_ClientToScreen(dock, mx, bar_h()); COLP.open(sx, sy)
+  elseif pick == 3 then COLP.set(0)
+  elseif pick == 4 then local ok, err = pcall(picker_open); if not ok then dbg("picker open error: " .. tostring(err)); picker_close() end
+  elseif pick == 5 then
+    r.Undo_BeginBlock(); r.GetSetMediaTrackInfo_String(tr, "P_ICON", "", true)
+    if opt.tint == "1" then r.GetSetMediaTrackInfo_String(tr, TINT.key, "", true) end
+    r.Undo_EndBlock("ReaKit FX dock: track icon removed", -1); ticon.t = 0; r.TrackList_AdjustWindows(false)
+  elseif pick == 6 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true)
+  elseif pick == 7 then close_floats("track")
+  elseif pick == 8 then close_floats("all")
+  elseif pick == 9 then set_pin(pin == "") end
+end
+function RMENU.chip(c, mx, my, forced)
+  local tr = shown_track()
+  local fx = tr and c.fg and fx_by_guid(tr, c.fg)
+  if not fx then return end
+  local name = KINDS[c.kind].name
+  local on = r.TrackFX_GetEnabled(tr, fx)
+  local held
+  for _, s in ipairs(slots) do if s.fg == c.fg then held = s end end
+  local m = "Show " .. name .. " in the dock|"
+    .. "Open " .. name .. " in its own window|"
+    .. (on and "" or "!") .. "Bypass " .. name .. "|"
+    .. (fx == 0 and "#" or "") .. "Move to the start of the chain|"
+    .. (fx == r.TrackFX_GetCount(tr) - 1 and "#" or "") .. "Move to the end of the chain|"
+    .. "Remove " .. name .. " from the track"
+  gfx.x, gfx.y = mx, my
+  local pick = forced or gfx.showmenu(m)
+  if pick == 1 then show_copy(c.fg, c.kind)
+  elseif pick == 2 then if held and held.canvas then pop_out(held) else r.TrackFX_Show(tr, fx, 3) end
+  elseif pick == 3 then
+    r.Undo_BeginBlock(); r.TrackFX_SetEnabled(tr, fx, not on)
+    r.Undo_EndBlock("ReaKit FX dock: " .. (on and "bypass " or "enable ") .. name .. " on " .. track_name(tr), -1)
+  elseif pick == 4 then move_fx(c.fg, r.TrackFX_GetFXGUID(tr, 0))
+  elseif pick == 5 then move_fx(c.fg, nil)
+  elseif pick == 6 then
+    -- the undo step opens BEFORE its surface goes home: letting the float go adds REAPER's own "Close FX config"
+    -- point, which then joins this step (as move_fx does; outside audit 2026-10-07: two undo points)
+    r.Undo_BeginBlock()
+    local cv = held and held.canvas
+    if cv then
+      release(held)                                               -- its surface home first, then the plugin goes
+      -- a hand-back that could not happen (its window gone and not rebuilt) leaves the surface parented here;
+      -- hidden, so a dead plugin's picture never stays in the dock
+      if r.JS_Window_IsWindow(cv) and r.JS_Window_GetParent(cv) == dock then r.JS_Window_Show(cv, "HIDE") end
+    end
+    r.TrackFX_Delete(tr, fx)
+    r.Undo_EndBlock("ReaKit FX dock: remove " .. name .. " from " .. track_name(tr), -1)
+    dbg("removed " .. name .. " from " .. track_name(tr))
+  end
 end
 
 local function bar_mouse()
@@ -2425,6 +2750,7 @@ local function bar_mouse()
   if wheel ~= 0 and in_bar then scroll(wheel > 0 and -1 or 1) end
   if not (down or rdown) or not in_bar then return end
   if NAME.on and under ~= "name" then name_edit_end(true) end     -- a click elsewhere on the bar sets the name
+  if rdown and not under then RMENU.track(mx, my); return end   -- the bar's empty space: the track's menu
   for _, h in ipairs(hits) do
     if mx >= h[1] and mx < h[2] and my >= h[3] and my < h[4] then
       local a = h[5]
@@ -2432,11 +2758,16 @@ local function bar_mouse()
       local c = ci and bar_chips[ci]
       if c and c.other then return end                    -- a marker: only ever dropped beside
       if rdown then
-        if c and not c.fg then add_kind(c.kind) end      -- a dim one: GainKit first, the others at the end
+        if c and not c.fg then add_kind(c.kind)          -- a dim one: GainKit first, the others at the end
+        elseif c then RMENU.chip(c, mx, my)              -- a lit one: its menu
+        elseif a == "name" or a == "ticon" or a == "num" then RMENU.track(mx, my) end
       elseif c then
         drag = { i = ci, kind = c.kind, fg = c.fg, x0 = mx, y0 = my, dx = mx - c.x0 }
       elseif a == "closetrack" then close_floats("track")
       elseif a == "closeall" then close_floats("all")
+      elseif a == "num" then
+        local sx, sy = r.JS_Window_ClientToScreen(dock, h[1], bar_h())
+        COLP.open(sx, sy)
       elseif a == "ticon" then
         local ok, err = pcall(picker_open)
         if not ok then dbg("picker open error: " .. tostring(err)); picker_close() end
@@ -2599,7 +2930,7 @@ local function quit()
   MENU.on, MENU.ctx = false, nil
   PICK.on, PICK.ctx = false, nil
   NAME.on = false
-  for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "picker_cats", "picker_sel", "hover", "tip", "name_edit", "name_hit", "ticon_hit" }) do r.SetExtState(EXT, k, "", false) end
+  for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "picker_cats", "picker_sel", "colp", "hover", "tip", "name_edit", "name_hit", "ticon_hit" }) do r.SetExtState(EXT, k, "", false) end
   r.gmem_write(DRW + 9, 0)                                         -- holds nothing now (the drawer band)
   r.gmem_write(DRW + 8, 0)
   pcall(function() r.set_action_options(8) end)                    -- the toolbar button goes dark
@@ -2611,6 +2942,15 @@ end
 local function loop()
   r.SetExtState(EXT, "alive", tostring(r.time_precise()), false)   -- for GainKit Plus: the dock is up now
   stamp_wall()
+  -- WS_CLIPCHILDREN (set at start, below) is DROPPED by REAPER when the window moves to another docker
+  -- (measured 2026-10-06, dockmove_side_probe.lua: 0x56000000 at the bottom, 0x50000000 after a move to a side
+  -- docker); without it this window's every-frame blit covers the plugins it holds and they blink until they draw
+  -- again (the user: "blinking a lot", stopped only by a restart). Checked every frame, put back when missing.
+  local st = dock and r.JS_Window_GetLong(dock, "STYLE")
+  if st and (math.floor(st) & 0x02000000) == 0 then
+    r.JS_Window_SetLong(dock, "STYLE", math.floor(st) | 0x02000000)
+    dbg("clip-children put back (the window was moved to another docker)")
+  end
   sc = math.max(1, gfx.ext_retina or 1)
   -- another project tab: let go properly (the floats closed, in THEIR project) and follow this one's selection
   local here = r.EnumProjects(-1)
@@ -2689,6 +3029,28 @@ local function loop()
   if r.GetExtState(EXT, "tint_req") == "1" then r.SetExtState(EXT, "tint_req", "", false); TINT.pass(true) end
   req = r.GetExtState(EXT, "gear_req")                             -- tests: the gear's menu, picked by number
   if req ~= "" then r.SetExtState(EXT, "gear_req", "", false); gear_pick(tonumber(req) or 0) end
+  req = r.GetExtState(EXT, "gfxdock_req")                          -- tests: move this window to a docker, a gfx.dock state
+  if req ~= "" then                                                -- ("769" = docker 3 docked), as a drag between dockers does
+    r.SetExtState(EXT, "gfxdock_req", "", false)
+    gfx.dock(tonumber(req) or 0)
+    dbg("gfxdock_req " .. req .. " -> " .. tostring(gfx.dock(-1)) .. ", the window held " .. tostring(dock) .. " still a window " .. tostring(dock and r.JS_Window_IsWindow(dock)))
+  end
+  req = r.GetExtState(EXT, "colp_req")                             -- tests: the palette, "open" | "close" | "1".."16" | "none" | "more"
+  if req ~= "" then
+    r.SetExtState(EXT, "colp_req", "", false)
+    if req == "open" then local sx, sy = r.JS_Window_ClientToScreen(dock, 20, bar_h()); COLP.open(sx, sy)
+    elseif req == "close" then COLP.close()
+    elseif req == "none" then COLP.set(0)
+    elseif req == "more" then COLP.ask = true
+    elseif tonumber(req) and COLP.cols[tonumber(req)] then local c = COLP.cols[tonumber(req)]; COLP.set(r.ColorToNative(c[1], c[2], c[3]) | 0x1000000) end
+  end
+  req = r.GetExtState(EXT, "rmenu_req")                            -- tests: a right-click menu's row, "track:N" | "chip:<i>:N"
+  if req ~= "" then                                                -- (i = the bar's chip number), the menu not shown
+    r.SetExtState(EXT, "rmenu_req", "", false)
+    local kindr, a1, a2 = req:match("^(%a+):(%d+):?(%d*)$")
+    if kindr == "track" then RMENU.track(0, 0, tonumber(a1))
+    elseif kindr == "chip" and bar_chips[tonumber(a1)] then RMENU.chip(bar_chips[tonumber(a1)], 0, 0, tonumber(a2)) end
+  end
   req = r.GetExtState(EXT, "menu_req")                             -- tests: the gear's menu, "open" at the bar's middle | "close"
   if req ~= "" then
     r.SetExtState(EXT, "menu_req", "", false)
@@ -2753,9 +3115,14 @@ local function loop()
   end
   if NAME.on and not name_keys() then closed_by_user(); quit(); return end
   draw_bar()
-  if MENU.on then
+  if COLP.on then
+    local ok, err = pcall(COLP.frame)                    -- nor one in the palette
+    if not ok then dbg("palette error: " .. tostring(err)); COLP.close() end
+    last_cap = gfx.mouse_cap                             -- the bar sees no edge from a click that closed it
+  elseif MENU.on then
     local ok, err = pcall(menu_frame)                    -- an error in the menu never takes the dock down
     if not ok then dbg("menu error: " .. tostring(err)); menu_close() end
+    last_cap = gfx.mouse_cap
   else
     bar_mouse()
   end
@@ -2763,6 +3130,8 @@ local function loop()
     local ok, err = pcall(picker_frame)                  -- nor one in the picker
     if not ok then dbg("picker error: " .. tostring(err)); picker_close() end
   end
+  COLP.after()                                           -- REAPER's colour dialog, between frames
+  if (COLP.on and "1" or "0") ~= COLP.pub then COLP.pub = COLP.on and "1" or "0"; r.SetExtState(EXT, "colp", COLP.pub, false) end
   if want_close then closed_by_user(); quit(); gfx.quit(); return end   -- the bar's X
   if opt.tint == "1" then TINT.pass(false) end                    -- the icons follow the track colours
   layout()
@@ -2818,7 +3187,7 @@ local style = r.JS_Window_GetLong(dock, "STYLE")
 if style then r.JS_Window_SetLong(dock, "STYLE", math.floor(style) | 0x02000000) end
 pcall(function() r.set_action_options(1 | 4) end)                   -- run again = close it; the button lights
 for _, k in ipairs({ "close", "kind_req", "pin_req", "tabs_req", "strip_req", "scroll_req", "add_req", "move_req", "addat_req",
-                     "closefx_req", "opt_req", "gear_req", "fold_req", "menu_req", "pick_req", "name_req" }) do
+                     "closefx_req", "opt_req", "gear_req", "fold_req", "menu_req", "pick_req", "name_req", "colp_req", "rmenu_req", "gfxdock_req" }) do
   r.SetExtState(EXT, k, "", false)                                  -- old requests must not reach this run
 end
 r.atexit(quit)

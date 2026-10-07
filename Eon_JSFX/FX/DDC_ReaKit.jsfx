@@ -237,6 +237,61 @@ function recalc_dsp() (
 // One detector step on the detection signal (scL, scR). Called once per
 // sample, or twice when 2x is on (the upsampled signal); the time constants
 // count steps (det_sr). Updates gainL/gainR; the audio is not touched here.
+// a knob's value line, centred under the knob at cx (gfx_y set by the caller; the string in #ddc_v)
+function ddc_val_draw(cx) (
+  gfx_measurestr(#ddc_v, ddc_vw, ddc_vh);
+  gfx_x = cx - ddc_vw * 0.5;
+  gfx_drawstr(#ddc_v);
+);
+
+// ── The compact layouts (the user, 2026-10-07: "def want that compact mode for ddc") ──
+// Three rows of knobs need about 230 px of height; a short, wide dock (a mixer-height docker) cannot give it, and the
+// knobs stopped shrinking at their minimum and overlapped the row below (outside audit 2026-10-07: 900 x 120). When
+// three rows do not fit, two rows (the first seven knobs, then five + the switches); when two do not, ONE row (all
+// twelve + the switches). Three rows, when they fit, are drawn exactly as before.
+// The biggest knob a slot spw wide and a band band tall can hold with its label above and value below.
+function ddc_fit(spw, band) local(k, t) (
+  k = floor(spw * 0.30);
+  t = 1.15 * (max(8*ret, k*0.32) + max(9*ret, k*0.36)) + 6*ret;
+  min(k, floor((band - t) / 2));
+);
+// two rows or one: sets ddc_rows, ddc_sp (the slot width), ddc_band (a row's height), ddc_kk (the knob radius). The
+// switches' block is (seg_w + 2) x 3 + 6 + a 44 pill = 1.2 slots + 62*ret with its gap, so the slot width leaves it
+// room before the GR meter. A layout whose slots are too narrow for the smallest knob (7) is never taken: the knobs
+// would touch and one drag would move two (outside review E, 2026-10-07: 300 x 140); one row only when it gives a
+// bigger knob than two or two are too narrow; when neither fits, three rows stay. A knob too TALL for its band still
+// shrinks to 7 (a very short, wide dock: 1200 x 140).
+function ddc_layout() local(s2, k2, s1, k1, w2, w1) (
+  s2 = min(knob_area_w / 7.6, (knob_area_w - 62*ret) / 6.2); k2 = ddc_fit(s2, body_h / 2); w2 = floor(s2 * 0.30) >= 7;
+  s1 = min(knob_area_w / 14.6, (knob_area_w - 62*ret) / 13.2); k1 = ddc_fit(s1, body_h); w1 = floor(s1 * 0.30) >= 7;
+  w2 && (k2 >= 10 || k2 >= k1 || !w1) ? ( ddc_rows = 2; ddc_sp = s2; ddc_band = body_h / 2; ddc_kk = max(7, k2); )
+  : w1 ? ( ddc_rows = 1; ddc_sp = s1; ddc_band = body_h; ddc_kk = max(7, k1); );
+);
+// the centre line of compact row r: the knob with its label and value, centred in the row's band
+function ddc_row_cy(r) local(s) (
+  s = 1.15*lbl_fh + 2*ret + 2*ddc_kk + 2*ret + 1.15*val_fh;
+  body_y + r*ddc_band + (ddc_band - s) * 0.5 + 1.15*lbl_fh + 2*ret + ddc_kk;
+);
+// knob n's place (n = its km slot: 0-4 THRESH RATIO ATTACK HOLD REL, 5 RMS, 6 OUTPUT, 7-11 KNEE MIX SC-HPF LINK
+// L.AHEAD): sets kcx, kcy, kk
+function ddc_place(n) local(pos, row, col) (
+  ddc_rows == 3 ? (
+    n <= 4 ? ( kcx = sp*(n + 0.5) + 4*ret; kcy = row1_cy; kk = kr; )
+    : n >= 7 ? ( kcx = sp*(n - 7 + 0.5) + 4*ret; kcy = row2_cy; kk = kr2; )
+    : ( kcx = sp*(n - 5 + 0.5) + 4*ret; kcy = row3_cy; kk = kr2; );
+  ) : (
+    pos = n <= 4 ? n : (n >= 7 ? n - 2 : n + 5);                  // the order: row 1, row 2, then RMS, OUTPUT
+    ddc_rows == 2 ? ( row = pos < 7 ? 0 : 1; col = pos < 7 ? pos : pos - 7; ) : ( row = 0; col = pos; );
+    kcx = ddc_sp*(col + 0.5) + 4*ret; kcy = ddc_row_cy(row); kk = ddc_kk;
+  );
+);
+// the switches' block (FEED, MAKEUP AUTO, DET 2x): sets seg_x, seg_w, ctl_cy
+function ddc_ctl_place() (
+  ddc_rows == 3 ? ( seg_x = sp * 2.2 + 4*ret; seg_w = floor(sp * 0.48); ctl_cy = row3_cy; )
+  : ddc_rows == 2 ? ( seg_x = ddc_sp * 5 + 6*ret; seg_w = floor(ddc_sp * 0.40); ctl_cy = ddc_row_cy(1); )
+  : ( seg_x = ddc_sp * 12 + 6*ret; seg_w = floor(ddc_sp * 0.40); ctl_cy = ddc_row_cy(0); );
+);
+
 function ddc_detect(scL, scR) (
   // ── Stereo link blending ──
   lev_L = abs(scL); lev_R = abs(scR);
@@ -625,6 +680,12 @@ is_embedded ? (
   n_cols = 5;
   sp = knob_area_w / n_cols;
   kr = min(floor(sp * 0.28), floor(body_h * 0.14));
+  // ...and no bigger than a row holds with its texts: knob (kr) + the next row's knob (0.85 kr) + a value line
+  // + a label line (about 1.15 x their font sizes) + the gaps, inside the 0.28 x body_h between rows
+  ddc_txt = 1.15 * (max(8*ret, kr*0.32) + max(9*ret, kr*0.36));
+  kr = min(kr, floor((body_h * 0.28 - 6*ret - ddc_txt) / 1.85));
+  ddc_rows = 3;
+  kr < 12 ? ddc_layout();              // three rows do not fit: two, or one (the compact layouts above; ddc_rows stays 3 when neither fits)
   kr = max(12, kr);
   kr2 = floor(kr * 0.85);
   kr2 = max(10, kr2);
@@ -633,149 +694,149 @@ is_embedded ? (
   row2_cy = body_y + body_h * 0.48;
   row3_cy = body_y + body_h * 0.76;
 
-  lbl_fh = max(8*ret, kr*0.32);
-  val_fh = max(9*ret, kr*0.36);
+  ddc_fk = ddc_rows == 3 ? kr : ddc_kk;   // the knob size the texts follow
+  lbl_fh = max(8*ret, ddc_fk*0.32);
+  val_fh = max(9*ret, ddc_fk*0.36);
 
   // ── ROW 1: THRESH, RATIO, ATTACK, HOLD, REL ──────────
   // THRESH
-  kcx = sp * 0.5 + 4*ret;
-  nv = ssl_knob_interact(km+0*KS, kcx, row1_cy, kr, slider1, -60, 0, -20, 0);
+  ddc_place(0);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+0*KS, kcx, kcy, kk, slider1, -60, 0, -20, 0);
   nv != slider1 ? ( slider1 = nv; slider_automate(1); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row1_cy, kr, slider1, -60, 0, 0, (km+0*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider1, -60, 0, 0, (km+0*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("THRESH",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row1_cy-kr-th-2*ret; gfx_drawstr("THRESH");
+  gfx_measurestr("THRESH",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("THRESH");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-12*ret; gfx_y=row1_cy+kr+2*ret;
-  gfx_drawnumber(slider1,1); gfx_drawstr(" dB");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.1f dB", slider1); ddc_val_draw(kcx);
 
   // RATIO
-  kcx = sp * 1.5 + 4*ret;
-  nv = ssl_knob_interact(km+1*KS, kcx, row1_cy, kr, slider2, 0, 50, 20, 0);
+  ddc_place(1);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+1*KS, kcx, kcy, kk, slider2, 0, 50, 20, 0);
   nv != slider2 ? ( slider2 = nv; slider_automate(2); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row1_cy, kr, slider2, 0, 50, 0, (km+1*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider2, 0, 50, 0, (km+1*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("RATIO",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row1_cy-kr-th-2*ret; gfx_drawstr("RATIO");
+  gfx_measurestr("RATIO",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("RATIO");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-8*ret; gfx_y=row1_cy+kr+2*ret;
-  slider2 >= 1 ? ( gfx_drawnumber(slider2,1); gfx_drawstr(":1"); )
-               : ( gfx_drawstr("1:"); gfx_drawnumber(1/max(0.001,slider2),1); );
+  gfx_y=kcy+kk+2*ret;
+  slider2 >= 1 ? sprintf(#ddc_v, "%.1f:1", slider2) : sprintf(#ddc_v, "1:%.1f", 1/max(0.001,slider2));
+  ddc_val_draw(kcx);
 
   // ATTACK
-  kcx = sp * 2.5 + 4*ret;
-  nv = ssl_knob_interact(km+2*KS, kcx, row1_cy, kr, slider3, 0, 500, 20, 0);
+  ddc_place(2);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+2*KS, kcx, kcy, kk, slider3, 0, 500, 20, 0);
   nv != slider3 ? ( slider3 = nv; slider_automate(4); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row1_cy, kr, slider3, 0, 500, 0, (km+2*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider3, 0, 500, 0, (km+2*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("ATTACK",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row1_cy-kr-th-2*ret; gfx_drawstr("ATTACK");
+  gfx_measurestr("ATTACK",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("ATTACK");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row1_cy+kr+2*ret;
-  gfx_drawnumber(slider3,0); gfx_drawstr(" ms");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f ms", slider3); ddc_val_draw(kcx);
 
   // HOLD
-  kcx = sp * 3.5 + 4*ret;
-  nv = ssl_knob_interact(km+3*KS, kcx, row1_cy, kr, slider4, 0, 500, 0.5, 0);
+  ddc_place(3);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+3*KS, kcx, kcy, kk, slider4, 0, 500, 0.5, 0);
   nv != slider4 ? ( slider4 = nv; slider_automate(8); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row1_cy, kr, slider4, 0, 500, 0, (km+3*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider4, 0, 500, 0, (km+3*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("HOLD",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row1_cy-kr-th-2*ret; gfx_drawstr("HOLD");
+  gfx_measurestr("HOLD",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("HOLD");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row1_cy+kr+2*ret;
-  gfx_drawnumber(slider4,1); gfx_drawstr(" ms");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.1f ms", slider4); ddc_val_draw(kcx);
 
   // REL
-  kcx = sp * 4.5 + 4*ret;
-  nv = ssl_knob_interact(km+4*KS, kcx, row1_cy, kr, slider5, 0, 1000, 200, 0);
+  ddc_place(4);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+4*KS, kcx, kcy, kk, slider5, 0, 1000, 200, 0);
   nv != slider5 ? ( slider5 = nv; slider_automate(16); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row1_cy, kr, slider5, 0, 1000, 0, (km+4*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider5, 0, 1000, 0, (km+4*KS)[0], knb_gr,knb_gg,knb_gb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("REL",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row1_cy-kr-th-2*ret; gfx_drawstr("REL");
+  gfx_measurestr("REL",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("REL");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row1_cy+kr+2*ret;
-  gfx_drawnumber(slider5,0); gfx_drawstr(" ms");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f ms", slider5); ddc_val_draw(kcx);
 
   // ── ROW 2: KNEE, MIX, SC HPF, LINK, LOOKAHEAD ─────────
   // KNEE
-  kcx = sp * 0.5 + 4*ret;
-  nv = ssl_knob_interact(km+7*KS, kcx, row2_cy, kr2, slider11, 0, 20, 0, 0);
+  ddc_place(7);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+7*KS, kcx, kcy, kk, slider11, 0, 20, 0, 0);
   nv != slider11 ? ( slider11 = nv; slider_automate(1024); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row2_cy, kr2, slider11, 0, 20, 0, (km+7*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider11, 0, 20, 0, (km+7*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("KNEE",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row2_cy-kr2-th-2*ret; gfx_drawstr("KNEE");
+  gfx_measurestr("KNEE",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("KNEE");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-8*ret; gfx_y=row2_cy+kr2+2*ret;
-  gfx_drawnumber(slider11,1); gfx_drawstr(" dB");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.1f dB", slider11); ddc_val_draw(kcx);
 
   // MIX
-  kcx = sp * 1.5 + 4*ret;
-  nv = ssl_knob_interact(km+8*KS, kcx, row2_cy, kr2, slider12, 0, 100, 100, 0);
+  ddc_place(8);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+8*KS, kcx, kcy, kk, slider12, 0, 100, 100, 0);
   nv != slider12 ? ( slider12 = nv; slider_automate(2048); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row2_cy, kr2, slider12, 0, 100, 0, (km+8*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider12, 0, 100, 0, (km+8*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("MIX",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row2_cy-kr2-th-2*ret; gfx_drawstr("MIX");
+  gfx_measurestr("MIX",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("MIX");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-6*ret; gfx_y=row2_cy+kr2+2*ret;
-  gfx_drawnumber(slider12,0); gfx_drawstr("%");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f%%", slider12); ddc_val_draw(kcx);
 
   // SC HPF
-  kcx = sp * 2.5 + 4*ret;
-  nv = ssl_knob_interact(km+9*KS, kcx, row2_cy, kr2, slider13, 0, 500, 0, 0);
+  ddc_place(9);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+9*KS, kcx, kcy, kk, slider13, 0, 500, 0, 0);
   nv != slider13 ? ( slider13 = nv; slider_automate(4096); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row2_cy, kr2, slider13, 0, 500, 0, (km+9*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider13, 0, 500, 0, (km+9*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("SC HPF",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row2_cy-kr2-th-2*ret; gfx_drawstr("SC HPF");
+  gfx_measurestr("SC HPF",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("SC HPF");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row2_cy+kr2+2*ret;
-  slider13 > 0 ? ( gfx_drawnumber(slider13,0); gfx_drawstr(" Hz"); ) : gfx_drawstr("OFF");
+  gfx_y=kcy+kk+2*ret;
+  slider13 > 0 ? sprintf(#ddc_v, "%.0f Hz", slider13) : strcpy(#ddc_v, "OFF"); ddc_val_draw(kcx);
 
   // LINK
-  kcx = sp * 3.5 + 4*ret;
-  nv = ssl_knob_interact(km+10*KS, kcx, row2_cy, kr2, slider14, 0, 100, 100, 0);
+  ddc_place(10);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+10*KS, kcx, kcy, kk, slider14, 0, 100, 100, 0);
   nv != slider14 ? ( slider14 = nv; slider_automate(8192); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row2_cy, kr2, slider14, 0, 100, 0, (km+10*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider14, 0, 100, 0, (km+10*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("LINK",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row2_cy-kr2-th-2*ret; gfx_drawstr("LINK");
+  gfx_measurestr("LINK",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("LINK");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-6*ret; gfx_y=row2_cy+kr2+2*ret;
-  gfx_drawnumber(slider14,0); gfx_drawstr("%");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f%%", slider14); ddc_val_draw(kcx);
 
   // LOOKAHEAD
-  kcx = sp * 4.5 + 4*ret;
-  nv = ssl_knob_interact(km+11*KS, kcx, row2_cy, kr2, slider16, 0, 5, 0, 0);
+  ddc_place(11);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+11*KS, kcx, kcy, kk, slider16, 0, 5, 0, 0);
   nv != slider16 ? ( slider16 = nv; slider_automate(32768); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row2_cy, kr2, slider16, 0, 5, 0, (km+11*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider16, 0, 5, 0, (km+11*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("L.AHEAD",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row2_cy-kr2-th-2*ret; gfx_drawstr("L.AHEAD");
+  gfx_measurestr("L.AHEAD",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("L.AHEAD");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-8*ret; gfx_y=row2_cy+kr2+2*ret;
-  slider16 > 0 ? ( gfx_drawnumber(slider16,1); gfx_drawstr(" ms"); ) : gfx_drawstr("OFF");
+  gfx_y=kcy+kk+2*ret;
+  slider16 > 0 ? sprintf(#ddc_v, "%.1f ms", slider16) : strcpy(#ddc_v, "OFF"); ddc_val_draw(kcx);
 
   // ── ROW 3: RMS, OUTPUT, FEED, AUTO, OS ─────────────────
   // RMS
-  kcx = sp * 0.5 + 4*ret;
-  nv = ssl_knob_interact(km+5*KS, kcx, row3_cy, kr2, slider6, 0, 1000, 0, 0);
+  ddc_place(5);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+5*KS, kcx, kcy, kk, slider6, 0, 1000, 0, 0);
   nv != slider6 ? ( slider6 = nv; slider_automate(32); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row3_cy, kr2, slider6, 0, 1000, 0, (km+5*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider6, 0, 1000, 0, (km+5*KS)[0], knb_r,knb_g,knb_b, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("RMS",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row3_cy-kr2-th-2*ret; gfx_drawstr("RMS");
+  gfx_measurestr("RMS",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("RMS");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row3_cy+kr2+2*ret;
-  gfx_drawnumber(slider6,0); gfx_drawstr(" ms");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f ms", slider6); ddc_val_draw(kcx);
 
   // OUTPUT
-  kcx = sp * 1.5 + 4*ret;
-  nv = ssl_knob_interact(km+6*KS, kcx, row3_cy, kr2, slider9, -120, 60, 0, 0);
+  ddc_place(6);                        // kcx, kcy, kk: the row layout's place
+  nv = ssl_knob_interact(km+6*KS, kcx, kcy, kk, slider9, -120, 60, 0, 0);
   nv != slider9 ? ( slider9 = nv; slider_automate(256); atomic_set(dsp_dirty, 1); );
-  rk_knob_draw(sk_kp,kcx, row3_cy, kr2, slider9, -120, 60, 1, (km+6*KS)[0], knb_wr,knb_wg,knb_wb, 0, bg_r,bg_g,bg_b);
+  rk_knob_draw(sk_kp,kcx, kcy, kk, slider9, -120, 60, 1, (km+6*KS)[0], knb_wr,knb_wg,knb_wb, 0, bg_r,bg_g,bg_b);
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
-  gfx_measurestr("OUTPUT",tw,th); gfx_x=kcx-tw*0.5; gfx_y=row3_cy-kr2-th-2*ret; gfx_drawstr("OUTPUT");
+  gfx_measurestr("OUTPUT",tw,th); gfx_x=kcx-tw*0.5; gfx_y=kcy-kk-th-2*ret; gfx_drawstr("OUTPUT");
   gfx_set(dm_r,dm_g,dm_b,0.7); gfx_setfont(1,"Arial",val_fh);
-  gfx_x=kcx-10*ret; gfx_y=row3_cy+kr2+2*ret;
-  gfx_drawnumber(slider9,0); gfx_drawstr(" dB");
+  gfx_y=kcy+kk+2*ret;
+  sprintf(#ddc_v, "%.0f dB", slider9); ddc_val_draw(kcx);
 
   // FEED segment (3-way: FF / FB / SC)
-  seg_x = sp * 2.2 + 4*ret;
-  seg_y = row3_cy - 10*ret;
-  seg_w = floor(sp * 0.48);
+  ddc_ctl_place();                     // seg_x, seg_w, ctl_cy: the row layout's place for the switches
+  seg_y = ctl_cy - 10*ret;
   seg_h = 20*ret;
   seg_m = bm + 0 * BS;
 
@@ -802,7 +863,7 @@ is_embedded ? (
   pill_w = 44*ret;
   pill_h = 18*ret;
   pill_x = seg_x + (seg_w + 2*ret) * 3 + 6*ret;
-  pill_y = row3_cy - 16*ret;
+  pill_y = ctl_cy - 16*ret;
 
   gfx_set(txt_r,txt_g,txt_b,0.85); gfx_setfont(1,"Arial",lbl_fh,'b');
   gfx_measurestr("MAKEUP",tw,th); gfx_x=pill_x+pill_w*0.5-tw*0.5; gfx_y=pill_y-th-2*ret; gfx_drawstr("MAKEUP");

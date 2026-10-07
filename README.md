@@ -98,7 +98,8 @@ in the Actions list as `Script: GainKit Plus…`):
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
   file, and EON Floatter started once so it registers itself. Once, it sets the six to open
   embedded in the mixer strip (REAPER's own default for new instances; other plugins' defaults are
-  left as they are). The first time, it also offers a track with all six and to
+  left as they are); after a reinstall or a moved folder, GainKit Plus gives the six's new copies
+  the same place at its next start, and a place you set yourself stays as you left it. The first time, it also offers a track with all six and to
   raise REAPER's meter refresh to 120 a second so the mixer strips answer quicker (from the next
   start). Run it again and nothing changes.
 - **ReaKit FX - Add a track with all six** — a track called ReaKit FX at the end of the project
@@ -135,7 +136,8 @@ their tracks, through GainKit Plus; the master's name is typed.*
 ![Saturation](screenshots/session/saturation.png)
 
 LOSER's saturation: one DRIVE knob, a transfer display that shows what the drive is doing to the
-signal, and an output meter. The LED bypasses it. In a short window, as in the dock, the display
+signal, and an output meter. The DRIVE light follows the drive, from a dim ember to a hot orange.
+The LED bypasses it. In a short window, as in the dock, the display
 steps aside and the knob takes the room; the CURVE button opens the display over the knob, and a
 click anywhere else closes it. In its own window, the strip along the bottom edge drops a CURVE
 drawer under the knob: the window grows for it (EON Floatter running) and the knob keeps its place.
@@ -165,6 +167,8 @@ wider window gets bigger knobs, not more empty space.
 LOSER's Digital Drum Compressor: threshold, ratio, attack, hold and release, knee, mix, a
 sidechain high-pass, stereo link, lookahead, RMS or peak detection, feed-forward, feedback or an
 external sidechain, auto makeup, a detector that can run at double rate (DET 2x: the level detector, not the audio), and a gain-reduction meter.
+In a short, wide window, as in a docker under the tracks, the knobs move from three rows to two,
+or to one row of all twelve with the switches at its end, and go back to three when there is room.
 
 ### De-Esser
 
@@ -182,7 +186,9 @@ One knob, 0 to 200 %: mono at the left end, the recorded width in the middle, wi
 It scales the side signal and leaves the middle alone, so the centre of the mix never moves. A
 correlation meter under the knob shows how the two channels agree. The strip along the bottom edge
 drops a STEREO FIELD drawer: the stereo picture of the signal, live, with the correlation meter
-above it. In a mixer strip it is the WIDTH knob at the bottom of the channel.
+above it. The WIDTH light runs blue at mono, green at 100 % and yellow at 200 %. In a mixer strip
+it is the WIDTH knob at the bottom of the channel; a click on its correlation meter folds the meter
+away and gives the knob the strip, and the small CORR tab brings it back (each copy remembers).
 
 ## The ReaKit FX dock
 
@@ -219,14 +225,20 @@ closes; its place in the dock says so.
 ![BG Vox has no De-Esser: right-click its button, and it is added and shown](screenshots/session/dock_right_click.png)
 
 A dim button on the bar is an effect the track does not have. Right-click it to add it to the
-track the bar names: GainKit first in the chain, the others at the end.
+track the bar names: GainKit first in the chain, the others at the end. Right-click a lit one for
+its menu: show it in the dock, open it in its own window, bypass it, move it to the start or the
+end of the chain, or remove it (one undo step). Right-click the track's name, icon, number or the
+bar's empty space for the track's menu: rename, colour, pick or remove the icon, icons follow the
+colour, close this track's or every track's windows, pin.
 
 ### The bar
 
 ![The bar, each part named](screenshots/session/dock_bar.png)
 
 - the track's number, icon and name, with its colour as a stripe along the top (or a band across
-  the bar, or none: the gear). Click the name to rename the track right there: type, Enter sets it,
+  the bar, or none: the gear). The number sits on a swatch of the track's colour: click it for a
+  palette of 16 colours, None and More... (REAPER's colour dialog), which colours the shown track,
+  or every selected track when the shown one is among them, in one undo step. Click the name to rename the track right there: type, Enter sets it,
   Escape puts the old name back. Click the icon, or the faint square where one would sit, to open
   the icon picker;
 - a chip for each effect, in the order of the track's chain: a lit one is on the track (click it
@@ -247,9 +259,13 @@ track the bar names: GainKit first in the chain, the others at the end.
   icon...** opens our own picker: REAPER's icons in a grid with a search box (Enter picks the first
   match), sorted into groups, Drums, Guitars, Bass, Keys, Synths, Strings, Brass, Winds, Vocals, Mics, Buses, FX, Rooms, Marks, Folders; a click sets the
   shown track's icon in one undo step, a double-click sets it and closes, and the current one is
-  marked. ReaKit FX also brings its own set of 51 track icons (drums piece by piece, percussion,
-  keys, strings, brass, vocal, buses, loops and more, drawn in REAPER's icon grey) in a folder of
-  their own, the EON category. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
+  marked. ReaKit FX also brings its own set of 104 track icons (drums piece by piece and drum
+  overheads, percussion, keys and synths, guitar and bass with an amp each and a DI box, strings,
+  brass and winds, a dynamic and a condenser mic, vocals, headphones, buses, a VU meter, the common
+  effect types, a turntable and drum machines, marks and more), drawn in REAPER's icon grey with a
+  dark outline that holds on light themes, in a folder of their own, the EON category; they also
+  join REAPER's icons in the groups (Drums holds both), and add groups of their own (Percussion,
+  Amps, Machines...). **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
   category. **+ Group** makes a group of your own; right-click an icon to put it in a group or mark
   it a favourite. Favourites and Recent get their own pills, or put every category in a list down
   the side. Three icon sizes, with the names under the icons at the largest; the arrow keys move a

@@ -391,6 +391,53 @@ local function dock_request(ti, pos, fl)
   reopen_dock()                              -- returns at once when the dock is up
 end
 
+-- A copy of the six at a path REAPER has no [defcfg] line for yet opens un-embedded. The start-up action set the
+-- lines ONCE (its embed_defaults flag), for the paths it saw then; a reinstall or a moved folder later gives new
+-- path names, and those never got the default (found 2026-10-07 on the user's machine: lines for an older folder
+-- layout, none for the paths in use). So at every start each path of the six that has not been seen before gets the
+-- place the others already have (the first one with a line), MCP when none has one, and is remembered as seen
+-- (ExtState embed_filled): a line the user later changes or removes stays as they left it.
+do
+  local function fill_new_paths()
+    local list = six_paths()
+    if #list == 0 then return end
+    local seen = r.GetExtState("EON_ReaKitFX", "embed_filled")
+    local function enc(p) return (p:gsub("%%", "%%25"):gsub("|", "%%7C")) end   -- a "|" in a Linux / macOS path
+    local fresh = {}                                   -- must not make two paths one (outside review D, 2026-10-07)
+    for _, p in ipairs(list) do if not seen:find("|" .. enc(p) .. "|", 1, true) then fresh[#fresh + 1] = p end end
+    if #fresh == 0 then return end
+    local function defcfg(txt)                         -- the first [defcfg]'s lines: REAPER reads that one only
+      if txt:sub(1, 3) == "\239\187\191" then txt = txt:sub(4) end
+      local has, in_def = {}, false
+      for line in (txt .. "\n"):gmatch("(.-)\r?\n") do
+        local s = line:match("^%[(.-)%]%s*$")
+        if s then
+          if in_def then break end
+          in_def = (s == "defcfg")
+        elseif in_def then
+          local k, v = line:match("^(.-)=(%-?%d+)%s*$")
+          if k then has[k] = tonumber(v) or 0 end
+        end
+      end
+      return has
+    end
+    local txt = read_opt(OPT)
+    if not txt then return end                         -- locked for a moment: the next start tries again
+    local has = defcfg(txt)
+    local mode = 1                                     -- MCP when none of the six has a line yet
+    for _, p in ipairs(list) do if has[p] then mode = place_of(has[p]); break end end
+    local missing = {}
+    for _, p in ipairs(fresh) do if not has[p] then missing[#missing + 1] = p end end
+    if #missing > 0 then write_default(missing, mode) end
+    local after = defcfg(read_opt(OPT) or "")         -- remember a path only once its line is really there, in the
+    for _, p in ipairs(fresh) do                       -- section REAPER reads (outside review D, 2026-10-07)
+      if has[p] or mode == 3 or after[p] then seen = seen .. (seen == "" and "|" or "") .. enc(p) .. "|" end
+    end
+    r.SetExtState("EON_ReaKitFX", "embed_filled", seen, true)
+  end
+  fill_new_paths()
+end
+
 local served = r.gmem_read(EMB + 12)       -- a request older than this run is not ours to serve
 local hb_last, def_t, paths = 0, -10, nil
 local function embed_tick(now)
