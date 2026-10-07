@@ -2,18 +2,18 @@
 // (C) 2026 EON Studios
 // A high-pass and a low-pass, Butterworth at 12 or 24 dB/oct, on Andrew Simper's trapezoidal state-variable filter,
 // with a CURVE drawer (the response, two nodes to drag)
-// Version: 1.0.0
+// Version: 1.0.1
 //
 // DSP: each filter is one SVF stage (12 dB, Q 0.7071) or two in cascade (24 dB, Q 0.5412 and 1.3066: a 4th-order
 //   Butterworth), the trapezoidal form (Cytomic, "Solving the continuous SVF equations using trapezoidal integration
 //   and equivalent currents"), prewarped, so the corner lands exactly on the knob's value and the state survives a
-//   coefficient change: the cutoff GLIDES over 5 ms in the log domain, recomputed every sample while it moves, so a
-//   knob sweep or an automation ramp is continuous (a direct-form biquad stepped once per block zippers; the
-//   3-Band EQ's SMOOTH voice runs the same stages). Both slopes run while a filter is on and the output crossfades
-//   over 10 ms when the SLOPE key is switched; at rest the output is one path's, sample for sample. A filter at the
-//   end of its range (HP at 20 Hz, LP at 20 kHz) is OFF: it fades out over 5 ms and is not run; coming back it
-//   clears its state first, then fades in (GainKit's rule, popcheck rig 2026-10-01). A new instance fades in from
-//   its input the same way. The Play/Rec/Stop gate (rk_playstate) is folded into the same fades.
+//   coefficient change: the cutoff GLIDES in the log domain (a 5 ms time constant), the coefficients following every
+//   4th sample while it moves, so a knob sweep or an automation ramp is continuous (a direct-form biquad stepped once
+//   per block zippers; the 3-Band EQ's SMOOTH voice runs the same stages). Only the SLOPE key's path runs; a switch
+//   starts the other path, lets it settle 100 ms, then crossfades over 10 ms. A filter at the end of its range (HP
+//   at 20 Hz, LP at 20 kHz) is OFF: it fades out over 5 ms and is not run; coming back it clears its state first,
+//   then fades in (GainKit's rule). A new instance fades in from its input the same way. The Play/Rec/Stop gate
+//   (rk_playstate) is folded into the same fades.
 // GUI by EON Studios (ReaKit Libraries)
 desc:EON: Filter
 //tags: filter highpass lowpass high-pass low-pass hp lp butterworth
@@ -86,7 +86,7 @@ FL_FMIN = 20; FL_FMAX = 20000;
 FL_K12  = 1.4142135624;   // 1/Q at Q 0.7071: one stage, 12 dB/oct Butterworth
 FL_K24A = 1.8477590650;   // 1/Q at Q 0.5412: stage 1 of the 4th-order Butterworth
 FL_K24B = 0.7653668647;   // 1/Q at Q 1.3066: stage 2
-FL_SNAP = 0.000001;       // a glide within this of its target lands on it (log Hz)
+FL_SNAP = 0.0001;         // a glide within this of its target lands on it (log Hz: 0.01 %, far below hearing)
 FL_HP_ON_MIN = 21;        // the nearest settings to the end stops that are still ON: what the readout can show as such
 FL_LP_ON_MAX = 19900;     // ("21 Hz", "19.9 kHz"; 19999 printed as "20 kHz", the OFF end's number)
 
@@ -105,21 +105,24 @@ function fl_svf_hp(x, a1, a2, a3, k) instance(ic1, ic2) local(v1, v2, v3) (
 );
 function fl_svf_clear() instance(ic1, ic2) ( ic1 = 0; ic2 = 0; );
 
-// one channel of one filter: the 12 dB stage and the two 24 dB stages run on the same input, and the output is the
-// SLOPE key's path, or the crossfade between them while it switches. An instance per channel (hpL, hpR, lpL, lpR).
+// one channel of one filter: the 12 dB path (one stage) and the 24 dB path (two) on the same input. Only the path
+// the SLOPE key selects runs (fl_r12 / fl_r24); while the key switches both run and the output crossfades. An
+// instance per channel (hpL, hpR, lpL, lpR).
 function fl_hp_run(x) instance(s12, s24a, s24b) local(y12, y24) (
   x += cDenorm;
-  y12 = this.s12.fl_svf_hp(x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
-  y24 = this.s24b.fl_svf_hp(this.s24a.fl_svf_hp(x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
+  fl_r12 ? y12 = this.s12.fl_svf_hp(x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
+  fl_r24 ? y24 = this.s24b.fl_svf_hp(this.s24a.fl_svf_hp(x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
   fl_sm >= 1 ? y24 : fl_sm <= 0 ? y12 : y12 + (y24 - y12) * fl_smx;
 );
 function fl_lp_run(x) instance(s12, s24a, s24b) local(y12, y24) (
   x += cDenorm;
-  y12 = this.s12.fl_svf_lp(x, lp12_a1, lp12_a2, lp12_a3);
-  y24 = this.s24b.fl_svf_lp(this.s24a.fl_svf_lp(x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
+  fl_r12 ? y12 = this.s12.fl_svf_lp(x, lp12_a1, lp12_a2, lp12_a3);
+  fl_r24 ? y24 = this.s24b.fl_svf_lp(this.s24a.fl_svf_lp(x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
   fl_sm >= 1 ? y24 : fl_sm <= 0 ? y12 : y12 + (y24 - y12) * fl_smx;
 );
 function fl_chan_clear() instance(s12, s24a, s24b) ( this.s12.fl_svf_clear(); this.s24a.fl_svf_clear(); this.s24b.fl_svf_clear(); );
+function fl_chan_clear12() instance(s12) ( this.s12.fl_svf_clear(); );
+function fl_chan_clear24() instance(s24a, s24b) ( this.s24a.fl_svf_clear(); this.s24b.fl_svf_clear(); );
 
 // the three stages' coefficients for one filter, from its glided cutoff (log Hz): the 12 dB stage and the two
 // 24 dB stages, so a slope switch can crossfade between paths that both run
@@ -146,11 +149,17 @@ function recalc_dsp() local(sr) (
   fl_hp_lf_t = fl_lf(slider1);
   fl_lp_lf_t = fl_lf(slider2);
   fl_sm_t = slider3 >= 0.5 ? 1 : 0;        // the SLOPE key: 0 = 12 dB, 1 = 24 dB
-  sm_coeff = 1 - exp(-1 / (0.005 * sr));   // the 5 ms glide
+  sm_coeff = 1 - exp(-1 / (0.005 * sr));   // the glide's 5 ms time constant
   fade_step = 1 / (0.005 * sr);            // the 5 ms linear fade (on / off, the gate)
   fl_sm_step = 1 / (0.010 * sr);           // the 10 ms slope crossfade
+  fl_warm_n = floor(0.1 * sr);             // a slope path started from rest settles 100 ms before it is crossfaded in
+                                           // (5 time constants of the slowest stage: 24 dB, Q 1.31, at 21 Hz)
   fl_live = 1;                             // the next samples recompute the coefficients until the glides land
   fl_force = 1;                            // once, whether or not a cutoff moved (the rate may have)
+  // where each filter was before it went OFF, by any route (knob, node, automation, the LED, a link): the last ON
+  // setting seen here, kept the moment the filter reads OFF; the LED brings the filter back to it
+  slider1 > FL_FMIN + 0.5 ? fl_hp_lastv = slider1 : fl_hp_lastv > 0 ? ( fl_hp_last = fl_hp_lastv; fl_hp_lastv = 0; );
+  slider2 < FL_FMAX - 0.5 ? fl_lp_lastv = slider2 : fl_lp_lastv > 0 ? ( fl_lp_last = fl_lp_lastv; fl_lp_lastv = 0; );
 );
 
 recalc_dsp();
@@ -160,6 +169,7 @@ fl_sr_seen = srate;
 fl_hp_lf = fl_hp_lf_t; fl_lp_lf = fl_lp_lf_t;
 fl_hp_coefs(); fl_lp_coefs();
 fl_sm = fl_sm_t;
+fl_r12 = fl_sm_t < 0.5; fl_r24 = fl_sm_t >= 0.5; fl_warm = 0;   // only the selected slope's path runs
 hp_mix = lp_mix = 0; hp_run = lp_run = 0;
 // where a filter was before it went OFF (the LED brings it back here); the house defaults until then. Set once
 // (@serialize fills them from a saved chunk after this, and must not be undone by an @init re-run)
@@ -196,8 +206,8 @@ function fl_stage_db(om, g, k, hp) local(x2, d) (
   x2 = sqr(om / g); d = sqr(1 - x2) + k * k * x2;
   10 * log10(max(hp ? x2 * x2 / d : 1 / d, 10^-20));
 );
-// (from the sliders themselves: fl_hp_on and the targets are the audio thread's, set a block after a @gfx edit, and
-// the curve is cached under the sliders' values the frame they change -- review, 2026-10-07)
+// (from the sliders themselves, not the audio thread's fl_hp_on and targets, which follow a block after a @gfx edit:
+// the curve is cached under the sliders' values the frame they change)
 function fl_resp(f) local(sr, om, g, d, s24) (
   sr = max(srate, 8000);
   om = tan($pi * min(f, sr * 0.49) / sr);
@@ -252,7 +262,6 @@ rk_link_on_slider();
 
 @block
 srate != fl_sr_seen ? ( fl_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
-// a face write reaches here through slider_automate -> @slider (the house bridge, as the other six); no flag
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
@@ -263,25 +272,40 @@ rkth_native_tick();
 @sample
 rk_ps_tick();
 
-// ── the glides: the cutoffs ease to their settings over 5 ms in the log domain and the coefficients follow every
-// sample, until both have landed (then nothing here runs: at rest every value sits on its target) ──
+// ── the glides: each cutoff eases toward its setting in the log domain (a 5 ms time constant), the coefficients
+// following every 4th sample and on landing; a cutoff lands once within FL_SNAP. At rest nothing here runs ──
 fl_live ? (
+  fl_cn = (fl_cn + 1) & 3;
   fl_hp_lf !== fl_hp_lf_t ? (
     fl_hp_lf += (fl_hp_lf_t - fl_hp_lf) * sm_coeff; abs(fl_hp_lf_t - fl_hp_lf) < FL_SNAP ? fl_hp_lf = fl_hp_lf_t;
-    fl_hp_coefs();
+    (fl_cn == 0 || fl_hp_lf === fl_hp_lf_t) ? fl_hp_coefs();
   ) : fl_force ? fl_hp_coefs();
   fl_lp_lf !== fl_lp_lf_t ? (
     fl_lp_lf += (fl_lp_lf_t - fl_lp_lf) * sm_coeff; abs(fl_lp_lf_t - fl_lp_lf) < FL_SNAP ? fl_lp_lf = fl_lp_lf_t;
-    fl_lp_coefs();
+    (fl_cn == 0 || fl_lp_lf === fl_lp_lf_t) ? fl_lp_coefs();
   ) : fl_force ? fl_lp_coefs();
   fl_force = 0;
   fl_hp_lf === fl_hp_lf_t && fl_lp_lf === fl_lp_lf_t ? fl_live = 0;   // exact compares: EEL2's == has a dead zone
 );
-// the SLOPE key: both paths run while a filter is on and the output crossfades over 10 ms. Every fade here runs
-// on a line and is SHAPED as it is applied (smoothstep, 3 m^2 - 2 m^3): a line applied as it is has a corner
-// where it ends, and that corner was the one transient left on the rig (ysfx, 2026-10-07: a slope step of 1/240
-// a sample on a full-scale signal; the shaped fade starts and ends with no slope at all).
-fl_sm = fl_sm < fl_sm_t ? min(fl_sm_t, fl_sm + fl_sm_step) : max(fl_sm_t, fl_sm - fl_sm_step);
+// the SLOPE key: a switch starts the new path from rest, lets it settle (fl_warm), then crossfades over 10 ms;
+// at rest only the selected path runs. Every fade here is SHAPED as it is applied (smoothstep, 3 m^2 - 2 m^3):
+// a straight fade has a corner where it ends, and that corner is a transient.
+fl_sm !== fl_sm_t ? (
+  fl_sm_t >= 0.5 ? (
+    !fl_r24 ? ( hpL.fl_chan_clear24(); hpR.fl_chan_clear24(); lpL.fl_chan_clear24(); lpR.fl_chan_clear24();
+                fl_r24 = 1; fl_warm = fl_warm_n; );
+  ) : (
+    !fl_r12 ? ( hpL.fl_chan_clear12(); hpR.fl_chan_clear12(); lpL.fl_chan_clear12(); lpR.fl_chan_clear12();
+                fl_r12 = 1; fl_warm = fl_warm_n; );
+  );
+  fl_warm > 0 ? (
+    fl_warm -= 1;
+  ) : (
+    fl_sm = fl_sm < fl_sm_t ? min(fl_sm_t, fl_sm + fl_sm_step) : max(fl_sm_t, fl_sm - fl_sm_step);
+  );
+) : (
+  fl_sm_t >= 0.5 ? fl_r12 = 0 : fl_r24 = 0;
+);
 fl_smx = fl_sm * fl_sm * (3 - 2 * fl_sm);
 
 // ── HP: fades in and out over 5 ms (its setting, the Play/Rec/Stop gate); fully off it is not run ──
@@ -289,7 +313,7 @@ hp_mix = fl_hp_on && rk_ps_active ? min(hp_mix + fade_step, 1) : max(hp_mix - fa
 hp_mix > 0 ? (
   fl_mx = hp_mix * hp_mix * (3 - 2 * hp_mix);
   !hp_run ? (   // starting from fully off: clear the stale state, and start AT the new cutoff (the fade-in carries
-                // the change; a glide up from the end stop left a -69 dBFS blip at the first samples, ysfx rig 2026-10-07)
+                // the change; a glide up from the end stop would blip at the first samples)
     hpL.fl_chan_clear(); hpR.fl_chan_clear();
     fl_hp_lf = fl_hp_lf_t; fl_hp_coefs();
     hp_run = 1;
@@ -560,11 +584,6 @@ function fl_draw_curve(x, y, w, h, s, compact, ev)
 );
 
 
-// where each filter was before it went OFF, by ANY route (the knob to its end, a node double-click, automation, the
-// LED): the last ON value seen, committed the frame the filter reads OFF; the LED brings the filter back there
-fl_on(0) ? fl_hp_lastv = slider1 : fl_hp_lastv > 0 ? ( fl_hp_last = fl_hp_lastv; fl_hp_lastv = 0; );
-fl_on(1) ? fl_lp_lastv = slider2 : fl_lp_lastv > 0 ? ( fl_lp_last = fl_lp_lastv; fl_lp_lastv = 0; );
-
 // ═══════════════════════════════════════════════════════════════════════
 // MODE: embedded (MCP/TCP) vs standalone
 // ═══════════════════════════════════════════════════════════════════════
@@ -583,7 +602,7 @@ gfx_ext_flags & 1 ? (
 
   // the curve is this copy's option: shown, it takes the bottom (or the right, wide); folded, the knobs take the strip
   // and a small CURVE tab sits at the bottom. Its place is known BEFORE the knobs run: a press on the tab is the
-  // tab's, not a knob's (Stereo Width's CORR tab, outside audit 2026-10-07).
+  // tab's, not a knob's.
   fl_tab_h = max(10, min(13*ret, gfx_h * 0.25));
   !fl_strip_curve ? (
     gfx_setfont(1, "Arial", max(7, floor(9*ret)), 'b');
@@ -593,8 +612,8 @@ gfx_ext_flags & 1 ? (
   ) : fl_tab_hov = 0;
   fl_tab_own = fl_tab_hov && !km[1] && !km[KS + 1];   // not while a knob is already being dragged
 
-  // the knobs: HP and LP SIDE BY SIDE (the user, 2026-10-07: "not on top of one another"), in a zone that leaves the
-  // link badge's row (the top 14 px) clear in a narrow strip; the curve under them, or at their right when wide
+  // the knobs: HP and LP side by side, in a zone that leaves the link badge's row (the top 14 px) clear in a narrow
+  // strip; the curve under them, or at their right when wide
   fl_badge_h = 14*ret;
   fl_wide ? (
     fl_cv_w = fl_strip_curve ? min(gfx_w * 0.45, gfx_h * 1.8) : 0;
@@ -642,7 +661,7 @@ gfx_ext_flags & 1 ? (
 
   // ── Link badge ──
   // the badge is a live control: a click on it must not arm 0x200 (REAPER would open the window instead of cycling
-  // the group -- the user, 2026-09-30; GainKit's pattern)
+  // the group)
   (mx - (gfx_w - 10*ret)) * (mx - (gfx_w - 10*ret)) + (my - 8*ret) * (my - 8*ret) <= (6*ret + 2) * (6*ret + 2) ? emb_widget_active = 1;
   rk_link_draw_badge(gfx_w - 16*ret, 2*ret, 12*ret, ac_r, ac_g, ac_b, mx, my, lmb_down);
 
@@ -747,7 +766,7 @@ gfx_ext_flags & 1 ? (
   rkth_namebar(fl_name_bar);
   rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
   // under the header (a narrow window) the cluster's chip sits where the popped curve paints: a click there is the
-  // curve's, not the chip's (review, 2026-10-07)
+  // curve's, not the chip's
   fl_chip && fl_pop && fl_thy >= hdr_h ? (
     fl_lmb_keep = lmb_down; lmb_down = 0; rkth_cluster_hdr(fl_thx, fl_thy, 0, 0); lmb_down = fl_lmb_keep;
   ) : rkth_cluster_hdr(fl_thx, fl_thy, 0, 0);

@@ -203,10 +203,11 @@ A high-pass and a low-pass, nothing else: two knobs, HIGH PASS and LOW PASS, eac
 high-pass at 20 Hz, the low-pass at 20 kHz) and its light goes out; a click on the light switches
 the filter off and brings it back where it was. The filters are Butterworth, built on Andrew
 Simper's trapezoidal state-variable stages (the same stages as the 3-Band EQ's SMOOTH voice): the
-corner lands exactly on the knob's value, and the cutoff glides over 5 ms and is recomputed every
-sample while it moves, so a knob sweep or an automation ramp is continuous, with no zipper. A
-filter switched on or off fades over 5 ms, and the slope crossfades over 10 ms, so nothing clicks.
-The strip along the bottom edge drops a CURVE drawer: the response, with a node per filter at its
+corner lands exactly on the knob's value, and the cutoff glides to a new setting (a 5 ms time
+constant), so a knob sweep or an automation ramp is continuous, with no zipper. A filter switched
+on or off fades over 5 ms; a slope switch lets the new slope settle for a tenth of a second, then
+crossfades over 10 ms, so nothing clicks. The strip along the bottom edge drops a CURVE drawer (the
+window grows for it with EON Floatter running): the response, with a node per filter at its
 corner to drag sideways, scroll a semitone at a time, or double-click to switch off. In a mixer
 strip it is the two knobs side by side with the compact curve under them (at their right in a wide
 track panel); a click on the curve folds it away and the CURVE tab brings it back (each copy
@@ -444,7 +445,7 @@ REAPER's own setting, so it holds for every docker and after a restart.
 Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so
 nothing shows up twice. Updates arrive through **Extensions > ReaPack > Synchronize packages**.
 
-**EON Floatter** ships here too (the same file as in the ReaKit library; having both is harmless,
+**EON Floatter** ships here too (the ReaKit library has an older copy; having both is harmless,
 only one ever runs). The action above starts it, or run it once yourself from the action list; it stays on: every EON window opens at
 its designed size, any JSFX window can be captured at a size of your own, and one dial scales them
 all. It needs js_ReaScriptAPI, and its panel needs ReaImGui, both from ReaTeam Extensions.

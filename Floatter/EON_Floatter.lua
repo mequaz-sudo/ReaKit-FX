@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.6
+-- @version 1.0.7
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -8,7 +8,7 @@
 --   the panel. Closing the panel never stops it. A window you resize by hand
 --   keeps that size until REAPER closes. A plugin with a drawer (the free
 --   ReaKit FX Saturation's CURVE, the 3-Band EQ's band display, Stereo
---   Width's stereo field) grows its
+--   Width's stereo field, the Filter's CURVE) grows its
 --   window down when the drawer opens and gives the room back when it
 --   closes; in a window made bigger, the drawer is bigger too.
 --
@@ -43,7 +43,7 @@
 
 local r = reaper
 
-local VERSION   = "1.0.6"   -- shown in the panel; keep with @version above
+local VERSION   = "1.0.7"   -- shown in the panel; keep with @version above
 local EXT_D     = "EON_FloatSize"      -- captures / scale / global (the keys the pair used)
 local EXT_F     = "EON_Floatter"       -- this script's own state
 -- ⚠ Mirrored in rk_lua_core.lua (core.ALIVE_FLOATTER_*) for the Kit Bridge,
@@ -332,6 +332,7 @@ local SIZES = {
   ["DeEsser_ReaKit"] = { w = 465, h = 376, gfx_w = 540, gfx_h = 520 },
   ["Delay_ReaKit"] = { w = 581, h = 560, gfx_w = 620, gfx_h = 760 },
   ["EON_Drum_Strip"] = { w = 504, h = 368, gfx_w = 300, gfx_h = 700 },
+  ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 404 },
   ["Gate_ReaKit"] = { w = 512, h = 430, gfx_w = 560, gfx_h = 520 },
   ["Saturation_ReaKit"] = { w = 288, h = 306, gfx_w = 220, gfx_h = 320 },
   ["StereoWidth_ReaKit"] = { w = 291, h = 204, gfx_w = 200, gfx_h = 280 },
@@ -775,6 +776,8 @@ local DRAWERS = {
   -- showed under the knob (its SIZES row, 364, was the open size: closed 204 + 160), so an older copy is "open", as
   -- Saturation's
   ["StereoWidth_ReaKit"] = { param = 4, h = 160, ch = 204, sh = 20, name = "Stereo field drawer", old = true },
+  -- slider6 fl_drawer (Filter 1.0.0, ReaKit FX 1.5.0, 2026-10-07): born with the drawer, so no older copy to read
+  ["Filter_ReaKit"]      = { param = 5, h = 160, ch = 244, sh = 20, name = "Curve drawer", old = false },
 }
 local DRW         = 31365520   -- EON_RKFX_DRAWER (.refs/gmem_regions_supplement.tsv)
 local DRW_VERSION = 1          -- +1: the drawer protocol this Floatter speaks

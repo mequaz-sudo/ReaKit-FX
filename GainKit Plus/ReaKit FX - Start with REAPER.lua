@@ -117,7 +117,7 @@ end
 -- plugin's line in reaper-fxoptions.ini [defcfg], and REAPER reads that file at every insert
 -- (measured, 2026-10-01). Each install path REAPER lists for the seven (reaper-jsfx.ini) gets the
 -- bit, the line's other bits kept. Once: a plugin the user later sets back stays as they set it.
-local FREE6 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
+local FREE7 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
                 "Filter_ReaKit.jsfx" }                -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
 local BUSY = "REAPER was busy, so the effects weren't set to open in the mixer strip. Run this again."
@@ -126,11 +126,11 @@ local function embed_defaults()
   if r.GetExtState("EON_ReaKitFX", "embed_defaults") == "1" then return nil end
   local paths, have = {}, {}
   for p in (read(res .. sep .. "reaper-jsfx.ini") or ""):gmatch('NAME%s+"?([^"\r\n]-%.jsfx)"?%s') do
-    for _, f in ipairs(FREE6) do
+    for _, f in ipairs(FREE7) do
       if (p == f or p:sub(-(#f + 1)) == "/" .. f) and not have[p] then have[p] = true; paths[#paths + 1] = p end
     end
   end
-  for _, f in ipairs(FREE6) do                         -- ReaPack's place, if not scanned yet
+  for _, f in ipairs(FREE7) do                         -- ReaPack's place, if not scanned yet
     local p = "ReaKit FX/FX/Eon_JSFX/FX/" .. f
     if not have[p] and exists(res .. sep .. "Effects" .. sep .. p:gsub("/", sep)) then have[p] = true; paths[#paths + 1] = p end
   end
