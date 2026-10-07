@@ -186,6 +186,14 @@
       FXID {43B145D9-AEA4-4E28-9259-0B6742DCF692}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7E253837-E58F-4AC3-B18F-8C58307D874E}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 1 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -258,6 +266,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {5ED49BA1-275C-48F0-B3D4-7AFD8AEA71F7}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {EB51EE3D-AC35-41D6-8CC5-1A2F994DE99F}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -334,6 +350,14 @@
       FXID {116A5FDB-889C-4361-9AC3-1D371BD020B1}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {82D6ADFA-9F57-4B08-9981-B7CF9C462414}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -406,6 +430,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {00F8C9F3-0736-436B-8501-363CA15ED156}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {B6F77D8C-D4A9-4D85-9B84-186B3506E0C1}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -483,6 +515,14 @@
       FXID {11DA6929-0941-4054-AA5A-581F5683475C}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {3743F218-D3B6-499B-8DDD-5B18AA4A1E01}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -555,6 +595,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {5BB3413A-307D-4AE3-82E8-576217C1807D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {35BD5B9E-4983-4138-A6D9-6F0343D57BF8}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -631,6 +679,14 @@
       FXID {1D179B39-38FC-452C-BC08-2377FED98D12}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {7C316620-3E3C-4266-B65F-3E9D199E2948}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 6 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -703,6 +759,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {29568F24-3E64-4C42-AEE8-F32C88B45539}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {3F937143-4603-4A46-B7D4-DFEE015002FE}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -779,6 +843,14 @@
       FXID {DB63292F-7C00-4B95-92F4-D4F725D90F0A}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {03E9AF12-4F57-44BB-9EF7-7370E1A3703F}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -851,6 +923,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {42547100-956C-4A8C-8B7D-A16944DAFB5F}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {D64DDF37-D30D-4EB4-AAE8-5B6157732889}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -927,6 +1007,14 @@
       FXID {BB045603-4009-4FD0-9C0C-B30545AB072F}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {4038A8ED-B752-4929-AE75-44701DDE67F5}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -999,6 +1087,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {9F0D18E0-3B7D-4F08-9C2A-240EFEAA2692}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {4C137EC3-76D4-43DF-B011-8A57DC703803}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -1075,6 +1171,14 @@
       FXID {D52ACF40-FDBC-4C31-92FD-E60E80ED6971}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {973EFDAC-468F-4D97-89A3-6774EEC736E9}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 4 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -1148,6 +1252,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {9079FA4D-48B6-4D9F-9598-223E00308AC5}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {4DCB69F2-0B21-4ECA-8AB2-C9E209C63BF9}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -1229,6 +1341,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {B67C1C4A-DD22-4F80-BEBC-1752F4EAD40D}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {D750B567-AEF1-44E5-BFAF-FDCC27641060}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -1313,6 +1433,14 @@
       FXID {BEA78EE3-162E-48F5-A64C-20A522E307AD}
       WAK 0 2
       BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {FD088EBD-ABCA-45F4-B518-07DDCF22687F}
+      WAK 0 2
+      BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
         0 1 3 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       >
@@ -1391,6 +1519,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {4EFFF02B-B8CB-44E8-8DD7-D3539A55DBFD}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {85FF2AAF-DAFE-4CCE-B76A-59F06513D4DB}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -1481,6 +1617,14 @@
       MULTIFXLINK 0
       FLOATPOS 0 0 0 0
       FXID {1863DACF-DF29-4D7E-99EF-5C7F4ABA663E}
+      WAK 0 2
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+        -20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      >
+      MULTIFXLINK 0
+      FLOATPOS 0 0 0 0
+      FXID {9BB41279-92A5-4CF7-AF5C-EEE844A0CFCB}
       WAK 0 2
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""

@@ -11,9 +11,8 @@
 -- Floatter's panel and the Swing FX picker; REAPER's own menu without ReaImGui). FOLD (the user, 2026-10-05: "make it thin but still able to be seen
 -- so it can drop down"): the bar's chevron folds it to a thin handle, in the track's colour if wanted; a click on the
 -- handle drops it open again, the plugins giving it the row; nothing folds or opens it by itself. Every icon shows a
--- tooltip
--- after a moment. The track's effects sit on the bar in the order
--- they run on the track (a second copy numbered; other plugins as a grey marker, an FX container as one), the
+-- tooltip after a moment, unless the gear's Tooltips is off (it turns the icon picker's off too). The track's
+-- effects sit on the bar in the order they run on the track (a second copy numbered; other plugins as a grey marker, an FX container as one), the
 -- ones it does not have after them: drag one along the bar to move that effect in the track's chain (one undo
 -- step), drag a dim one in to add it there (the user, 2026-10-04: "can the names of each fx be chips we can drag
 -- around for the order?", "Real order", "when a non reakit plugin is there will it say so?").
@@ -193,7 +192,9 @@ local ICONS = { [ICON_CLOSE_TRACK] = true, [ICON_CLOSE_ALL] = true, [ICON_PIN] =
 local opt = {}
 local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", dblclick = "1", fold = "1", fold_color = "1",
                   menu_stay = "1", tint = "0", tintk = "50",   -- tintk: the icon colour's strength, % (TINT.pct)
-                  layout = "auto" }                            -- layout: auto (taller than wide = down) | across | down
+                  layout = "auto",                             -- layout: auto (taller than wide = down) | across | down
+                  tips = "1" }                                 -- tips: the bar's and the picker's tooltips (the user,
+                                                               -- 2026-10-07: "the tooltips get in the way")
 local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
 for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
 local FOLD_H = 8                       -- the folded bar's handle, px at 100 %
@@ -1241,7 +1242,8 @@ local function draw_bar()
     end
   end
   -- the tooltip: the pointer at rest on a button or chip for TIP_DELAY, a label beside it, inside the bar
-  if hover_act and not drag and r.time_precise() - hover_t >= TIP_DELAY and not (NAME.on and hover_act == "name") then
+  local tip_shown = nil                                  -- what the published tip says now (nothing = "")
+  if opt.tips ~= "0" and hover_act and not drag and r.time_precise() - hover_t >= TIP_DELAY and not (NAME.on and hover_act == "name") then
     local tip = TIPS[hover_act]
     local ci = hover_act:sub(1, 4) == "chip" and tonumber(hover_act:sub(5))
     local c = ci and chips[ci]
@@ -1262,9 +1264,11 @@ local function draw_bar()
       gfx.set(0.10, 0.10, 0.12, 1)
       gfx.x, gfx.y = tx + math.floor(6 * sc), ty + math.floor(3 * sc)
       gfx.drawstr(tip)
-      if tip ~= pub_tip then pub_tip = tip; r.SetExtState(EXT, "tip", tip, false) end   -- for tests
+      tip_shown = tip
     end
   end
+  tip_shown = tip_shown or ""                            -- for tests: the tip on screen, "" when none (the Tooltips
+  if tip_shown ~= pub_tip then pub_tip = tip_shown; r.SetExtState(EXT, "tip", tip_shown, false) end   -- switch off)
 end
 
 -- STRIP on: an effect's button brings its first one on view
@@ -1527,7 +1531,8 @@ local function gear_pick(pick)
   elseif pick == 11 then opt_set("tint", opt.tint == "1" and "0" or "1"); TINT.pass(true)
   elseif pick >= 12 and pick <= 14 then                           -- the icon colour's strength (TINT.soft)
     opt_set("tintk", ({ "30", "50", "100" })[pick - 11]); if opt.tint == "1" then TINT.pass(true) end
-  elseif pick >= 15 and pick <= 17 then opt_set("layout", ({ "auto", "across", "down" })[pick - 14]) end
+  elseif pick >= 15 and pick <= 17 then opt_set("layout", ({ "auto", "across", "down" })[pick - 14])
+  elseif pick == 18 then opt_set("tips", opt.tips == "0" and "1" or "0") end
   has_key = ""
 end
 -- The EON palette (EON Floatter's P; the Swing FX picker's slate): 0xRRGGBBAA
@@ -1621,17 +1626,17 @@ local function menu_open(sx, sy)
   -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
-    local mh, mw = math.floor(346 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured,
-                                                                -- + the Layout row (2026-10-07, ~26)
-                                                                -- (2026-10-06; the old 300 x 300 guess let it hang off
-                                                                -- a screen's right edge by ~100 px), physical here
+    local mh, mw = math.floor(374 * sc), math.floor(310 * sc)   -- the menu's size, physical here: 306 x 374 logical
+                                                                -- (menu_width_run.py, 2026-10-07, once it stopped
+                                                                -- growing; the 396 measured 2026-10-06 was already
+                                                                -- grown), + a few px
     if vb and sy + mh > vb then sy = sy - bar_h() - mh end
     if vr and sx + mw > vr then sx = vr - mw end
     if vl and sx < vl then sx = vl end
   end
   local lx, ly = DPI.to_logical(sx, sy, sc)
   MENU.on, MENU.x, MENU.y, MENU.armed, MENU.closing, MENU.frames, MENU.gdown = true, lx, ly, false, false, 0, true
-  MENU.dp = { px = sx, py = sy, lw = 400, lh = 320, used = sc }   -- placed again if its screen is scaled otherwise
+  MENU.dp = { px = sx, py = sy, lw = 310, lh = 374, used = sc }   -- placed again if its screen is scaled otherwise
   dbg("menu: open at " .. sx .. "," .. sy .. " (ImGui " .. math.floor(lx) .. "," .. math.floor(ly) .. ", scale " .. sc .. ")")
   return true
 end
@@ -2280,10 +2285,10 @@ local function picker_frame()
     if PICK.font_b then ImGui.PopFont(ctx) end
     ImGui.SameLine(ctx, ww - 196)
     if ImGui.SmallButton(ctx, "+ Folder") and r.JS_Dialog_BrowseForFolder then PICK.ask = { "folder" } end
-    if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Add a folder of icons; its subfolders become categories") end
+    if opt.tips ~= "0" and ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "Add a folder of icons; its subfolders become categories") end
     ImGui.SameLine(ctx)
     if ImGui.SmallButton(ctx, "+ Group") then PICK.ask = { "newgroup" } end
-    if ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "A group of your own; right-click an icon to put it in") end
+    if opt.tips ~= "0" and ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, "A group of your own; right-click an icon to put it in") end
     ImGui.SameLine(ctx)
     if ImGui.SmallButton(ctx, cur == "" and "No icon" or "Remove") and cur ~= "" then picker_set(nil) end
     -- the search box
@@ -2332,7 +2337,7 @@ local function picker_frame()
       tv = math.max(10, math.min(100, math.floor(tv / 5 + 0.5) * 5))
       if tv ~= tk then opt_set("tintk", tostring(tv)) end
     end
-    if ImGui.IsItemHovered(ctx) then
+    if opt.tips ~= "0" and ImGui.IsItemHovered(ctx) then
       ImGui.SetTooltip(ctx, "How strongly a coloured track paints its icon" .. (opt.tint == "1" and "" or " (the gear: Icons follow the track colour)"))
     end
     if ImGui.IsItemDeactivatedAfterEdit(ctx) and opt.tint == "1" then TINT.pass(true) end
@@ -2509,7 +2514,7 @@ local function picker_frame()
             ImGui.DrawList_AddText(cdl, cx + math.floor((CELL - ImGui.CalcTextSize(ctx, lbl)) / 2), cy + CELL - pad + 1, MP.text, lbl)   -- (the track colour over its own fill read badly)
           end
           if PICK.fav[k] then ImGui.DrawList_AddText(cdl, cx + CELL - 11, cy + 1, MP.accent, "*") end
-          if hov then ImGui.SetTooltip(ctx, e.name .. (e.cat ~= "" and ("  (" .. e.cat .. ")") or "") .. (PICK.fav[k] and "  favourite" or "") .. (on_sel and "  on a selected track" or "")) end
+          if hov and opt.tips ~= "0" then ImGui.SetTooltip(ctx, e.name .. (e.cat ~= "" and ("  (" .. e.cat .. ")") or "") .. (PICK.fav[k] and "  favourite" or "") .. (on_sel and "  on a selected track" or "")) end
           if #cells < 60 then cells[#cells + 1] = string.format("%s:%d,%d,%d,%d", e.name, math.floor(cx), math.floor(cy), CELL, CH) end
         end
         if ImGui.IsItemClicked(ctx, 0) then
@@ -2622,16 +2627,16 @@ local function menu_frame()
     local ww = ImGui.GetWindowSize(ctx)
     ImGui.DrawList_AddRectFilled(dl, wx, wy, wx + ww, wy + 3, hue_t, 5, ImGui.DrawFlags_RoundCornersTop)   -- the stripe
     local ROW_W, lh = 272, ImGui.GetTextLineHeight(ctx)
-    -- a cross in the top-right corner closes it
+    -- a cross in the top-right corner closes it. Drawn and hit-tested by hand, NOT an ImGui item: the window sizes
+    -- itself to its items (AlwaysAutoResize), and an item placed from the window's own width pushed that width out
+    -- by 4 px every frame, for ever (the user, 2026-10-07: "the gear menu opens in this slow weird way and always
+    -- opens too wide"; menu_width_run.py measured 334 px wide at 10 frames, 774 at 120)
     do
       local cx, cy = wx + ww - 18, wy + 8
-      ImGui.SetCursorScreenPos(ctx, cx - 4, cy - 2)
-      ImGui.InvisibleButton(ctx, "##close", 16, 14)
-      local hot = ImGui.IsItemHovered(ctx)
+      local hot = ImGui.IsMouseHoveringRect(ctx, cx - 4, cy - 2, cx + 12, cy + 12)
       local col = hot and MP.text or MP.dim
       ImGui.DrawList_AddLine(dl, cx, cy, cx + 8, cy + 8, col, 1.5); ImGui.DrawList_AddLine(dl, cx, cy + 8, cx + 8, cy, col, 1.5)
-      if ImGui.IsItemClicked(ctx, 0) then MENU.closing = true end
-      ImGui.SetCursorScreenPos(ctx, wx + 10, wy + 9)
+      if hot and ImGui.IsMouseClicked(ctx, 0) then MENU.closing = true end
     end
     local function heading(t, hue)
       if MENU.font_b then ImGui.PushFont(ctx, MENU.font_b, 11) end
@@ -2657,6 +2662,9 @@ local function menu_frame()
       elseif kind == "stay" then
         ImGui.DrawList_AddRect(dl, gx, gy - 5, gx + 12, gy + 5, c, 1, 0, 1)
         ImGui.DrawList_AddLine(dl, gx + 3, gy - 1, gx + 9, gy - 1, c, 1); ImGui.DrawList_AddLine(dl, gx + 3, gy + 2, gx + 9, gy + 2, c, 1)
+      elseif kind == "tips" then                                   -- a speech bubble: the tooltips
+        ImGui.DrawList_AddRect(dl, gx, gy - 5, gx + 12, gy + 3, c, 2, 0, 1)
+        ImGui.DrawList_AddLine(dl, gx + 3, gy + 3, gx + 2, gy + 6, c, 1); ImGui.DrawList_AddLine(dl, gx + 2, gy + 6, gx + 6, gy + 3, c, 1)
       elseif kind == "pick" then                                   -- a small grid: the picker
         for i = 0, 1 do for j = 0, 1 do ImGui.DrawList_AddRectFilled(dl, gx + i * 7, gy - 5 + j * 7, gx + i * 7 + 5, gy + j * 7, c, 1) end end
       end
@@ -2751,6 +2759,7 @@ local function menu_frame()
     row("Fold the bar to a handle", opt.fold == "1", function() opt_set("fold", opt.fold == "1" and "0" or "1"); fold_open = true end, hue_b, "fold")
     row("Track colour on the folded handle", opt.fold_color == "1", function() opt_set("fold_color", opt.fold_color == "1" and "0" or "1") end, hue_b, "handle")
     row("Menu stays open until closed", opt.menu_stay == "1", function() opt_set("menu_stay", opt.menu_stay == "1" and "0" or "1") end, hue_b, "stay")
+    row("Tooltips", opt.tips ~= "0", function() opt_set("tips", opt.tips == "0" and "1" or "0") end, hue_b, "tips")
     local rp = table.concat(rows_pub, ";")
     if rp ~= MENU.rows_pub then MENU.rows_pub = rp; r.SetExtState(EXT, "menu_rows", rp, false) end
     -- a click anywhere else, or Escape, closes it (the first frame is skipped: the opening click is still down)
@@ -2797,7 +2806,8 @@ local function gear_menu(mx, my)
     .. on(TINT.pct() == 100) .. "Icon colour: full (100 %)|"
     .. on(opt.layout == "auto") .. "Layout: automatic (down when taller than wide)|"
     .. on(opt.layout == "across") .. "Layout: effects side by side|"
-    .. on(opt.layout == "down") .. "Layout: effects stacked down"
+    .. on(opt.layout == "down") .. "Layout: effects stacked down|"
+    .. on(opt.tips ~= "0") .. "Tooltips"
   gfx.x, gfx.y = mx, my
   local pick = gfx.showmenu(m)
   if pick and pick > 0 then gear_pick(pick) end

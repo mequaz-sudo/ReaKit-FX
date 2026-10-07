@@ -263,7 +263,8 @@ colour, close this track's or every track's windows, pin.
   it is wide; Across and Down force one), the track number, the track icon, the colour (off, a stripe, a
   band), full or short effect names, whether a double-click pops an effect out, whether the bar
   folds to a thin handle (the chevron folds it, a click on the handle drops it back down), the
-  track colour on that handle, and whether the menu stays open until you close it. **Pick a track
+  track colour on that handle, whether the menu stays open until you close it, and **Tooltips** (on to
+  start; off hides the bar's and the icon picker's tips). **Pick a track
   icon...** opens our own picker: REAPER's icons in a grid with a search box (Enter picks the first
   match), sorted into groups, Drums, Guitars, Bass, Keys, Synths, Strings, Brass, Winds, Vocals, Mics, Buses, FX, Rooms, Marks, Folders; a click sets the
   shown track's icon in one undo step, a double-click sets it and closes, and the current one is
@@ -418,7 +419,9 @@ REAPER's own setting, so it holds for every docker and after a restart.
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
    `JS: EON: De-Esser` and `JS: EON: Stereo Width`. Or add all six at once: **Track > Insert track from
-   template > ReaKit FX - All six** (from the ReaKit FX templates package).
+   template > ReaKit FX - All six** (from the ReaKit FX templates package). Or start a whole mix from
+   **File > New project from template > ReaKit FX - 16 track board**: fourteen tracks and four buses,
+   each with GainKit, De-Esser, Saturation, 3-Band EQ, DDC and Stereo Width.
 6. To change the look, open the plugin's window (the track's FX button) and click **THEME** at the top.
 
 Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so
