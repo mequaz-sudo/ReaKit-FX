@@ -371,7 +371,9 @@ REAPER's own setting, so it holds for every docker and after a restart.
   values stay readable.*
 - **Link groups** — the gear in the header of those five puts an instance in a group; instances
   in the same group move together. A plugin joining a group takes its settings only from members
-  still running, so a group whose plugins are gone starts from the newcomer's own.
+  still running, so a group whose plugins are gone starts from the newcomer's own. A group belongs
+  to REAPER, not to one project: with background project tabs set to keep playing, group 1 in one
+  tab and group 1 in another are the same group, so give each project its own group numbers.
 - **The mouse** — drag a knob, Ctrl for fine, Shift for finer, the wheel steps it, double-click
   resets it, right-click returns it to its default.
 - **Snappier strips** — REAPER redraws an embedded strip at its meter rate, 30 a second out of the
