@@ -693,6 +693,37 @@
         <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/LICENSE.md</source>
         <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/THIRD_PARTY_CREDITS.md</source>
       </version>
+      <version name="1.4.20" author="Quaz (EON Studios)" time="2026-10-07T11:25:43Z">
+        <changelog><![CDATA[DDC: in a short, wide window (a docker under the tracks) the knobs no longer run into each other: they move to two rows, or to one row of all twelve with the switches at its end, and go back to three rows when there is room. Saturation: the DRIVE light follows the drive, from a dim ember at 0 % to a hot orange at 100 %. Stereo Width: the WIDTH light runs blue at mono, green at 100 %, yellow at 200 %; in a mixer strip a click on the correlation meter folds it away and gives the knob the whole strip, and a small CORR tab brings it back (each copy remembers).]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_curve.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_curve.jsfx-inc</source>
+        <source file="ReaKit/rk_drawer.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_drawer.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/ReaKit/utils_kbsg.jsfx-inc</source>
+        <source file="LICENSE">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/LICENSE</source>
+        <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/LICENSE.md</source>
+        <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/THIRD_PARTY_CREDITS.md</source>
+      </version>
     </reapack>
   </category>
   <category name="GainKit Plus">
@@ -1028,6 +1059,25 @@
         <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/a21a22d46f34b354c28fbd76a5b56a0896a638a4/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
         <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/a21a22d46f34b354c28fbd76a5b56a0896a638a4/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
       </version>
+      <version name="1.0.21" author="Quaz (EON Studios)" time="2026-10-07T11:25:43Z">
+        <changelog><![CDATA[The dock: the track number sits on a swatch of the track's colour, and a click opens a palette (16 colours, None, More...) that colours the shown track, or every selected track when it is one of them. Right-click the bar for the track's menu (rename, colour, icon, close its windows, pin); right-click an effect's button to show it in the dock, open it in its own window, bypass it, move it to the start or end of the chain, or remove it. The icon picker sorts the ReaKit FX icons into groups next to REAPER's own (Drums, Mics, Buses...) and adds groups of their own (Percussion, Amps, Machines...). A coloured track's icon is painted again when the icon itself is redrawn. The gear menu, the palette and the picker open in the right place on a scaled screen. The dock no longer blinks over the effects after it is moved to another docker. The six effects open embedded in the mixer after a reinstall or a moved folder too; a default you set yourself is kept.]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="ReaKit FX - Add a track with all six.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/ReaKit%20FX%20-%20Add%20a%20track%20with%20all%20six.lua</source>
+        <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
+        <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
+      </version>
     </reapack>
   </category>
   <category name="EON Floatter">
@@ -1081,9 +1131,9 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
     </reapack>
   </category>
   <category name="Track icons">
-    <reapack name="ReaKit FX track icons" type="data" desc="ReaKit FX track icons - 51 instrument and bus icons in a folder of their own, the EON category in the dock's picker and in REAPER's icon dialog">
+    <reapack name="ReaKit FX track icons" type="data" desc="ReaKit FX track icons - 104 instrument, mic, effect and bus icons in a folder of their own, the EON category in the dock's picker and in REAPER's icon dialog">
       <metadata>
-        <description><![CDATA[Fifty-one track icons of our own: drums piece by piece (kick, snare, toms, hats, cymbals, rimshot, sidestick), percussion (congas, bongos, djembe, cajon, cowbell, shaker, tambourine, timbale, agogo, guiro, clave, woodblock, vibraslap, maraca, cabasa, triangle, whistle), keys, synth, pad, strings, brass, guitar, bass, vocal, snap, clap, loop, groovebox, engine, delay, reverb, fx, audio and MIDI buses, drawn in a light grey for dark themes. They land in a folder of their own inside REAPER's track icon folder (Data/track_icons/EON), so they show as the EON category in the ReaKit FX dock's icon picker and in REAPER's own icon dialog, and never collide with REAPER's icons. MIT licensed, as the rest of EON's own work in ReaKit FX.]]></description>
+        <description><![CDATA[A hundred and four track icons of our own: drums piece by piece and drum overheads, percussion, keys, piano, organ and synths, guitar, electric guitar, bass and upright bass with their amps and a DI box, strings, brass and winds, a dynamic and a condenser mic, vocals and choir, headphones, a VU meter, a turntable, drum machines and a sampler, the common effect types, buses and marks, drawn in a light grey with a dark outline so they read on dark and light themes. They land in a folder of their own inside REAPER's track icon folder (Data/track_icons/EON), so they show as the EON category in the ReaKit FX dock's icon picker and in REAPER's own icon dialog, and never collide with REAPER's icons; a groups list beside them sorts them into the dock picker's groups. MIT licensed, as the rest of EON's own work in ReaKit FX.]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-10-06T09:50:02Z">
@@ -1139,6 +1189,114 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
         <source file="track_icons/EON/vocal.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/Data/track_icons/EON/vocal.png</source>
         <source file="track_icons/EON/whistle.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/Data/track_icons/EON/whistle.png</source>
         <source file="track_icons/EON/woodblock.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/08cf0d8e7a64f283d282b7578ed1354b8e6c20fb/Data/track_icons/EON/woodblock.png</source>
+      </version>
+      <version name="1.0.1" author="Quaz (EON Studios)" time="2026-10-07T11:25:43Z">
+        <changelog><![CDATA[104 icons with a dark outline that holds on light themes, all sized alike: the 51 of 1.0.0 redrawn (every name kept, so tracks that wear one get the new drawing) and 53 new, among them a drum kit and drum overheads, piano, organ, lead and pad synths, a drum machine and a sampler, electric guitar, upright bass, guitar and bass amps, a DI box, violin, cello, harp, trumpet, saxophone, flute, choir, a dynamic and a condenser mic, headphones, a VU meter, a turntable, the common effect types and more buses. A groups list puts them in the dock picker's groups.]]></changelog>
+        <source file="track_icons/EON/agogo.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/agogo.png</source>
+        <source file="track_icons/EON/amp_bass.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/amp_bass.png</source>
+        <source file="track_icons/EON/amp_guitar.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/amp_guitar.png</source>
+        <source file="track_icons/EON/audio_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/audio_bus.png</source>
+        <source file="track_icons/EON/backing_vocals.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/backing_vocals.png</source>
+        <source file="track_icons/EON/bass.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/bass.png</source>
+        <source file="track_icons/EON/bongo.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/bongo.png</source>
+        <source file="track_icons/EON/brass.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/brass.png</source>
+        <source file="track_icons/EON/cabasa.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/cabasa.png</source>
+        <source file="track_icons/EON/cajon.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/cajon.png</source>
+        <source file="track_icons/EON/cello.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/cello.png</source>
+        <source file="track_icons/EON/china.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/china.png</source>
+        <source file="track_icons/EON/choir.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/choir.png</source>
+        <source file="track_icons/EON/chorus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/chorus.png</source>
+        <source file="track_icons/EON/clap.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/clap.png</source>
+        <source file="track_icons/EON/clave.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/clave.png</source>
+        <source file="track_icons/EON/click.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/click.png</source>
+        <source file="track_icons/EON/closed_hat.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/closed_hat.png</source>
+        <source file="track_icons/EON/compressor.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/compressor.png</source>
+        <source file="track_icons/EON/conga.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/conga.png</source>
+        <source file="track_icons/EON/cowbell.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/cowbell.png</source>
+        <source file="track_icons/EON/crash.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/crash.png</source>
+        <source file="track_icons/EON/cymbal.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/cymbal.png</source>
+        <source file="track_icons/EON/de_esser.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/de_esser.png</source>
+        <source file="track_icons/EON/delay.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/delay.png</source>
+        <source file="track_icons/EON/di_box.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/di_box.png</source>
+        <source file="track_icons/EON/djembe.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/djembe.png</source>
+        <source file="track_icons/EON/drum_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/drum_bus.png</source>
+        <source file="track_icons/EON/drum_kit.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/drum_kit.png</source>
+        <source file="track_icons/EON/drum_machine.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/drum_machine.png</source>
+        <source file="track_icons/EON/electric_guitar.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/electric_guitar.png</source>
+        <source file="track_icons/EON/electric_piano.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/electric_piano.png</source>
+        <source file="track_icons/EON/engine.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/engine.png</source>
+        <source file="track_icons/EON/eq.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/eq.png</source>
+        <source file="track_icons/EON/filter.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/filter.png</source>
+        <source file="track_icons/EON/floor_tom.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/floor_tom.png</source>
+        <source file="track_icons/EON/flute.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/flute.png</source>
+        <source file="track_icons/EON/folder.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/folder.png</source>
+        <source file="track_icons/EON/fx.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/fx.png</source>
+        <source file="track_icons/EON/fx_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/fx_bus.png</source>
+        <source file="track_icons/EON/fx_return.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/fx_return.png</source>
+        <source file="track_icons/EON/gate.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/gate.png</source>
+        <source file="track_icons/EON/groovebox.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/groovebox.png</source>
+        <source file="track_icons/EON/guiro.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/guiro.png</source>
+        <source file="track_icons/EON/guitar.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/guitar.png</source>
+        <source file="track_icons/EON/harp.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/harp.png</source>
+        <source file="track_icons/EON/headphones.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/headphones.png</source>
+        <source file="track_icons/EON/hihat.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/hihat.png</source>
+        <source file="track_icons/EON/keys.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/keys.png</source>
+        <source file="track_icons/EON/kick.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/kick.png</source>
+        <source file="track_icons/EON/lead_vocal.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/lead_vocal.png</source>
+        <source file="track_icons/EON/limiter.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/limiter.png</source>
+        <source file="track_icons/EON/loop.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/loop.png</source>
+        <source file="track_icons/EON/mallets.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/mallets.png</source>
+        <source file="track_icons/EON/maraca.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/maraca.png</source>
+        <source file="track_icons/EON/master.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/master.png</source>
+        <source file="track_icons/EON/meter_vu.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/meter_vu.png</source>
+        <source file="track_icons/EON/mic_condenser.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/mic_condenser.png</source>
+        <source file="track_icons/EON/mic_dynamic.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/mic_dynamic.png</source>
+        <source file="track_icons/EON/midi_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/midi_bus.png</source>
+        <source file="track_icons/EON/music_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/music_bus.png</source>
+        <source file="track_icons/EON/open_hat.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/open_hat.png</source>
+        <source file="track_icons/EON/organ.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/organ.png</source>
+        <source file="track_icons/EON/overheads.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/overheads.png</source>
+        <source file="track_icons/EON/overheads_l.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/overheads_l.png</source>
+        <source file="track_icons/EON/overheads_r.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/overheads_r.png</source>
+        <source file="track_icons/EON/pad.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/pad.png</source>
+        <source file="track_icons/EON/parallel_comp.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/parallel_comp.png</source>
+        <source file="track_icons/EON/percussion.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/percussion.png</source>
+        <source file="track_icons/EON/piano.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/piano.png</source>
+        <source file="track_icons/EON/pitch.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/pitch.png</source>
+        <source file="track_icons/EON/rack_tom.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/rack_tom.png</source>
+        <source file="track_icons/EON/reference.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/reference.png</source>
+        <source file="track_icons/EON/reverb.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/reverb.png</source>
+        <source file="track_icons/EON/ride.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/ride.png</source>
+        <source file="track_icons/EON/rimshot.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/rimshot.png</source>
+        <source file="track_icons/EON/sampler.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/sampler.png</source>
+        <source file="track_icons/EON/saturation.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/saturation.png</source>
+        <source file="track_icons/EON/saxophone.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/saxophone.png</source>
+        <source file="track_icons/EON/shaker.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/shaker.png</source>
+        <source file="track_icons/EON/sidechain.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/sidechain.png</source>
+        <source file="track_icons/EON/sidestick.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/sidestick.png</source>
+        <source file="track_icons/EON/snap.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/snap.png</source>
+        <source file="track_icons/EON/snare.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/snare.png</source>
+        <source file="track_icons/EON/splash.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/splash.png</source>
+        <source file="track_icons/EON/stereo_width.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/stereo_width.png</source>
+        <source file="track_icons/EON/strings.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/strings.png</source>
+        <source file="track_icons/EON/synth.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/synth.png</source>
+        <source file="track_icons/EON/synth_lead.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/synth_lead.png</source>
+        <source file="track_icons/EON/synth_pad.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/synth_pad.png</source>
+        <source file="track_icons/EON/tambourine.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/tambourine.png</source>
+        <source file="track_icons/EON/timbale.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/timbale.png</source>
+        <source file="track_icons/EON/tom.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/tom.png</source>
+        <source file="track_icons/EON/triangle.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/triangle.png</source>
+        <source file="track_icons/EON/trumpet.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/trumpet.png</source>
+        <source file="track_icons/EON/turntable.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/turntable.png</source>
+        <source file="track_icons/EON/upright_bass.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/upright_bass.png</source>
+        <source file="track_icons/EON/vibraslap.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/vibraslap.png</source>
+        <source file="track_icons/EON/video.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/video.png</source>
+        <source file="track_icons/EON/violin.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/violin.png</source>
+        <source file="track_icons/EON/vocal.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/vocal.png</source>
+        <source file="track_icons/EON/vocal_bus.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/vocal_bus.png</source>
+        <source file="track_icons/EON/whistle.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/whistle.png</source>
+        <source file="track_icons/EON/woodblock.png">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/woodblock.png</source>
+        <source file="track_icons/EON/groups.txt">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/c74c9d08fe758792b55af8c1bceea6807e1ff1ff/Data/track_icons/EON/groups.txt</source>
       </version>
     </reapack>
   </category>
