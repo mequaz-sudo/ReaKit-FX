@@ -2,11 +2,12 @@
 -- Scripts/__startup.lua (the same as running "GainKit Plus - Start with REAPER") when it is not
 -- there yet, and starts EON Floatter once when it has not registered itself yet -- Floatter
 -- writes its own start-up block on its first run. Running this again changes nothing: each
--- part is skipped when it is already in place. Once, it sets the six to open embedded in the
+-- part is skipped when it is already in place. Once, it sets the seven to open embedded in the
 -- mixer strip (REAPER's own per-plugin default), and offers to raise REAPER's meter refresh to
 -- 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
 -- One small window in the ReaKit look says what was done and carries that offer as a switch
--- (the plain message box without ReaImGui). MIT, EON Studios, 2026.
+-- (the plain message box without ReaImGui), with two more one-time switches: a track with all
+-- seven, and the 16 track board opened in a new project tab (off to start). MIT, EON Studios, 2026.
 local r = reaper
 local _, own = r.get_action_context()
 local sep = own:find("\\", 1, true) and "\\" or "/"
@@ -111,14 +112,15 @@ else
   need_plus = true   -- the setup starts Plus itself, but not when it is launched from a launched action: checked below
 end
 
--- 1b. The six open embedded in the mixer strip, the way REAPER does it for any plugin: its FX
+-- 1b. The seven open embedded in the mixer strip, the way REAPER does it for any plugin: its FX
 -- browser's "Default settings for new instances > Show embedded UI in MCP" is bit 4 of the
 -- plugin's line in reaper-fxoptions.ini [defcfg], and REAPER reads that file at every insert
--- (measured, 2026-10-01). Each install path REAPER lists for the six (reaper-jsfx.ini) gets the
+-- (measured, 2026-10-01). Each install path REAPER lists for the seven (reaper-jsfx.ini) gets the
 -- bit, the line's other bits kept. Once: a plugin the user later sets back stays as they set it.
 local FREE6 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
-                "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx" }
-local BUSY = "REAPER was busy, so the six effects weren't set to open in the mixer strip. Run this again."
+                "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
+                "Filter_ReaKit.jsfx" }                -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
+local BUSY = "REAPER was busy, so the effects weren't set to open in the mixer strip. Run this again."
 -- returns ok, the line to show (nil, nil when it was done on an earlier run)
 local function embed_defaults()
   if r.GetExtState("EON_ReaKitFX", "embed_defaults") == "1" then return nil end
@@ -132,7 +134,7 @@ local function embed_defaults()
     local p = "ReaKit FX/FX/Eon_JSFX/FX/" .. f
     if not have[p] and exists(res .. sep .. "Effects" .. sep .. p:gsub("/", sep)) then have[p] = true; paths[#paths + 1] = p end
   end
-  if #paths == 0 then return false, "The six effects weren't found. Install ReaKit FX from ReaPack, then run this again." end
+  if #paths == 0 then return false, "The ReaKit FX effects weren't found. Install ReaKit FX from ReaPack, then run this again." end
   local opt = res .. sep .. "reaper-fxoptions.ini"
   local txt = read_opt(opt)
   if not txt then return false, BUSY end              -- reaper-fxoptions.ini locked for a moment
@@ -167,7 +169,7 @@ local function embed_defaults()
   if changed > 0 and not replace_file(opt, bom .. table.concat(lines, nl) .. nl) then return false, BUSY end
   r.SetExtState("EON_ReaKitFX", "embed_defaults", "1", true)
   -- REAPER's own setting per plugin: the line stays plain, its tooltip says where to change it
-  return true, "The six effects open right in the mixer strip",
+  return true, "The ReaKit FX effects open right in the mixer strip",
     "REAPER's own setting for each plugin: right-click it in the FX browser, then Default settings for new instances."
 end
 local eok, emsg, etip = embed_defaults()
@@ -315,10 +317,10 @@ local function plain_box(cur)
   end
 end
 
--- 5. The track with all six (the user, 2026-10-03: "one track with all the plugins floating"): its
--- own action, offered ONCE as a switch in the window (on to start with), so a new user sees all six
+-- 5. The track with all seven (the user, 2026-10-03: "one track with all the plugins floating"): its
+-- own action, offered ONCE as a switch in the window (on to start with), so a new user sees all seven
 -- at first setup; the action list runs it again any time. Answered = offered, either way.
-local DEMO = dir .. sep .. "ReaKit FX - Add a track with all six.lua"
+local DEMO = dir .. sep .. "ReaKit FX - Add a track with all seven.lua"
 local function demo_offer()
   return exists(DEMO) and r.GetExtState("EON_ReaKitFX", "demo_offered") ~= "1"
 end
@@ -329,7 +331,23 @@ local function demo_answer(yes)
   if ok and c and c > 0 then r.Main_OnCommand(c, 0) end
 end
 
-local function window(cur, demo)
+-- 6. The 16 track board (the user, 2026-10-07: "can we add the open the new template from ... reakit startup
+-- action"): the ReaKit FX templates package's project template, offered ONCE as a switch in the window, OFF to
+-- start with (eighteen tracks with the seven each is a heavy first project: the user opts in). On: it opens as a new,
+-- untitled project in a new project tab, so the project open now is left as it is. Offered only when ReaPack put
+-- the template where REAPER keeps project templates. A probe answers through EON_ReaKitFX/test_board ("yes"/"no").
+local BOARD = res .. sep .. "ProjectTemplates" .. sep .. "ReaKit FX - 16 track board.rpp"
+local function board_offer()
+  return exists(BOARD) and r.GetExtState("EON_ReaKitFX", "board_offered") ~= "1"
+end
+local function board_answer(yes)
+  r.SetExtState("EON_ReaKitFX", "board_offered", "1", true)
+  if not yes then return end
+  r.Main_OnCommand(40859, 0)                          -- File: New project tab
+  r.Main_openProject("template:" .. BOARD)            -- as a template: untitled, the file itself never saved over
+end
+
+local function window(cur, demo, board)
   if not r.ImGui_GetBuiltinPath then return false end
   local okl, ImGui = pcall(function()
     package.path = r.ImGui_GetBuiltinPath() .. "/?.lua;" .. package.path
@@ -343,7 +361,8 @@ local function window(cur, demo)
   end
   local bold, body = font(ImGui.FontFlags_Bold), font(nil)
   local fast, W = true, 360                           -- the offer starts on; the text column's width
-  local addtrk = true                                 -- the track with all six: on to start with
+  local addtrk = true                                 -- the track with all seven: on to start with
+  local openbd = false                                -- the 16 track board: off to start with
   local FLAGS = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoCollapse | ImGui.WindowFlags_NoResize
     | ImGui.WindowFlags_AlwaysAutoResize | ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoSavedSettings
     | (rawget(ImGui, "WindowFlags_TopMost") or 0)
@@ -420,16 +439,22 @@ local function window(cur, demo)
         ImGui.PopTextWrapPos(ctx)
         if d.tip and ImGui.IsItemHovered(ctx) then ImGui.SetTooltip(ctx, d.tip) end
       end
-      if cur or demo then                             -- the offers: a switch each, its name, one quiet line
+      if cur or demo or board then                    -- the offers: a switch each, its name, one quiet line
         ImGui.Dummy(ctx, 0, 2)
         ImGui.Separator(ctx)
         ImGui.Dummy(ctx, 0, 2)
       end
       if demo then
-        addtrk = switch_row(dl, "##demo", addtrk, "Add a track with all six",
-          "One track with all six effects, their windows open side by side.",
-          "A track called ReaKit FX at the end of this project. Run \"ReaKit FX - Add a track with all six\""
+        addtrk = switch_row(dl, "##demo", addtrk, "Add a track with all seven",
+          "One track with all seven effects, their windows open side by side.",
+          "A track called ReaKit FX at the end of this project. Run \"ReaKit FX - Add a track with all seven\""
           .. " from the action list any time for another.")
+      end
+      if board then
+        openbd = switch_row(dl, "##board", openbd, "Open the 16 track board",
+          "A new project tab: 14 tracks and 4 buses, all seven on each.",
+          "The ReaKit FX - 16 track board template, opened as a new untitled project; this project stays as it is."
+          .. " Any time: File > New project from template.")
       end
       if cur then
         fast = switch_row(dl, "##fast", fast, "Faster mixer strips", "Plugin faces in the mixer move more smoothly.",
@@ -472,7 +497,8 @@ local function window(cur, demo)
     end
     if finish then
       if cur then rate_answer(fast) end
-      if demo then demo_answer(addtrk) end
+      if demo then demo_answer(addtrk) end            -- the track first, into the project open now
+      if board then board_answer(openbd) end          -- then the board, in its own tab
       return
     end
     if open then r.defer(frame) end                   -- (no close box: OK / Enter end it)
@@ -496,8 +522,13 @@ local function settle()
       local t = r.GetExtState("EON_ReaKitFX", "test_rate")
       if t ~= "" then rate_answer(t == "yes") end                    -- no test answer: offered next time
     end
+    if board_offer() then
+      local t = r.GetExtState("EON_ReaKitFX", "test_board")
+      if t ~= "" then board_answer(t == "yes") end                   -- no test answer: offered next time
+    end
     return
   end
-  if not window(cur, demo_offer()) then plain_box(cur) end   -- the plain box offers no track (no window to lay out)
+  -- the plain box offers no track and no board (no window to lay out)
+  if not window(cur, demo_offer(), board_offer()) then plain_box(cur) end
 end
 settle()

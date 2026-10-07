@@ -1,6 +1,7 @@
--- ReaKit FX -- add a track called "ReaKit FX" at the end of the project with all six free effects on
--- it (GainKit, 3-Band EQ, DDC, De-Esser, Saturation, Stereo Width, in that order) and their windows
--- open, laid out side by side over REAPER's window, so a new user sees all six at once (the user,
+-- ReaKit FX -- add a track called "ReaKit FX" at the end of the project with all seven free effects on
+-- it (GainKit, Filter, De-Esser, Saturation, 3-Band EQ, DDC, Stereo Width, in that order: the user,
+-- 2026-10-07: "gain, filter, de-esser, saturation, eq, compressor, then width") and their windows
+-- open, laid out side by side over REAPER's window, so a new user sees all seven at once (the user,
 -- 2026-10-03: "one track with all the plugins floating"). One undo step. The start action offers it
 -- once, at first setup (a switch in its summary window); run this any time for another one.
 -- EON Floatter, when it runs, sizes each window as it opens; this only places them. Without
@@ -8,20 +9,24 @@
 local r = reaper
 
 -- each by its listed name first (any install), then the ReaPack package's path, then the EON install's
-local SIX = {
+local SEVEN = {
   { name = "GainKit",      file = "ChannelTool_ReaKit.jsfx", w = 350, h = 546 },
-  { name = "3-Band EQ",    file = "3BandEQ_ReaKit.jsfx",     w = 418, h = 228 },
-  { name = "DDC",          file = "DDC_ReaKit.jsfx",         w = 573, h = 319 },
+  { name = "Filter",       file = "Filter_ReaKit.jsfx",      w = 260, h = 404 },   -- its @gfx (not in Floatter's SIZES)
   { name = "De-Esser",     file = "DeEsser_ReaKit.jsfx",     w = 465, h = 376 },
   { name = "Saturation",   file = "Saturation_ReaKit.jsfx",  w = 288, h = 506 },
+  { name = "3-Band EQ",    file = "3BandEQ_ReaKit.jsfx",     w = 418, h = 228 },
+  { name = "DDC",          file = "DDC_ReaKit.jsfx",         w = 573, h = 319 },
   { name = "Stereo Width", file = "StereoWidth_ReaKit.jsfx", w = 291, h = 364 },
 }
 -- w, h: each window's designed canvas at 100 % (EON Floatter's SIZES); a window adds REAPER's frame,
--- title and preset bar, 16 x 66 at 100 % (wiki 6.7). The layout, in those outer sizes: GainKit and
--- Saturation (the tall two) on the left; DDC over the 3-Band EQ; the De-Esser over Stereo Width.
--- At 100 % that is 1740 x 872, which fits a 1080p screen; a smaller REAPER window overlaps them.
-local SLOT = { [1] = { 0, 0 }, [5] = { 366, 0 }, [3] = { 670, 0 }, [2] = { 670, 385 }, [4] = { 1259, 0 }, [6] = { 1259, 442 } }
-local LAYOUT_W, LAYOUT_H = 1740, 872
+-- title and preset bar, 16 x 66 at 100 % (wiki 6.7). The layout, in those outer sizes: the top row in the
+-- chain's order, GainKit, the Filter over DDC, the De-Esser over Stereo Width, Saturation over the 3-Band
+-- EQ (the only pairing whose columns stay within 872 high: Saturation fits over nothing but the EQ, then
+-- the Filter only over DDC). At 100 % that is 1870 x 872, which fits a 1080p screen; a smaller REAPER
+-- window overlaps them.
+local SLOT = { [1] = { 0, 0 }, [2] = { 366, 0 }, [6] = { 366, 470 }, [3] = { 955, 0 }, [7] = { 955, 442 },
+               [4] = { 1436, 0 }, [5] = { 1436, 572 } }
+local LAYOUT_W, LAYOUT_H = 1870, 872
 
 -- the file name alone, from a path with either slash
 local function basename(path) return (path:gsub("^.*[/\\]", "")) end
@@ -55,7 +60,7 @@ r.InsertTrackAtIndex(n, true)
 local tr = r.GetTrack(0, n)
 r.GetSetMediaTrackInfo_String(tr, "P_NAME", "ReaKit FX", true)
 local fxs, missed = {}, {}
-for i, p in ipairs(SIX) do
+for i, p in ipairs(SEVEN) do
   local fx = add(tr, p)
   if fx >= 0 then fxs[i] = fx else missed[#missed + 1] = p.name end
 end
@@ -74,7 +79,7 @@ local kx = (ok and (R - L) < fw + 40) and math.max((R - L - 40) / fw, 0.3) or 1
 local ky = (ok and (B - T - 120) < fh) and math.max((B - T - 120) / fh, 0.3) or 1
 local x0 = ok and (L + math.max(20, ((R - L) - fw * kx) / 2)) or 0
 local y0 = ok and (T + 100) or 0
-for i = 1, #SIX do
+for i = 1, #SEVEN do
   local fx = fxs[i]
   if fx then
     r.TrackFX_Show(tr, fx, 3)
@@ -85,7 +90,7 @@ for i = 1, #SIX do
     end
   end
 end
-r.Undo_EndBlock("ReaKit FX: add a track with all six", -1)
+r.Undo_EndBlock("ReaKit FX: add a track with all seven", -1)
 
 if #missed > 0 and r.GetExtState("EON_GainKitPlus", "quiet") ~= "1" then
   r.MB("Not found, so not added: " .. table.concat(missed, ", ") .. "." .. string.char(10, 10)

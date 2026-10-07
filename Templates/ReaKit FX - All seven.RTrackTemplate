@@ -1,0 +1,86 @@
+<TRACK
+NAME "ReaKit FX"
+PEAKCOL 16576
+BEAT -1
+AUTOMODE 0
+PANLAWFLAGS 3
+VOLPAN 1 0 -1 -1 1
+MUTESOLO 0 0 0
+IPHASE 0
+PLAYOFFS 0 1
+ISBUS 0 0
+BUSCOMP 0 0 0 0 0
+SHOWINMIX 1 0.6667 0.5 1 0.5 0 0 0 0
+FIXEDLANES 9 0 0 0 0
+REC 0 0 1 0 0 0 0 0
+VU 64
+TRACKHEIGHT 0 0 0 0 0 0 0
+INQ 0 0 0 0.5 100 0 0 100
+NCHAN 2
+FX 1
+TRACKID {D5E3269E-FF68-41B2-972C-13C058E66D3C}
+PERF 0
+MIDIOUT -1 -1
+MAINSEND 1 0
+<FXCHAIN
+SHOW 0
+LASTSEL 0
+DOCKED 0
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx" ""
+20 20000 0 0 - - 0 - - - - 0 - - 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {94AC79F8-7B0E-4B1D-88F5-E496A14DE6DF}
+WAK 1 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/Filter_ReaKit.jsfx" ""
+20 20000 1 0 0 1 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {E2984E19-C449-48C3-AFDA-21AF1D257A70}
+WAK 0 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
+-20 7500 1.5 4 0 0 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {CA5BA14E-382B-4377-9A90-358B3AA9A2F3}
+WAK 0 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
+0 1 0 0 0 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {EB5AA6B0-25F2-4D55-B23C-56005F998DB0}
+WAK 0 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+0 200 0 2000 0 0 1 1 1 1 0 0 0 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {7ADE8CA7-D29E-4099-BB98-4C6547F1ED2D}
+WAK 0 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+-20 20 20 0.5 200 0 0 0 0 0 0 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {F8F30A7E-C80C-4662-89DB-8AFC0474028B}
+WAK 0 2
+BYPASS 0 0 0
+<JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
+100 1 0 0 1 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+>
+MULTIFXLINK 0
+FLOATPOS 0 0 0 0
+FXID {6726ED61-0030-4C97-AC7A-6D604801ACE5}
+WAK 0 2
+>
+>

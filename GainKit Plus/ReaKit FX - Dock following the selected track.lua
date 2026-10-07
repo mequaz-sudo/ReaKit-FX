@@ -18,7 +18,7 @@
 -- around for the order?", "Real order", "when a non reakit plugin is there will it say so?").
 -- STRIP off: the chosen effect fills the dock. Click a track without it and the dock keeps the last; a track with
 -- two shows the first.
--- STRIP on: every one of the six on the track, side by side in chain order, like a channel strip; as many as fit
+-- STRIP on: every one of the seven on the track, side by side in chain order, like a channel strip; as many as fit
 -- at a usable width, the rest a click away (< and >, an effect's button, or the wheel over the bar). Click a track
 -- with none of them and the dock keeps the last. Effects inside an FX container are not shown.
 -- Open a docked effect's own window (its strip, the FX chain) and the dock steps aside for it until it closes.
@@ -31,7 +31,7 @@
 -- the plugin itself without REAPER's preset bar) into its own dockable window and hides the empty float; in a
 -- strip, one float and one surface per effect. Every way out hands a surface back to a float, at its exact place,
 -- BEFORE anything else: a REAPER window moved outside its tree is never taken back by REAPER (EON Swing Dock's
--- lesson, 2026-08-25). The same mechanism as EON Swing Dock, written for the six. Windows only; needs
+-- lesson, 2026-08-25). The same mechanism as EON Swing Dock, written for the seven. Windows only; needs
 -- js_ReaScriptAPI (ReaPack). MIT, EON Studios, 2026.
 local r = reaper
 local TITLE = "ReaKit FX Dock"         -- the docker tab's label; also how the script finds its own window
@@ -50,7 +50,7 @@ if not r.APIExists("JS_Window_SetParent") then
   return
 end
 
--- The six, each by its FILE, the exact name, as every GainKit Plus action finds GainKit (wiki 6.16). w = its own
+-- The seven, each by its FILE, the exact name, as every GainKit Plus action finds GainKit (wiki 6.16). w = its own
 -- window's width (the plugin's @gfx line; Saturation and Stereo Width: the width their header fits on one line,
 -- seen 2026-10-03: narrower, THEME drops onto the knob row); minw = the least STRIP gives it before it moves one
 -- off the dock (3-Band EQ 250: at 226 its three crossover labels ran into each other, seen in the release
@@ -59,13 +59,17 @@ local KINDS = {
   -- w / minw: the natural and the smallest width when the effects stand side by side (ACROSS); h / minh: the same
   -- for the dock laid out DOWN (a side docker: the effects stacked, each the dock's full width; the user, 2026-10-07).
   -- h = the window the Add-a-track action opens; minh = the shortest window that still reads whole (the size prints
-  -- of 2026-10-07, after the six's compact layouts: one row / folded rows from about 140), so all six stack on a 1080
-  -- screen (about 155 each).
+  -- of 2026-10-07, after the first six's compact layouts: one row / folded rows from about 140), so those six stack on
+  -- a 1080 screen (about 155 each); with the Filter the seven need about 1020, so on 1080 the last one moves off.
+  -- In the chain's order (the user, 2026-10-07: "gain, filter, de-esser, saturation, eq, compressor, then width"):
+  -- the dim chips follow it. The Filter (the seventh, ReaKit FX 1.5.0) has no short layout: its knobs read whole
+  -- from about 145 of surface (filter_sizes prints, 2026-10-07), cut at about 105.
   { key = "gk",  name = "GainKit",      long = "GAINKIT",  short = "GK",  file = "channeltool_reakit.jsfx", w = 450, minw = 230, h = 546, minh = 150, src = "ChannelTool_ReaKit.jsfx" },
-  { key = "eq3", name = "3-Band EQ",    long = "3-BAND",   short = "EQ",  file = "3bandeq_reakit.jsfx",     w = 460, minw = 250, h = 228, minh = 140, src = "3BandEQ_ReaKit.jsfx" },
-  { key = "ddc", name = "DDC",          long = "DDC",      short = "DDC", file = "ddc_reakit.jsfx",         w = 600, minw = 260, h = 319, minh = 140, src = "DDC_ReaKit.jsfx" },
+  { key = "flt", name = "Filter",       long = "FILTER",   short = "FLT", file = "filter_reakit.jsfx",      w = 260, minw = 240, h = 404, minh = 145, src = "Filter_ReaKit.jsfx" },
   { key = "des", name = "De-Esser",     long = "DE-ESSER", short = "DE",  file = "deesser_reakit.jsfx",     w = 540, minw = 240, h = 376, minh = 150, src = "DeEsser_ReaKit.jsfx" },
   { key = "sat", name = "Saturation",   long = "SAT",      short = "SAT", file = "saturation_reakit.jsfx",  w = 280, minw = 260, h = 506, minh = 140, src = "Saturation_ReaKit.jsfx" },
+  { key = "eq3", name = "3-Band EQ",    long = "3-BAND",   short = "EQ",  file = "3bandeq_reakit.jsfx",     w = 460, minw = 250, h = 228, minh = 140, src = "3BandEQ_ReaKit.jsfx" },
+  { key = "ddc", name = "DDC",          long = "DDC",      short = "DDC", file = "ddc_reakit.jsfx",         w = 600, minw = 260, h = 319, minh = 140, src = "DDC_ReaKit.jsfx" },
   { key = "wid", name = "Stereo Width", long = "WIDTH",    short = "W",   file = "stereowidth_reakit.jsfx", w = 300, minw = 280, h = 364, minh = 140, src = "StereoWidth_ReaKit.jsfx" },
 }
 local kind = 1
@@ -85,7 +89,7 @@ local function first_of(tr, k)
     if kind_of(tr, f) == (k or kind) then return f end
   end
 end
--- Every effect in a track's own chain, in order: { { fg, fx, kind } } for the six, { fg, fx, name } for any other
+-- Every effect in a track's own chain, in order: { { fg, fx, kind } } for the seven, { fg, fx, name } for any other
 -- (its name without the "VST3: " kind and the "(maker)" tail; an FX container is one). The bar's chips and markers.
 local function chain_items(tr)
   local out = {}
@@ -103,7 +107,7 @@ local function chain_items(tr)
 end
 -- What the dock shows of a track, in chain order: { { fg, fx, kind }, ... }. STRIP off: the first of the chosen
 -- effect, or the copy last asked for on that track by a double-click on its name (prefer, by track GUID). STRIP
--- on: every one of the six. The track's own chain only: an effect inside a container is not shown.
+-- on: every one of the seven. The track's own chain only: an effect inside a container is not shown.
 local prefer = {}
 local function wanted(tr)
   local out = {}
@@ -781,7 +785,7 @@ local pub_name_hit, pub_ticon_hit = "", ""   -- the name's and the icon's boxes 
 local bar_chips = {}                   -- this frame's chips: { kind, fg (nil = dim), long, short, x0, x1, y0, y1 }
 local drag = nil                       -- a chip held down: { i, kind, fg, x0, y0, dx, moved, before, mark, noop, inside }
 local has_cache, has_key, has_t = { list = {}, has = {} }, "", 0
--- the shown track's chain in order (chain_items) and which of the six it has (the dim chips), looked up about
+-- the shown track's chain in order (chain_items) and which of the seven it has (the dim chips), looked up about
 -- twice a second and at once after the dock moves or adds one (has_key = "")
 local function bar_chain(tr)
   local key = tr and (r.GetTrackGUID(tr) .. r.TrackFX_GetCount(tr)) or ""
@@ -804,7 +808,7 @@ end
 -- 255 px dock cut TABS off and dropped the name): the chips on top, the track's name with the rest under. A
 -- chain too long for one row of chips even then wraps them onto more rows (Codex delta audit, 2026-10-05: the
 -- chips past the edge could not be reached), the name and the buttons always on the last row.
--- The chips: the track's chain in the order it runs, the six as chips (a second copy numbered: 3-BAND, 3-BAND 2),
+-- The chips: the track's chain in the order it runs, the seven as chips (a second copy numbered: 3-BAND, 3-BAND 2),
 -- any other plugins as a grey marker, one per run of them (the first one's name, "+2" for two more; the user,
 -- 2026-10-04: "when a non reakit plugin is there will it say so?"), then the kinds it does not have, dim.
 -- STRIP on: the ones on view light, and < > appear when the track has more than fit; STRIP off: the one shown
@@ -1389,7 +1393,7 @@ local function move_fx(fg, before)
 end
 
 -- Right-click a dim effect button (the shown track has none of it): add it to that track (the user, 2026-10-03:
--- "when the track does not have the fx can we right click add it"). Found as "Add a track with all six" finds
+-- "when the track does not have the fx can we right click add it"). Found as "Add a track with all seven" finds
 -- them: by its listed name (any install), then the ReaPack package's path, then the EON install's; the right FILE
 -- only, a namesake is taken out again. GainKit goes first in the chain (where the GainKit Plus actions put it),
 -- the others at the end. Then it is the effect shown (STRIP off), or brought on view (STRIP on).
@@ -3316,7 +3320,7 @@ local function loop()
     r.SetExtState(EXT, "add_req", "", false)
     for k, v in ipairs(KINDS) do if v.key == req then add_kind(k) end end
   end
-  -- tests: a chip dragged and let go: "FX GUID|FX GUID it lands before" or "...|END" (after the last of the six);
+  -- tests: a chip dragged and let go: "FX GUID|FX GUID it lands before" or "...|END" (after the last of the seven);
   -- a dim chip dragged in: "kind key|FX GUID" or "kind key|END"
   req = r.GetExtState(EXT, "move_req")
   if req ~= "" then

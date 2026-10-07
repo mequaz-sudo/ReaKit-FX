@@ -79,7 +79,7 @@ in the Actions list as `Script: GainKit Plus…`):
   runs. On REAPER 7.81 and later every GainKit reads its track's name from REAPER itself, so
   the name needs no script there; the colour, the icon and the master's project name still come
   from GainKit Plus, which serves the first 512 tracks. It also carries out the THEME panel's EMBED
-  row: it moves the plugin and sets where new copies of the six open.
+  row: it moves the plugin and sets where new copies of the seven open.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
   none, opened embedded in the mixer strip.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
@@ -97,15 +97,15 @@ in the Actions list as `Script: GainKit Plus…`):
 - **Start with REAPER** — GainKit Plus starts with REAPER from now on (it goes into
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
-  file, and EON Floatter started once so it registers itself. Once, it sets the six to open
+  file, and EON Floatter started once so it registers itself. Once, it sets the seven to open
   embedded in the mixer strip (REAPER's own default for new instances; other plugins' defaults are
-  left as they are); after a reinstall or a moved folder, GainKit Plus gives the six's new copies
-  the same place at its next start, and a place you set yourself stays as you left it. The first time, it also offers a track with all six and to
-  raise REAPER's meter refresh to 120 a second so the mixer strips answer quicker (from the next
-  start). Run it again and nothing changes.
-- **ReaKit FX - Add a track with all six** — a track called ReaKit FX at the end of the project
-  with GainKit, 3-Band EQ, DDC, De-Esser, Saturation and Stereo Width, their windows open side by
-  side. One undo step.
+  left as they are); after a reinstall or a moved folder, GainKit Plus gives the seven's new copies
+  the same place at its next start, and a place you set yourself stays as you left it. The first time, it also offers a track
+  with all seven, the 16 track board in a new project tab, and to raise REAPER's meter refresh to 120 a second so the
+  mixer strips answer quicker (from the next start). Run it again and nothing changes.
+- **ReaKit FX - Add a track with all seven** — a track called ReaKit FX at the end of the project
+  with GainKit, Filter, De-Esser, Saturation, 3-Band EQ, DDC and Stereo Width, in that order, their
+  windows open side by side. One undo step.
 - **ReaKit FX - Dock following the selected track** — the selected track's ReaKit FX in a docker
   tab (see [The ReaKit FX dock](#the-reakit-fx-dock) below).
 - **ReaKit FX - Docker tabs off-on** — REAPER's tab bar off for every docker holding one window
@@ -268,7 +268,7 @@ colour, close this track's or every track's windows, pin.
   in the chain; drag a dim one in to add the effect at that spot. A grey marker stands for another
   plugin in the chain;
 - two close icons: this track's floating effect windows, or every track's;
-- **STRIP** — every one of the six on the track side by side, as many as fit at a usable width;
+- **STRIP** — every one of the seven on the track side by side, as many as fit at a usable width;
   `<` `>`, an effect's chip or the mouse wheel over the bar bring the rest on view. With STRIP off,
   the effect you pick fills the dock;
 - the pin — the dock stays on this track (or the master) whatever you select;
@@ -344,12 +344,12 @@ REAPER's own setting, so it holds for every docker and after a restart.
   name as they are.
 - **Embeds** — every plugin has a face for the mixer strip and the track panel, sized from the
   slot it is given. The THEME panel's EMBED row (MCP / TCP / OFF) moves a plugin between the mixer
-  strip, the track panel and neither, and sets where new copies of all six open; GainKit Plus does
+  strip, the track panel and neither, and sets where new copies of all seven open; GainKit Plus does
   the moving, and the row says NEEDS PLUS while it is not running.
-- **THEME panel** — all six have a THEME toggle in the header: a colour theme, a knob style (21 of
+- **THEME panel** — all seven have a THEME toggle in the header: a colour theme, a knob style (21 of
   them), the name bar over the mixer-strip embed, EMBED, and NATIVE, each plugin in its own original
   colours. Three colour themes are built in and work on their own: **EON**, **Dark** and **Light**.
-  Pick one, or NATIVE, on any of the six and all six follow, open or closed, and the choice comes
+  Pick one, or NATIVE, on any of the seven and all seven follow, open or closed, and the choice comes
   back with the project: opening a project wears the theme it was saved with. Eleven more
   (SSL, Neve, API, Tube, Ableton, FL Studio, Pro Tools, PT Light, and three that copy your REAPER
   theme) appear in the list when EON Swing is installed, whose bridge paints them and keeps the
@@ -429,15 +429,16 @@ REAPER's own setting, so it holds for every docker and after a restart.
    and install it the same way. Then type **ReaImGui**, click only the one called "ReaImGui: ReaScript
    binding for Dear ImGui" and install it: EON Floatter needs both. Click **Apply**, then restart REAPER.
 4. **Actions > Show action list.** Type **ReaKit FX - Start**, pick it and click **Run/close**. GainKit Plus and
-   EON Floatter start with REAPER from then on, and new copies of the six open in the mixer strip. A small
-   window shows what it set up: leave **Faster mixer strips** on, click **OK**, then restart REAPER.
+   EON Floatter start with REAPER from then on, and new copies of the seven open in the mixer strip. A small
+   window shows what it set up: leave **Faster mixer strips** on (switch on **Open the 16 track board** to start
+   a mix from it), click **OK**, then restart REAPER.
 5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit`. Close the effects
    window REAPER opens, then drag the top edge of the mixer up (**View > Mixer** if you don't see it). The
    others are in the same list as `JS: EON: Saturation`, `JS: EON: 3-Band EQ`, `JS: EON: DDC`,
-   `JS: EON: De-Esser`, `JS: EON: Stereo Width` and `JS: EON: Filter`. Or add the six that came first at once:
-   **Track > Insert track from template > ReaKit FX - All six** (from the ReaKit FX templates package). Or start a
+   `JS: EON: De-Esser`, `JS: EON: Stereo Width` and `JS: EON: Filter`. Or add all seven at once:
+   **Track > Insert track from template > ReaKit FX - All seven** (from the ReaKit FX templates package). Or start a
    whole mix from **File > New project from template > ReaKit FX - 16 track board**: fourteen tracks and four buses,
-   each with GainKit, De-Esser, Saturation, 3-Band EQ, DDC and Stereo Width.
+   each with GainKit, Filter, De-Esser, Saturation, 3-Band EQ, DDC and Stereo Width.
 6. To change the look, open the plugin's window (the track's FX button) and click **THEME** at the top.
 
 Bought ReaKit FX before, as a download? Delete those old files from REAPER's Effects folder first, so

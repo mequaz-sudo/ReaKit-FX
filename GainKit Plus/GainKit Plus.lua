@@ -4,7 +4,7 @@
 -- master's GainKit gets the PROJECT's name (MASTER while the project is unsaved), and a GainKit
 -- inside an FX container counts for its track. It also does what the free plugins' EMBED row asks:
 -- shows that plugin in the mixer strip, in the track panel or in neither, and opens new copies of
--- the six there.
+-- the seven there.
 --
 -- A background script: run it once to start, run it again to stop. It costs one pass over the
 -- tracks every 0.3 s and writes only when something changed.
@@ -207,13 +207,14 @@ end
 -- focused FX embedded UI in MCP / TCP" when it is the focused one (each toggles: into its panel, or
 -- out of it when it is already there; measured 2026-10-01), else through the WAK line after its
 -- FXID in the track chunk (field 2: TCP 1, MCP 2; that reloads the track). Then new copies of all
--- six are set to open there (reaper-fxoptions.ini [defcfg]: bit 4 MCP, bit 2 TCP, neither = OFF;
+-- seven are set to open there (reaper-fxoptions.ini [defcfg]: bit 4 MCP, bit 2 TCP, neither = OFF;
 -- REAPER reads it at every insert, and 6 would mean TCP). Published back: +0 a heartbeat (os.time,
 -- the clock a JSFX's time() reads; 0 at exit), +1 that default (GainKit's line decides), +2 the
 -- request served last.
 local EMB = 31365504
-local SIX = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
-              "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx" }
+local SEVEN = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
+                "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
+                "Filter_ReaKit.jsfx" }                 -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
 local RES = r.GetResourcePath()
 local OPT = RES .. "/reaper-fxoptions.ini"
 local function slurp(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
@@ -253,13 +254,13 @@ local function replace_file(p, text)
   return false
 end
 
--- the six's paths as REAPER names them in [defcfg]: each one reaper-jsfx.ini lists, plus ReaPack's
+-- the seven's paths as REAPER names them in [defcfg]: each one reaper-jsfx.ini lists, plus ReaPack's
 -- place when it is not scanned yet; GainKit's first
 local function six_paths()
   local paths, have = {}, {}
   local function put(p) if not have[p] then have[p] = true; paths[#paths + 1] = p end end
   local ini = slurp(RES .. "/reaper-jsfx.ini") or ""
-  for _, f in ipairs(SIX) do
+  for _, f in ipairs(SEVEN) do
     for p in ini:gmatch('NAME%s+"?([^"\r\n]-%.jsfx)"?%s') do
       if p == f or p:sub(-(#f + 1)) == "/" .. f then put(p) end
     end
@@ -290,7 +291,7 @@ local function read_default(paths)                -- nil: the file could not be 
   return 3
 end
 
--- set the six's [defcfg] lines to the place, every other bit and line kept
+-- set the seven's [defcfg] lines to the place, every other bit and line kept
 local function write_default(paths, mode)
   if #paths == 0 then return end
   local add = mode == 1 and 4 or mode == 2 and 2 or 0
@@ -328,11 +329,11 @@ local function write_default(paths, mode)
   r.SetExtState("EON_ReaKitFX", "embed_defaults", "1", true)
 end
 
-local function is_six(tr, f)
+local function is_seven(tr, f)
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
   if not ok or id == "" then return false end
   local name = (id:match("[^/\\]+$") or ""):lower()   -- the file name, exactly (as is_gainkit)
-  for _, s in ipairs(SIX) do if name == s:lower() then return true end end
+  for _, s in ipairs(SEVEN) do if name == s:lower() then return true end end
   return false
 end
 
@@ -384,7 +385,7 @@ end
 
 local function move(ti, pos, mode)
   local tr = ti == -1 and r.GetMasterTrack(0) or r.GetTrack(0, ti)
-  if not tr or not is_six(tr, pos) then return end
+  if not tr or not is_seven(tr, pos) then return end
   -- the row is in the plugin's own (floating) window, so the plugin that asked has it open: a
   -- plugin that took its place before this ran (a tab switch, a move) is left alone (the outside
   -- review, round 2)
@@ -411,7 +412,7 @@ local function move(ti, pos, mode)
   r.Undo_EndBlock("ReaKit FX: embed " .. (mode == 1 and "in the mixer" or mode == 2 and "in the track panel" or "off"), -1)
 end
 
--- DOCK (mode 4): a double-click on one of the six's names (rk_theme's rkth_dock_name; the user, 2026-10-03:
+-- DOCK (mode 4): a double-click on one of the seven's names (rk_theme's rkth_dock_name; the user, 2026-10-03:
 -- "swing i double click the logo it docks"). Its track and chain position become GUIDs for the ReaKit FX dock,
 -- which takes it in, or pops it out when it is docked already; the dock is opened first when it is closed. The
 -- request is written BEFORE the dock starts (its start leaves this one alone: it carries the time, and the dock
@@ -427,10 +428,10 @@ local function dock_request(ti, pos, fl)
   reopen_dock()                              -- returns at once when the dock is up
 end
 
--- A copy of the six at a path REAPER has no [defcfg] line for yet opens un-embedded. The start-up action set the
+-- A copy of the seven at a path REAPER has no [defcfg] line for yet opens un-embedded. The start-up action set the
 -- lines ONCE (its embed_defaults flag), for the paths it saw then; a reinstall or a moved folder later gives new
 -- path names, and those never got the default (found 2026-10-07 on the user's machine: lines for an older folder
--- layout, none for the paths in use). So at every start each path of the six that has not been seen before gets the
+-- layout, none for the paths in use). So at every start each path of the seven that has not been seen before gets the
 -- place the others already have (the first one with a line), MCP when none has one, and is remembered as seen
 -- (ExtState embed_filled): a line the user later changes or removes stays as they left it.
 do
@@ -460,7 +461,7 @@ do
     local txt = read_opt(OPT)
     if not txt then return end                         -- locked for a moment: the next start tries again
     local has = defcfg(txt)
-    local mode = 1                                     -- MCP when none of the six has a line yet
+    local mode = 1                                     -- MCP when none of the seven has a line yet
     for _, p in ipairs(list) do if has[p] then mode = place_of(has[p]); break end end
     local missing = {}
     for _, p in ipairs(fresh) do if not has[p] then missing[#missing + 1] = p end end

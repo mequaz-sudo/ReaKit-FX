@@ -1,4 +1,4 @@
-<REAPER_PROJECT 0.1 "7.81/win64" 1791238997 0
+<REAPER_PROJECT 0.1 "7.81/win64" 1791407444 0
   <NOTES 0 2
   >
   RIPPLE 0 0
@@ -81,10 +81,10 @@
   MASTER_PANMODE 3
   MASTER_PANLAWFLAGS 3
   MASTER_FX 1
-  MASTER_TRACKID {9D51A0BE-8AA1-47F3-9300-ED46890D420C}
+  MASTER_TRACKID {BD3BA7AF-525B-4E2D-9B04-4D00ACAC9C41}
   MASTER_SEL 0
   <MASTERPLAYSPEEDENV
-    EGUID {23D8629C-2D2E-4E97-8D71-DFBD9CFD6DC1}
+    EGUID {9FF94CD6-CE62-4676-9FDD-DEB8B48A21AF}
     ACT 0 -1
     VIS 0 1 1
     LANEHEIGHT 0 0
@@ -92,7 +92,7 @@
     DEFSHAPE 0 -1 -1
   >
   <TEMPOENVEX
-    EGUID {26B0FAFC-A355-4423-8091-E545B40B4CBE}
+    EGUID {0DE62F5F-13F9-4CB0-A3DB-02707B5DA408}
     ACT 1 -1
     VIS 1 0 1
     LANEHEIGHT 0 0
@@ -104,7 +104,7 @@
   RULERLANE 2 8 "" 0 -1 0
   <PROJBAY
   >
-  <TRACK {50CAB657-D5C9-4C39-AA9B-9C81262D4890}
+  <TRACK {6BFDDE26-B9DF-461D-9734-B010E4137422}
     NAME Vocal
     PEAKCOL 24686676
     BEAT -1
@@ -126,7 +126,7 @@
     NCHAN 2
     TRACKIMGFN "mic.png"
     FX 1
-    TRACKID {50CAB657-D5C9-4C39-AA9B-9C81262D4890}
+    TRACKID {6BFDDE26-B9DF-461D-9734-B010E4137422}
     PERF 0
     MIDIOUT -1 -1
     MAINSEND 1 0
@@ -145,34 +145,20 @@
         AAAAAAAAAAAAAAAAAAAAAAAAgD8AAABAAAAAQAAAAAA=
       >
       MULTIFXLINK 0
-      FLOAT 40 80 366 612
-      FXID {2855A5B7-A54F-499E-8A27-EE187E2B94CF}
+      FLOAT 20 80 366 612
+      FXID {F9C56410-6415-4EF7-8EFA-ADA8B3F50089}
       WAK 1 0
       BYPASS 0 0 0
-      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
-        0 2000 4.7 5000 -0.2 0 1 1 1 1 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Vocal Presence"
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/Filter_ReaKit.jsfx" ""
+        80 20000 1 0 0 1 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Low cut 80 Hz"
       >
-      JS_DIMS 418 255
       <JS_SER
-        AACAPwAAgD8AAIA/AACAPwAAgD8AAABA
+        AACAPwAAgD8AAIA/AACAPwAAoEIAgDtGAACAPwAAAEAAAAAA
       >
       MULTIFXLINK 0
-      PRESETNAME "Vocal Presence"
-      FLOAT 430 80 434 294
-      FXID {258C2CAE-31B8-481B-812A-262D2DA821C9}
-      WAK 0 0
-      BYPASS 0 0 0
-      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
-        -24.9 3 25 0 600 20 0 0 4 0 10 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Vocal Smooth"
-      >
-      JS_DIMS 573 346
-      <JS_SER
-        AACAPwAAAEAAAAAA
-      >
-      MULTIFXLINK 0
-      PRESETNAME "Vocal Smooth"
-      FLOAT 888 80 589 385
-      FXID {EAE12E11-2E26-4E69-94E6-58B1D6002FFB}
+      PRESETNAME "Low cut 80 Hz"
+      FLOAT 390 80 505 470
+      FXID {6AC0B05B-A39A-422C-9496-7C887F3675CA}
       WAK 0 0
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/DeEsser_ReaKit.jsfx" ""
@@ -184,8 +170,8 @@
       >
       MULTIFXLINK 0
       PRESETNAME "Vocal Standard"
-      FLOAT 430 489 481 442
-      FXID {6CE6269D-6323-4414-9B48-9CF85EB42EDF}
+      FLOAT 983 80 481 442
+      FXID {73665B0F-6AB2-44BA-A3AA-FDCD662B0B5E}
       WAK 0 0
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/Saturation_ReaKit.jsfx" ""
@@ -197,12 +183,38 @@
       >
       MULTIFXLINK 0
       PRESETNAME "Vocal Edge"
-      FLOAT 1501 80 304 572
-      FXID {4E39F69E-8030-4B88-A570-DA2B084EAFF4}
+      FLOAT 1468 80 304 572
+      FXID {BEDE5EB3-895B-4759-A152-90DE6EC5BA67}
+      WAK 0 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx" ""
+        0 2000 4.7 5000 -0.2 0 1 1 1 1 0 0 0 1 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Vocal Presence"
+      >
+      JS_DIMS 418 255
+      <JS_SER
+        AACAPwAAgD8AAIA/AACAPwAAgD8AAABA
+      >
+      MULTIFXLINK 0
+      PRESETNAME "Vocal Presence"
+      FLOAT 1468 656 434 294
+      FXID {9A49EBCE-B6BE-49B6-9B3D-36DA72AC1128}
+      WAK 0 0
+      BYPASS 0 0 0
+      <JS "ReaKit FX/FX/Eon_JSFX/FX/DDC_ReaKit.jsfx" ""
+        -24.9 3 25 0 600 20 0 0 4 0 10 100 0 100 0 0 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Vocal Smooth"
+      >
+      JS_DIMS 573 346
+      <JS_SER
+        AACAPwAAAEAAAAAA
+      >
+      MULTIFXLINK 0
+      PRESETNAME "Vocal Smooth"
+      FLOAT 390 554 589 385
+      FXID {5276DF49-59ED-4F57-9053-C785870AA782}
       WAK 0 0
       BYPASS 0 0 0
       <JS "ReaKit FX/FX/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx" ""
-        85 1 0 0 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Slightly Narrow"
+        85 1 0 0 1 1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "Slightly Narrow"
       >
       JS_DIMS 291 391
       <JS_SER
@@ -210,8 +222,8 @@
       >
       MULTIFXLINK 0
       PRESETNAME "Slightly Narrow"
-      FLOAT 935 489 307 430
-      FXID {6A4621F1-E98A-47E2-9C38-E990188193C6}
+      FLOAT 983 526 307 430
+      FXID {D0EA0F7A-95E4-4503-A5FC-CE5280CB8D62}
       WAK 0 0
     >
   >
