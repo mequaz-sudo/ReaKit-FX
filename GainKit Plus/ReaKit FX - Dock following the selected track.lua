@@ -1605,8 +1605,7 @@ local function menu_open(sx, sy)
   -- kept on the screen: a dock at the bottom would hang the menu off it; then it opens above the bar instead
   if r.JS_Window_GetViewportFromRect then
     local vl, vt, vr, vb = r.JS_Window_GetViewportFromRect(sx, sy, sx + 1, sy + 1, true)   -- four numbers, no flag
-    local mh, mw = math.floor(345 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured, + the
-                                                                -- Icon colour row (2026-10-07, ~24)
+    local mh, mw = math.floor(320 * sc), math.floor(400 * sc)   -- the menu's size: 396 x 311 logical when measured
                                                                 -- (2026-10-06; the old 300 x 300 guess let it hang off
                                                                 -- a screen's right edge by ~100 px), physical here
     if vb and sy + mh > vb then sy = sy - bar_h() - mh end
@@ -1637,15 +1636,23 @@ end
 -- "No icon" clears. Without ReaImGui the menu row runs REAPER's own dialog
 -- (action 40899). A root icon of REAPER's folder is stored by bare name (REAPER writes the full path back); others
 -- by full path (one under REAPER's folder by its folder-relative name); the bar reads both. The window remembers its place and size (pick_rect). Test hooks: pick_req =
--- open | close | none | <name> | dir:<path> | cat:<key> | fav:<name> | group:<group>:<name> | newgroup:<name> |
--- all:0|1 | q:<text> | size:1..3 | side:0|1 | closeafter:0|1 | key:up|down|left|right|enter; published picker,
+-- open | close | none | <name> | dir:<path> | cat:<key> | fav:<name> | group:<group>:<name> | newgroup:<name> | newsub:<path>:<name> | rengroup:<path>:<name> | delgroup:<path> |
+-- all:0|1 | q:<text> | size:<px> (1..3 = the old S M L) | side:0|1 | closeafter:0|1 | key:up|down|left|right|enter; published picker,
 -- picker_cells, picker_cats, picker_sel (the highlighted icon's name).
 local PICK = { on = false, ctx = nil, font = nil, font_b = nil, list = {}, cat = "", q = "", img = {},
                x = 0, y = 0, w = 0, h = 0, first = false, cells_pub = nil, cats_pub = nil, dirs = {}, groups = {},
                gorder = {}, fav = {}, recent = {}, enter = false, rect = nil, ask = nil,
-               size = 2, side = false, close_after = false,            -- pick_size 1..3, pick_side, pick_close (saved)
+               size = 44, side = false, close_after = false,           -- pick_size (px), pick_side, pick_close (saved)
                sel = 1, sig = "", qact = false, key_req = nil, sel_pub = nil, lbl = {},    -- the keyboard highlight
                eon = {}, border = {} }                                     -- our set's shipped groups, the pills' order
+-- The icon size: a slider, 28..96 px (logical) in steps of 2 (the user, 2026-10-07: "make size in the track icons a
+-- slider"); the names show under the icons from 64 up. A size saved by the S / M / L buttons (1..3) is read as 34 / 44 /
+-- 72, as they were.
+function PICK.norm_size(v)
+  v = tonumber(v) or 44
+  if v >= 1 and v <= 3 and v == math.floor(v) then v = ({ 34, 44, 72 })[v] end
+  return math.max(28, math.min(96, math.floor(v / 2 + 0.5) * 2))
+end
 local function pick_norm(pth) return (pth:gsub("[\\]", "/")) end
 local ICON_ROOT = pick_norm(r.GetResourcePath() .. "/Data/track_icons")
 local GROUPS_FILE = pick_norm(r.GetResourcePath() .. "/Data/ReaKit_FX_icon_groups.txt")
@@ -1677,7 +1684,7 @@ function TINT.resolve(orig)                                       -- the own nam
 end
 -- The paint colour: the track colour taken part of the way from the icons' own light grey (200), so a strong track
 -- colour (pure blue) can give a soft blue icon, not a saturated one (the user, 2026-10-07: "the recolor ... is pretty
--- strong can we kinda turn it down" ... "make it a slider"). The gear's "Icon colour" slider = opt.tintk, 10..100 % in
+-- strong can we kinda turn it down" ... "make it a slider"). The icon picker's Colour slider = opt.tintk, 10..100 % in
 -- steps of 5; 50 % (halfway) to start, 100 % = the track colour itself (the look before). The copy is NAMED by the
 -- colour it is painted in, so a change of strength makes new copies and never repaints an old one.
 TINT.grey = 200
@@ -1805,13 +1812,46 @@ local BUILTIN = {
   ["Folders"] = "folder folder_down folder_left folder_right folder_up",
 }
 
+-- SUB-GROUPS (the user, 2026-10-07: "do the path layout with no cap"). A group's name is a path, "Drums/Cymbals", as
+-- deep as anyone likes: our set's groups.txt ("[Drums/Cymbals]"), the user's own groups (same file form) and the
+-- folders (a subfolder is a sub-category). A group holds its own icons AND everything below it. The picker shows the
+-- top groups as before, and under them the path to where you are ("Drums › Cymbals ›", each step clickable) with one
+-- row for just that level; on the side, an indented tree that opens along the path. REAPER's own icons go into our
+-- sub-groups by this list (PICK.bsub: path, names; the top group's BUILTIN line still holds them all). Kept on PICK:
+-- the main chunk sits at Lua's 200-local limit.
+PICK.bsub = {
+  { "Drums/Kick", "kick" }, { "Drums/Snare", "snare_bottom snare_top" }, { "Drums/Toms", "tom" },
+  { "Drums/Hi-hats", "hihat" }, { "Drums/Cymbals", "cymbal_large cymbal_small ride_bell ride_rim" },
+  { "Drums/Overheads and kit", "drums overheads" },
+  { "Guitars/Acoustic", "ac_guitar ac_guitar_full" }, { "Guitars/Electric", "guitar guitar2 guitar3 guitar4 guitar5 guitar_full" },
+  { "Guitars/Folk", "balalaika banjo" },
+  { "Bass/Electric", "bass bass2 bass3 bass4 bass_full" }, { "Bass/Upright", "double_bass" },
+  { "Keys/Piano", "piano" }, { "Keys/Organ", "organ" },
+  { "Mics/Dynamic", "mic_dynamic_1 mic_dynamic_2 mic" }, { "Mics/Condenser", "mic_condenser_1 mic_condenser_2 mic_shotgun" },
+  { "FX/Reverb", "reverb" },
+  { "Buses/Instrument buses", "group" }, { "Buses/Master", "mixer system" },   -- the same names as our groups.txt
+}
+function PICK.parent(path) return path:match("^(.*)/[^/]*$") end   -- nil at the top
+function PICK.leaf(path) return path:match("([^/]*)$") end
+function PICK.under(path, top) return path == top or path:sub(1, #top + 1) == top .. "/" end   -- top or below it
+PICK.bdeep_c = {}
+function PICK.bdeep(path)                                         -- REAPER's own icons in a built-in group and below it
+  local c = PICK.bdeep_c[path]
+  if c then return c end
+  c = {}
+  if not PICK.parent(path) then for w in (BUILTIN[path] or ""):gmatch("%S+") do c[w] = true end end
+  for _, s in ipairs(PICK.bsub) do
+    if PICK.under(s[1], path) then for w in s[2]:gmatch("%S+") do c[w] = true end end
+  end
+  PICK.bdeep_c[path] = c
+  return c
+end
 local function pick_split(sv) local t = {}; for v in (sv or ""):gmatch("[^|]+") do t[#t + 1] = v end; return t end
 local function pick_load_state()
   PICK.dirs = pick_split(r.GetExtState(EXT, "pick_dirs"))
   PICK.fav = {}; for _, k in ipairs(pick_split(r.GetExtState(EXT, "pick_fav"))) do PICK.fav[k] = true end
   PICK.recent = pick_split(r.GetExtState(EXT, "pick_recent"))
-  PICK.size = tonumber(r.GetExtState(EXT, "pick_size")) or 2
-  if PICK.size < 1 or PICK.size > 3 then PICK.size = 2 end
+  PICK.size = PICK.norm_size(r.GetExtState(EXT, "pick_size"))
   PICK.side = r.GetExtState(EXT, "pick_side") == "1"
   PICK.close_after = r.GetExtState(EXT, "pick_close") == "1"
   local rect = r.GetExtState(EXT, "pick_rect")
@@ -1822,17 +1862,33 @@ local function pick_load_state()
   -- the dock needs no update). Its icons join the built-in pill of the same name (Drums = REAPER's drums AND ours);
   -- a group REAPER's set lacks (Percussion, Amps, Meters...) becomes a new pill; the file's order is the pills'
   -- order, any built-in group it leaves out follows. No file (an older icons package): the built-in pills as before.
-  PICK.eon, PICK.border = {}, {}
+  -- A group may be a path ("[Drums/Cymbals]", sub-groups): PICK.eon holds each path's own icons, PICK.eon_order the
+  -- paths in the file's order, PICK.border the TOP groups in order of first sight, PICK.eon_deep a path's icons with
+  -- everything below it (what its pill shows).
+  PICK.eon, PICK.border, PICK.eon_order, PICK.eon_deep = {}, {}, {}, {}
+  local tops = {}
   local fh = io.open(ICON_ROOT .. "/EON/groups.txt", "r")
   if fh then
     local g
     for line in fh:lines() do
       line = line:gsub("[\r]$", ""):gsub("^%s+", ""):gsub("%s+$", "")
       local name = line:match("^%[(.+)%]$")
-      if name then g = name; if not PICK.eon[g] then PICK.eon[g] = {}; PICK.border[#PICK.border + 1] = g end
+      if name then
+        g = name:gsub("%s*/%s*", "/"):gsub("^/+", ""):gsub("/+$", "")
+        if not PICK.eon[g] then PICK.eon[g] = {}; PICK.eon_order[#PICK.eon_order + 1] = g end
+        local top = g:match("^[^/]*")
+        if not tops[top] then tops[top] = true; PICK.border[#PICK.border + 1] = top end
       elseif g and line ~= "" and not line:match("^#") then PICK.eon[g][line] = true end
     end
     fh:close()
+  end
+  for p, set in pairs(PICK.eon) do                                -- each path's icons count for it and every group above it
+    local a = p
+    while a do
+      local d = PICK.eon_deep[a] or {}; PICK.eon_deep[a] = d
+      for n in pairs(set) do d[n] = true end
+      a = PICK.parent(a)
+    end
   end
   local have = {}
   for _, g in ipairs(PICK.border) do have[g] = true end
@@ -1845,7 +1901,13 @@ local function pick_load_state()
     for line in fh:lines() do
       line = line:gsub("[\r]$", "")
       local name = line:match("^%[(.+)%]$")
-      if name then g = name; if not PICK.groups[g] then PICK.groups[g] = {}; PICK.gorder[#PICK.gorder + 1] = g end
+      if name then
+        g = name:gsub("%s*/%s*", "/"):gsub("^/+", ""):gsub("/+$", "")
+        local chain, a = {}, g                                    -- a sub-group's parents exist as groups too
+        while a do table.insert(chain, 1, a); a = PICK.parent(a) end
+        for _, p in ipairs(chain) do
+          if not PICK.groups[p] then PICK.groups[p] = {}; PICK.gorder[#PICK.gorder + 1] = p end
+        end
       elseif g and line ~= "" then PICK.groups[g][line] = true end
     end
     fh:close()
@@ -1864,9 +1926,56 @@ local function pick_save_groups()
   end
   fh:close()
 end
-local function pick_group_name(nm)                                -- a group's name as the file can hold it
-  nm = (nm or ""):gsub("[%[%]\r\n|]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+local function pick_group_name(nm)                                -- a group's name as the file can hold it ("/" is the
+  nm = (nm or ""):gsub("[%[%]\r\n|/]", ""):gsub("^%s+", ""):gsub("%s+$", "")   -- sub-group mark, so not in one name)
   return nm
+end
+-- The user's groups, edited (the picker's menus and the tests' hooks): a new group (par nil = at the top) or a
+-- sub-group; a rename (the last step of the path, its sub-groups follow); a delete (its icons go to the group above
+-- it, its sub-groups move up a step; a top group's icons simply leave). Each returns the path to show, or nil.
+function PICK.g_new(par, name, icon)
+  name = pick_group_name(name)
+  if name == "" or (par and not PICK.groups[par]) then return nil end
+  local p = par and (par .. "/" .. name) or name
+  if PICK.groups[p] then return nil end
+  PICK.groups[p] = icon and { [icon] = true } or {}
+  PICK.gorder[#PICK.gorder + 1] = p
+  pick_save_groups()
+  return p
+end
+function PICK.g_rename(p, nn)
+  nn = pick_group_name(nn)
+  local par = PICK.parent(p)
+  local np = par and (par .. "/" .. nn) or nn
+  if nn == "" or np == p or PICK.groups[np] or not PICK.groups[p] then return nil end
+  local moved = {}
+  for j, g in ipairs(PICK.gorder) do
+    if PICK.under(g, p) then
+      local ng = np .. g:sub(#p + 1)
+      moved[ng] = PICK.groups[g]; PICK.groups[g] = nil; PICK.gorder[j] = ng
+    end
+  end
+  for g, set in pairs(moved) do PICK.groups[g] = set end
+  pick_save_groups()
+  return np
+end
+function PICK.g_delete(p)
+  if not PICK.groups[p] then return nil end
+  local par = PICK.parent(p)
+  if par then for k in pairs(PICK.groups[p]) do PICK.groups[par][k] = true end end
+  local order = {}
+  for _, g in ipairs(PICK.gorder) do
+    if g == p then PICK.groups[g] = nil
+    elseif PICK.under(g, p) then                                  -- a sub-group one step up (merged into one there already)
+      local ng = (par and (par .. "/") or "") .. g:sub(#p + 2)
+      local set = PICK.groups[g]; PICK.groups[g] = nil
+      if PICK.groups[ng] then for k in pairs(set) do PICK.groups[ng][k] = true end
+      else PICK.groups[ng] = set; order[#order + 1] = ng end
+    else order[#order + 1] = g end
+  end
+  PICK.gorder = order
+  pick_save_groups()
+  return par
 end
 local function pick_save_fav()
   local t = {}; for k in pairs(PICK.fav) do t[#t + 1] = k end; table.sort(t)
@@ -1874,12 +1983,12 @@ local function pick_save_fav()
 end
 local function pick_key(e) return e.src == 1 and e.store or e.full end  -- how an icon is named in groups and favourites (a root
                                                                   -- icon by its bare name as before; "EON/kick.png" apart from "kick.png")
-local function pick_dir_label(i)                                  -- the folder's name; parent/name when two end the same
-  local d = pick_norm(PICK.dirs[i]):gsub("/+$", "")
+local function pick_dir_label(i)                                  -- the folder's name; "parent · name" when two end the same
+  local d = pick_norm(PICK.dirs[i]):gsub("/+$", "")                -- (not "/": that is the sub-category mark now)
   local last = d:match("([^/]+)$") or d
   for j, o in ipairs(PICK.dirs) do
     if j ~= i and (pick_norm(o):gsub("/+$", ""):match("([^/]+)$") or o) == last then
-      return (d:match("([^/]+)/[^/]+$") or "") .. "/" .. last
+      return (d:match("([^/]+)/[^/]+$") or "") .. " \u{00B7} " .. last
     end
   end
   return last
@@ -1921,19 +2030,37 @@ local function picker_scan()
   table.sort(list, function(a, b) return a.name:lower() < b.name:lower() end)
   PICK.list = list
 end
-local function pick_cats()                                      -- the pills, in order: { key, label }
+-- The categories as a tree: returns the TOP row { key, label } in order and sets PICK.kids[key] = the level under a
+-- key, { key, label (its last step) }, in order: ours and REAPER's groups (the shipped file's order, then REAPER's own
+-- sub-groups), the user's groups (their file's order), the folders (by name; a subfolder under its folder).
+local function pick_cats()
   local t = { { "", "All" } }
   if next(PICK.fav) then t[#t + 1] = { "*fav", "Favourites" } end
   if #PICK.recent > 0 then t[#t + 1] = { "*recent", "Recent" } end
-  for _, g in ipairs(#PICK.border > 0 and PICK.border or BUILTIN_ORDER) do t[#t + 1] = { "b:" .. g, g } end
-  for _, g in ipairs(PICK.gorder) do t[#t + 1] = { "g:" .. g, g } end
-  local seen, folders = {}, {}
-  for _, e in ipairs(PICK.list) do if e.cat ~= "" and not seen[e.cat] then seen[e.cat] = true; folders[#folders + 1] = e.cat end end
+  local kids, seen = {}, {}
+  local function add(kind, path)                                 -- the path and every group above it, first seen first
+    local key = kind .. ":" .. path
+    if seen[key] then return key end
+    seen[key] = true
+    local par = PICK.parent(path)
+    if par then
+      local pk = add(kind, par)
+      kids[pk] = kids[pk] or {}; kids[pk][#kids[pk] + 1] = { key, PICK.leaf(path) }
+    else t[#t + 1] = { key, path } end
+    return key
+  end
+  for _, g in ipairs(#PICK.border > 0 and PICK.border or BUILTIN_ORDER) do add("b", g) end
+  for _, p in ipairs(PICK.eon_order or {}) do add("b", p) end
+  for _, s in ipairs(PICK.bsub) do add("b", s[1]) end
+  for _, g in ipairs(PICK.gorder) do add("g", g) end
+  local fseen, folders = {}, {}
+  for _, e in ipairs(PICK.list) do if e.cat ~= "" and not fseen[e.cat] then fseen[e.cat] = true; folders[#folders + 1] = e.cat end end
   table.sort(folders, function(a, b) return a:lower() < b:lower() end)
-  for _, c in ipairs(folders) do t[#t + 1] = { "f:" .. c, c } end
+  for _, c in ipairs(folders) do add("f", c) end
+  PICK.kids = kids
   return t
 end
-local function pick_in_cat(e, key)
+local function pick_in_cat(e, key)                                -- a group shows its own icons and all below it
   if key == "" then return true end
   local k = pick_key(e)
   if key == "*fav" then return PICK.fav[k] == true end
@@ -1941,10 +2068,12 @@ local function pick_in_cat(e, key)
   local kind, name = key:match("^(%a):(.*)$")
   if kind == "b" then
     if e.src ~= 1 then return false end
-    if e.cat == "" then return (" " .. (BUILTIN[name] or "") .. " "):find(" " .. e.name .. " ", 1, true) ~= nil end
-    return e.cat == "EON" and PICK.eon[name] ~= nil and PICK.eon[name][e.name] == true   -- ours, by the shipped groups
-  elseif kind == "g" then return PICK.groups[name] and PICK.groups[name][k] == true
-  elseif kind == "f" then return e.cat == name end
+    if e.cat == "" then return PICK.bdeep(name)[e.name] == true end                    -- REAPER's own
+    return e.cat == "EON" and PICK.eon_deep[name] ~= nil and PICK.eon_deep[name][e.name] == true   -- ours, by the shipped groups
+  elseif kind == "g" then
+    for _, g in ipairs(PICK.gorder) do if PICK.under(g, name) and PICK.groups[g][k] then return true end end
+    return false
+  elseif kind == "f" then return PICK.under(e.cat, name) end
   return false
 end
 local function pick_targets()                                     -- the shown track, or every selected one
@@ -2051,7 +2180,7 @@ local function picker_frame()
   local tr = shown_track()
   local has, cr, cg, cb = track_color(tr)
   local hue = has and mp_rgba(cr, cg, cb) or MP.accent
-  local CELL = ({ 34, 44, 72 })[PICK.size]                          -- S / M / L, logical (ReaImGui scales with the fonts)
+  local CELL = PICK.size                                           -- logical px (ReaImGui scales with the fonts)
   if PICK.first or PICK.again then ImGui.SetNextWindowPos(ctx, PICK.x, PICK.y); ImGui.SetNextWindowSize(ctx, PICK.w, PICK.h); PICK.again = false end
   ImGui.SetNextWindowSizeConstraints(ctx, math.max(CELL * 4 + 30, 330), CELL * 3 + 140, 4000, 4000)
   ImGui.PushStyleColor(ctx, ImGui.Col_WindowBg, MP.bg)
@@ -2150,19 +2279,42 @@ local function picker_frame()
     ImGui.SameLine(ctx, 0, 14)
     chg, v = ImGui.Checkbox(ctx, "Close after a pick", PICK.close_after)
     if chg then PICK.close_after = v; r.SetExtState(EXT, "pick_close", v and "1" or "0", true) end
-    ImGui.AlignTextToFramePadding(ctx)
-    ImGui.TextColored(ctx, MP.muted, "Size")
-    for i, lb in ipairs({ "S", "M", "L" }) do
-      ImGui.SameLine(ctx, 0, i == 1 and 6 or 3)
-      local on = PICK.size == i
-      ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
-      ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or MP.text)
-      if ImGui.SmallButton(ctx, lb .. "##sz" .. i) and not on then PICK.size = i; PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(i), true) end
-      ImGui.PopStyleColor(ctx, 2)
-    end
-    ImGui.SameLine(ctx, 0, 14)
+    local need = ImGui.CalcTextSize(ctx, "Categories on the side") + ImGui.GetFrameHeight(ctx) + 8
+    if wx + ww - 10 - select(1, ImGui.GetItemRectMax(ctx)) - 14 >= need then ImGui.SameLine(ctx, 0, 14) end   -- else its own line
     chg, v = ImGui.Checkbox(ctx, "Categories on the side", PICK.side)
     if chg then PICK.side = v; r.SetExtState(EXT, "pick_side", v and "1" or "0", true) end
+    -- two sliders: the icon size (PICK.norm_size) and how strongly a coloured track's colour paints its icon (the
+    -- gear's "Icons follow the track colour"; TINT.pct; moved here from the gear menu, the user 2026-10-07: "track icon
+    -- slider should be in the track icon menu"). The colour repaints the tracks once, when its drag ends.
+    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgHovered, 0x34465AFF)
+    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgActive, 0x34465AFF)
+    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrab, hue)
+    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrabActive, hue)
+    ImGui.PushStyleVar(ctx, ImGui.StyleVar_GrabRounding, 4)
+    local sw = math.max(80, math.floor((ImGui.GetContentRegionAvail(ctx) - 110) / 2))
+    ImGui.AlignTextToFramePadding(ctx)
+    ImGui.TextColored(ctx, MP.muted, "Size"); ImGui.SameLine(ctx, 0, 6)
+    ImGui.SetNextItemWidth(ctx, sw)
+    local sch, sv = ImGui.SliderInt(ctx, "##pick_size", PICK.size, 28, 96, "%d px")
+    if sch then
+      sv = PICK.norm_size(sv)
+      if sv ~= PICK.size then PICK.size = sv; PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(sv), true) end
+    end
+    ImGui.SameLine(ctx, 0, 14)
+    ImGui.TextColored(ctx, MP.muted, "Colour"); ImGui.SameLine(ctx, 0, 6)
+    ImGui.SetNextItemWidth(ctx, sw)
+    local tk = TINT.pct()
+    local tch, tv = ImGui.SliderInt(ctx, "##tintk", tk, 10, 100, "%d %%")
+    if tch then
+      tv = math.max(10, math.min(100, math.floor(tv / 5 + 0.5) * 5))
+      if tv ~= tk then opt_set("tintk", tostring(tv)) end
+    end
+    if ImGui.IsItemHovered(ctx) then
+      ImGui.SetTooltip(ctx, "How strongly a coloured track paints its icon" .. (opt.tint == "1" and "" or " (the gear: Icons follow the track colour)"))
+    end
+    if ImGui.IsItemDeactivatedAfterEdit(ctx) and opt.tint == "1" then TINT.pass(true) end
+    ImGui.PopStyleVar(ctx, 1)
+    ImGui.PopStyleColor(ctx, 4)
     -- the categories: pills that wrap, or a list on the side; the same right-click menus either way
     local cats = pick_cats()
     local cats_s = {}
@@ -2171,17 +2323,17 @@ local function picker_frame()
       local px1, py1 = ImGui.GetItemRectMax(ctx)
       cats_s[#cats_s + 1] = string.format("%s=%s:%d,%d,%d,%d", key, label, math.floor(px0), math.floor(py0), math.floor(px1 - px0), math.floor(py1 - py0))
     end
-    local function cat_menu(i, key, on)
-      local kind, name = key:match("^(%a):(.*)$")
-      if kind == "g" and ImGui.BeginPopupContextItem(ctx, "##gp" .. i) then
+    local function cat_menu(_, key, on)                           -- the popups' ids by KEY: a row that reshapes under an
+      local kind, name = key:match("^(%a):(.*)$")                 -- open menu must not hand it to a neighbour
+      if kind == "g" and ImGui.BeginPopupContextItem(ctx, "##gp" .. key) then
+        if ImGui.MenuItem(ctx, "New sub-group...") then PICK.ask = { "newsub", name } end
         if ImGui.MenuItem(ctx, "Rename the group...") then PICK.ask = { "rename", name } end
         if ImGui.MenuItem(ctx, "Delete the group") then
-          PICK.groups[name] = nil
-          for j, g in ipairs(PICK.gorder) do if g == name then table.remove(PICK.gorder, j); break end end
-          pick_save_groups(); if on then PICK.cat = "" end
+          local up = PICK.g_delete(name)                          -- its icons go up a step, its sub-groups too
+          if PICK.under(PICK.cat:sub(3), name) and PICK.cat:sub(1, 2) == "g:" then PICK.cat = up and ("g:" .. up) or "" end
         end
         ImGui.EndPopup(ctx)
-      elseif kind == "f" and not name:find("/", 1, true) and ImGui.BeginPopupContextItem(ctx, "##fp" .. i) then
+      elseif kind == "f" and not name:find("/", 1, true) and ImGui.BeginPopupContextItem(ctx, "##fp" .. key) then
         local is_dir = false
         for j = 1, #PICK.dirs do if pick_dir_label(j) == name then is_dir = true end end
         if is_dir and ImGui.MenuItem(ctx, "Remove this folder from the picker") then pick_remove_dir(name) end
@@ -2189,33 +2341,70 @@ local function picker_frame()
         ImGui.EndPopup(ctx)
       end
     end
+    -- where the shown category sits: "on" for it and every group above it; a click on the one shown goes up a step
+    -- (from the top: back to All), a click on another shows it
+    local function in_path(key) return PICK.cat == key or (key ~= "" and PICK.cat:sub(1, #key + 1) == key .. "/") end
+    local function pick_cat(key)
+      if PICK.cat == key then
+        local kind, path = key:match("^(%a):(.*)$")
+        local up = path and PICK.parent(path)
+        PICK.cat = up and (kind .. ":" .. up) or ""
+      else PICK.cat = key end
+    end
+    local ci = 0
     if PICK.side then
       if ImGui.BeginChild(ctx, "##side", 150, 0, ImGui.ChildFlags_None, ImGui.WindowFlags_None) then
-        for i, c in ipairs(cats) do
-          local key, label = c[1], c[2]
-          local on = PICK.cat == key
-          ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and hue or (key:sub(1, 1) == "*" and MP.accent or MP.text))
-          if ImGui.Selectable(ctx, label .. "##cat" .. i, on) then PICK.cat = on and "" or key end
-          ImGui.PopStyleColor(ctx)
-          cat_rect(key, label); cat_menu(i, key, on)
+        local function tree(list, depth)                         -- an indented tree, open along the path shown
+          for _, c in ipairs(list) do
+            local key, label = c[1], c[2]
+            ci = ci + 1
+            local on, kids = in_path(key), PICK.kids[key]
+            ImGui.PushStyleColor(ctx, ImGui.Col_Text, PICK.cat == key and hue or (on and MP.text or (key:sub(1, 1) == "*" and MP.accent or MP.text)))
+            if ImGui.Selectable(ctx, string.rep("   ", depth) .. label .. ((kids and not on) and "  \u{203A}" or "") .. "##cat" .. key, PICK.cat == key) then pick_cat(key) end
+            ImGui.PopStyleColor(ctx)
+            cat_rect(key, label); cat_menu(ci, key, on)
+            if kids and on then tree(kids, depth + 1) end
+          end
         end
+        tree(cats, 0)
         ImGui.EndChild(ctx)
       end
       ImGui.SameLine(ctx)
     else
+      -- the pills wrap; the first row holds the top groups, the second (when the group shown has any below it) the
+      -- path to the level listed ("Drums › Cymbals ›", each step a click back to it) and that level's groups
       local avail = ImGui.GetContentRegionAvail(ctx)
-      local lx = 0
-      for i, c in ipairs(cats) do
-        local key, label = c[1], c[2]
+      local lx, first = 0, true
+      local function pill(key, label, on, crumb)
+        ci = ci + 1
         local tw = ImGui.CalcTextSize(ctx, label) + 12
-        if i > 1 and lx + tw > avail then lx = 0 else if i > 1 then ImGui.SameLine(ctx, 0, 4) end end
+        if not first and lx + tw > avail then lx = 0 elseif not first then ImGui.SameLine(ctx, 0, 4) end
+        first = false
         lx = lx + tw + 4
-        local on = PICK.cat == key
-        ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
-        ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or (key:sub(1, 1) == "*" and MP.accent or MP.text))
-        if ImGui.SmallButton(ctx, label .. "##cat" .. i) then PICK.cat = on and "" or key end
+        if crumb then                                            -- a step of the path: plain text, no pill
+          ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0x00000000)
+          ImGui.PushStyleColor(ctx, ImGui.Col_Text, MP.muted)
+        else
+          ImGui.PushStyleColor(ctx, ImGui.Col_Button, on and hue or 0x283644FF)
+          ImGui.PushStyleColor(ctx, ImGui.Col_Text, on and 0x14191EFF or (key:sub(1, 1) == "*" and MP.accent or MP.text))
+        end
+        local hit = ImGui.SmallButton(ctx, label .. "##cat" .. (crumb and "crumb" or "") .. key)
         ImGui.PopStyleColor(ctx, 2)
-        cat_rect(key, label); cat_menu(i, key, on)
+        if hit then if crumb then PICK.cat = key else pick_cat(key) end end
+        cat_rect(key, label); cat_menu(ci, key, on)
+      end
+      for _, c in ipairs(cats) do pill(c[1], c[2], in_path(c[1])) end
+      local kind, path = PICK.cat:match("^(%a):(.*)$")
+      if kind then
+        local lkey = PICK.kids[PICK.cat] and PICK.cat or (PICK.parent(path) and (kind .. ":" .. PICK.parent(path)))
+        if lkey and PICK.kids[lkey] then                         -- the level to list: the one shown, or the one above it
+          first, lx = true, 0
+          ImGui.Dummy(ctx, 0, 2)                                 -- a little air: two levels, not one long row
+          local steps, a = {}, lkey:sub(3)
+          while a do table.insert(steps, 1, a); a = PICK.parent(a) end
+          for _, st in ipairs(steps) do pill(kind .. ":" .. st, PICK.leaf(st) .. " \u{203A}", false, true) end
+          for _, c in ipairs(PICK.kids[lkey]) do pill(c[1], c[2], in_path(c[1])) end
+        end
       end
     end
     local cp = table.concat(cats_s, ";")
@@ -2230,7 +2419,7 @@ local function picker_frame()
     -- (Up / Down always, Left / Right when the search box is not typing) and Enter picks; with the colour follow
     -- on, every icon is drawn in the shown track's colour (a multiply: REAPER's dark icons come out darker than
     -- the real paint, which scales them up)
-    local LBL = PICK.size == 3 and 14 or 0
+    local LBL = PICK.size >= 64 and 14 or 0
     local CH = CELL + LBL
     local tintc = 0xFFFFFFFF
     if opt.tint == "1" and has then                               -- the same soft colour as the paint (TINT.soft, 0..255)
@@ -2310,12 +2499,26 @@ local function picker_frame()
           if ImGui.MenuItem(ctx, PICK.fav[k] and "Unfavourite" or "Favourite") then
             if PICK.fav[k] then PICK.fav[k] = nil else PICK.fav[k] = true end; pick_save_fav()
           end
-          for _, g in ipairs(PICK.gorder) do
-            local inn = PICK.groups[g][k] == true
-            if ImGui.MenuItem(ctx, (inn and "Remove from " or "Add to ") .. g) then
-              if inn then PICK.groups[g][k] = nil else PICK.groups[g][k] = true end; pick_save_groups()
+          local function grp_items(par)                         -- the user's groups at one level; one with groups
+            for _, g in ipairs(PICK.gorder) do                 -- under it opens a menu of its own
+              if PICK.parent(g) == par then
+                local inn, lbl, sub = PICK.groups[g][k] == true, PICK.leaf(g), false
+                for _, o in ipairs(PICK.gorder) do if PICK.parent(o) == g then sub = true; break end end
+                local function toggle()
+                  if inn then PICK.groups[g][k] = nil else PICK.groups[g][k] = true end; pick_save_groups()
+                end
+                if sub then
+                  if ImGui.BeginMenu(ctx, lbl .. "##gm_" .. g) then
+                    if ImGui.MenuItem(ctx, (inn and "Remove from " or "Add to ") .. lbl) then toggle() end
+                    ImGui.Separator(ctx)
+                    grp_items(g)
+                    ImGui.EndMenu(ctx)
+                  end
+                elseif ImGui.MenuItem(ctx, (inn and "Remove from " or "Add to ") .. lbl .. "##gi_" .. g) then toggle() end
+              end
             end
           end
+          grp_items(nil)
           if ImGui.MenuItem(ctx, "New group with this icon...") then PICK.ask = { "newgroup", k } end
           ImGui.EndPopup(ctx)
         end
@@ -2348,20 +2551,17 @@ local function picker_frame()
     if ok == 1 and d and d ~= "" then pick_add_dir(d) end
   elseif ask and ask[1] == "newgroup" then
     local ok, name = r.GetUserInputs("New icon group", 1, "Name", "")
-    name = pick_group_name(name)
-    if ok and name ~= "" and not PICK.groups[name] then
-      PICK.groups[name] = ask[2] and { [ask[2]] = true } or {}
-      PICK.gorder[#PICK.gorder + 1] = name; pick_save_groups(); PICK.cat = "g:" .. name
-    end
+    local p = ok and PICK.g_new(nil, name, ask[2])
+    if p then PICK.cat = "g:" .. p end
+  elseif ask and ask[1] == "newsub" then                         -- a group inside the one right-clicked
+    local ok, name = r.GetUserInputs("New sub-group in " .. PICK.leaf(ask[2]), 1, "Name", "")
+    local p = ok and PICK.g_new(ask[2], name)
+    if p then PICK.cat = "g:" .. p end
   elseif ask and ask[1] == "rename" then
     local name = ask[2]
-    local ok, nn = r.GetUserInputs("Rename the group", 1, "Name", name)
-    nn = pick_group_name(nn)
-    if ok and nn ~= "" and nn ~= name and not PICK.groups[nn] and PICK.groups[name] then
-      PICK.groups[nn] = PICK.groups[name]; PICK.groups[name] = nil
-      for j, g in ipairs(PICK.gorder) do if g == name then PICK.gorder[j] = nn end end
-      pick_save_groups(); if PICK.cat == "g:" .. name then PICK.cat = "g:" .. nn end
-    end
+    local ok, nn = r.GetUserInputs("Rename the group", 1, "Name", PICK.leaf(name))
+    local np = ok and PICK.g_rename(name, nn)
+    if np and PICK.cat:sub(1, 2) == "g:" and PICK.under(PICK.cat:sub(3), name) then PICK.cat = "g:" .. np .. PICK.cat:sub(3 + #name) end
   end
 end
 -- One frame of the open menu (every tick while it is open). Three groups, each in its own hue (the user,
@@ -2506,29 +2706,7 @@ local function menu_frame()
     if pill("##col_stripe", "Stripe", opt.color == "stripe", 76, prev_stripe) then opt_set("color", "stripe"); picked = true end
     ImGui.SameLine(ctx, 0, 4)
     if pill("##col_band", "Band", opt.color == "band", 68, prev_band) then opt_set("color", "band"); picked = true end
-    ImGui.Dummy(ctx, 0, 1)
-    ImGui.AlignTextToFramePadding(ctx)                       -- how strongly the track colour paints the icons (TINT.soft)
-    ImGui.TextColored(ctx, MP.muted, "    Icon colour"); ImGui.SameLine(ctx, 0, 21)
-    ImGui.SetNextItemWidth(ctx, 176)                         -- 10..100 % of the track colour, in steps of 5 (each
-    local tk = TINT.pct()                                    -- value is its own set of painted copies)
-    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBg, 0x283644FF)         -- the pills' colours, not ImGui's blue
-    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgHovered, 0x34465AFF)
-    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBgActive, 0x34465AFF)
-    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrab, hue_t)
-    ImGui.PushStyleColor(ctx, ImGui.Col_SliderGrabActive, hue_t)
-    ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameRounding, 9)
-    ImGui.PushStyleVar(ctx, ImGui.StyleVar_GrabRounding, 7)
-    local ch, nv = ImGui.SliderInt(ctx, "##tintk", tk, 10, 100, "%d %%")
-    ImGui.PopStyleVar(ctx, 2)
-    ImGui.PopStyleColor(ctx, 5)
-    if ch then
-      nv = math.max(10, math.min(100, math.floor(nv / 5 + 0.5) * 5))
-      if nv ~= tk then opt_set("tintk", tostring(nv)) end
-    end
-    local sx0, sy0 = ImGui.GetItemRectMin(ctx)               -- published for tests, as the rows and pills
-    rows_pub[#rows_pub + 1] = string.format("tintk:%d,%d,176,%d", math.floor(sx0), math.floor(sy0), math.floor(lh + 4))
-    -- repainted once, when the drag ends (a repaint per step would paint every icon at every value on the way)
-    if ImGui.IsItemDeactivatedAfterEdit(ctx) and opt.tint == "1" then TINT.pass(true) end
+    -- (the icon colour's strength slider lives in the track icon picker: PICK's Colour slider)
     ImGui.Dummy(ctx, 0, 2)
     ImGui.Separator(ctx)
     ImGui.Dummy(ctx, 0, 1)
@@ -3151,7 +3329,7 @@ local function loop()
     elseif req:sub(1, 4) == "dir:" then if #PICK.list == 0 then pick_load_state() end; pick_add_dir(req:sub(5))
     elseif req:sub(1, 4) == "cat:" then PICK.cat = req:sub(5)
     elseif req:sub(1, 2) == "q:" then PICK.q = req:sub(3)
-    elseif req:sub(1, 5) == "size:" then PICK.size = math.max(1, math.min(3, tonumber(req:sub(6)) or 2)); PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(PICK.size), true)
+    elseif req:sub(1, 5) == "size:" then PICK.size = PICK.norm_size(req:sub(6)); PICK.lbl = {}; r.SetExtState(EXT, "pick_size", tostring(PICK.size), true)
     elseif req:sub(1, 5) == "side:" then PICK.side = req:sub(6) == "1"; r.SetExtState(EXT, "pick_side", req:sub(6), true)
     elseif req:sub(1, 11) == "closeafter:" then PICK.close_after = req:sub(12) == "1"; r.SetExtState(EXT, "pick_close", req:sub(12), true)
     elseif req:sub(1, 4) == "key:" then PICK.key_req = req:sub(5)
@@ -3161,7 +3339,16 @@ local function loop()
       for _, e in ipairs(PICK.list) do if e.name == req:sub(5) then local k = pick_key(e); if PICK.fav[k] then PICK.fav[k] = nil else PICK.fav[k] = true end; pick_save_fav(); break end end
     elseif req:sub(1, 9) == "newgroup:" then
       if #PICK.list == 0 then pick_load_state(); picker_scan() end
-      local g = pick_group_name(req:sub(10)); if g ~= "" and not PICK.groups[g] then PICK.groups[g] = {}; PICK.gorder[#PICK.gorder + 1] = g; pick_save_groups() end
+      PICK.g_new(nil, req:sub(10))
+    elseif req:sub(1, 7) == "newsub:" then                          -- newsub:<parent path>:<name>
+      if #PICK.list == 0 then pick_load_state(); picker_scan() end
+      local par, nm = req:match("^newsub:(.+):([^:]+)$"); if par then PICK.g_new(par, nm) end
+    elseif req:sub(1, 9) == "rengroup:" then                        -- rengroup:<path>:<new last step>
+      if #PICK.list == 0 then pick_load_state(); picker_scan() end
+      local g, nn = req:match("^rengroup:(.+):([^:]+)$"); if g then PICK.g_rename(g, nn) end
+    elseif req:sub(1, 9) == "delgroup:" then                        -- delgroup:<path>
+      if #PICK.list == 0 then pick_load_state(); picker_scan() end
+      PICK.g_delete(req:sub(10))
     elseif req:sub(1, 6) == "group:" then
       if #PICK.list == 0 then pick_load_state(); picker_scan() end
       local g, nm = req:match("^group:([^:]+):(.+)$")

@@ -1,72 +1,108 @@
 # ReaKit FX track icons: the dock picker's groups (written by rkfx_icons_draw.py; do not edit by hand)
-[Drums]
+[Drums/Kick]
 kick
+
+[Drums/Snare]
 snare
+rimshot
+sidestick
+
+[Drums/Toms]
 tom
 rack_tom
 floor_tom
 timbale
-rimshot
-sidestick
-drum_kit
-overheads
-overheads_l
-overheads_r
+
+[Drums/Hi-hats]
+hihat
+closed_hat
+open_hat
+
+[Drums/Cymbals]
 cymbal
 crash
 ride
 china
 splash
-hihat
-closed_hat
-open_hat
 
-[Percussion]
-woodblock
+[Drums/Overheads and kit]
+drum_kit
+overheads
+overheads_l
+overheads_r
+
+[Percussion/Hand drums]
 cajon
-agogo
 bongo
 conga
 djembe
-cabasa
-clap
-clave
-cowbell
-guiro
-maraca
+
+[Percussion/Shakers]
 shaker
-snap
+maraca
+cabasa
 tambourine
+
+[Percussion/Struck]
+cowbell
+agogo
+clave
+woodblock
 triangle
 vibraslap
-whistle
+
+[Percussion/Mallets]
 mallets
+
+[Percussion/Other]
+clap
+snap
+whistle
+guiro
 percussion
 
-[Guitars]
+[Guitars/Acoustic]
 guitar
+
+[Guitars/Electric]
 electric_guitar
 
-[Bass]
+[Bass/Electric]
 bass
+
+[Bass/Upright]
 upright_bass
 
-[Amps]
+[Amps/Guitar amps]
 amp_guitar
+
+[Amps/Bass amps]
 amp_bass
+
+[Amps/DI]
 di_box
 
-[Keys]
-keys
+[Keys/Piano]
 piano
+
+[Keys/Electric piano]
 electric_piano
+
+[Keys/Organ]
 organ
 
-[Synths]
-synth
+[Keys/Other]
+keys
+
+[Synths/Lead]
 synth_lead
+
+[Synths/Pad]
 synth_pad
 pad
+
+[Synths/Poly and digital]
+synth
 
 [Machines]
 sampler
@@ -96,9 +132,13 @@ lead_vocal
 backing_vocals
 choir
 
-[Mics]
-mic_condenser
+[Mics/Dynamic]
 mic_dynamic
+
+[Mics/Condenser]
+mic_condenser
+
+[Mics/Pairs and overheads]
 overheads
 overheads_l
 overheads_r
@@ -106,17 +146,25 @@ overheads_r
 [Headphones]
 headphones
 
-[FX]
-fx
+[FX/Reverb]
 reverb
+
+[FX/Delay]
 delay
+
+[FX/Dynamics]
 compressor
 limiter
 gate
+de_esser
+
+[FX/Tone]
 eq
 filter
 saturation
-de_esser
+
+[FX/Other]
+fx
 chorus
 pitch
 stereo_width
@@ -124,16 +172,20 @@ stereo_width
 [Meters]
 meter_vu
 
-[Buses]
+[Buses/Instrument buses]
 audio_bus
 midi_bus
 drum_bus
 vocal_bus
 music_bus
+
+[Buses/FX buses]
 fx_bus
 fx_return
 parallel_comp
 sidechain
+
+[Buses/Master]
 master
 
 [Rooms]

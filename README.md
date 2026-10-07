@@ -265,16 +265,22 @@ colour, close this track's or every track's windows, pin.
   effect types, a turntable and drum machines, marks and more), drawn in REAPER's icon grey with a
   dark outline that holds on light themes, in a folder of their own, the EON category; they also
   join REAPER's icons in the groups (Drums holds both), and add groups of their own (Percussion,
-  Amps, Machines...). **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
-  category. **+ Group** makes a group of your own; right-click an icon to put it in a group or mark
+  Amps, Machines...). Groups have groups inside them: click Drums and a second row shows the way
+  you came (Drums ›) and its parts, Kick, Snare, Toms, Hi-hats, Cymbals, Overheads and kit; click
+  one to narrow down, click a step of the way to go back up. However deep a group goes, it takes
+  that one row. **+ Folder** adds any folder of icons of your own, and each of its subfolders becomes a
+  category, a folder inside a folder a sub-category. **+ Group** makes a group of your own, and a
+  group's right-click menu adds a sub-group inside it, renames it or deletes it (its icons move up a
+  level); right-click an icon to put it in a group or mark
   it a favourite. Favourites and Recent get their own pills, or put every category in a list down
-  the side. Three icon sizes, with the names under the icons at the largest; the arrow keys move a
+  the side, where the groups open as a tree. A Size slider sets the icons from 28 to 96 px, with the names under the icons from 64 up; the arrow keys move a
   highlight and Enter picks it; an icon another selected track wears gets a thin outline; "All
   selected tracks" sets every selected track at once; "Close after a pick" does what it says; and the
   window remembers where you left it. **Icons follow the track
   colour** (off to start) paints a coloured track's icon in its colour: a copy of the icon, made once
   per colour and icon for the whole machine and shared by every track and project that uses that
-  pair; the plain icon comes back when the colour goes or the option goes off. The menu and the picker need
+  pair; the plain icon comes back when the colour goes or the option goes off. The picker's Colour
+  slider sets how strongly the colour paints the icon, from a light wash to the full colour. The menu and the picker need
   ReaImGui; without it, the gear shows a plain menu and the picker row opens REAPER's own icon
   dialog;
 - the chevron at the far left folds the bar; the X at the far right closes the dock.
