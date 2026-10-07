@@ -208,9 +208,9 @@ sample while it moves, so a knob sweep or an automation ramp is continuous, with
 filter switched on or off fades over 5 ms, and the slope crossfades over 10 ms, so nothing clicks.
 The strip along the bottom edge drops a CURVE drawer: the response, with a node per filter at its
 corner to drag sideways, scroll a semitone at a time, or double-click to switch off. In a mixer
-strip it is the two knobs stacked, with the compact curve under them; a click on the curve folds it
-away and the CURVE tab brings it back (each copy remembers). In the dock, the CURVE chip pops the
-curve over the knobs.
+strip it is the two knobs side by side with the compact curve under them (at their right in a wide
+track panel); a click on the curve folds it away and the CURVE tab brings it back (each copy
+remembers). In the dock, the CURVE chip pops the curve over the knobs.
 
 ## The ReaKit FX dock
 

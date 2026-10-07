@@ -87,6 +87,8 @@ FL_K12  = 1.4142135624;   // 1/Q at Q 0.7071: one stage, 12 dB/oct Butterworth
 FL_K24A = 1.8477590650;   // 1/Q at Q 0.5412: stage 1 of the 4th-order Butterworth
 FL_K24B = 0.7653668647;   // 1/Q at Q 1.3066: stage 2
 FL_SNAP = 0.000001;       // a glide within this of its target lands on it (log Hz)
+FL_HP_ON_MIN = 21;        // the nearest settings to the end stops that are still ON: what the readout can show as such
+FL_LP_ON_MAX = 19900;     // ("21 Hz", "19.9 kHz"; 19999 printed as "20 kHz", the OFF end's number)
 
 // one trapezoidal SVF stage (Andrew Simper): the low-pass out; coefficients a1 = 1 / (1 + g (g + k)), a2 = g a1,
 // a3 = g a2 with g = tan(pi f / srate), k = 1 / Q. Each stage keeps its own state (the instances in @sample).
@@ -102,6 +104,22 @@ function fl_svf_hp(x, a1, a2, a3, k) instance(ic1, ic2) local(v1, v2, v3) (
   x - k * v1 - v2;
 );
 function fl_svf_clear() instance(ic1, ic2) ( ic1 = 0; ic2 = 0; );
+
+// one channel of one filter: the 12 dB stage and the two 24 dB stages run on the same input, and the output is the
+// SLOPE key's path, or the crossfade between them while it switches. An instance per channel (hpL, hpR, lpL, lpR).
+function fl_hp_run(x) instance(s12, s24a, s24b) local(y12, y24) (
+  x += cDenorm;
+  y12 = this.s12.fl_svf_hp(x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
+  y24 = this.s24b.fl_svf_hp(this.s24a.fl_svf_hp(x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
+  fl_sm >= 1 ? y24 : fl_sm <= 0 ? y12 : y12 + (y24 - y12) * fl_smx;
+);
+function fl_lp_run(x) instance(s12, s24a, s24b) local(y12, y24) (
+  x += cDenorm;
+  y12 = this.s12.fl_svf_lp(x, lp12_a1, lp12_a2, lp12_a3);
+  y24 = this.s24b.fl_svf_lp(this.s24a.fl_svf_lp(x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
+  fl_sm >= 1 ? y24 : fl_sm <= 0 ? y12 : y12 + (y24 - y12) * fl_smx;
+);
+function fl_chan_clear() instance(s12, s24a, s24b) ( this.s12.fl_svf_clear(); this.s24a.fl_svf_clear(); this.s24b.fl_svf_clear(); );
 
 // the three stages' coefficients for one filter, from its glided cutoff (log Hz): the 12 dB stage and the two
 // 24 dB stages, so a slope switch can crossfade between paths that both run
@@ -132,6 +150,7 @@ function recalc_dsp() local(sr) (
   fade_step = 1 / (0.005 * sr);            // the 5 ms linear fade (on / off, the gate)
   fl_sm_step = 1 / (0.010 * sr);           // the 10 ms slope crossfade
   fl_live = 1;                             // the next samples recompute the coefficients until the glides land
+  fl_force = 1;                            // once, whether or not a cutoff moved (the rate may have)
 );
 
 recalc_dsp();
@@ -177,17 +196,20 @@ function fl_stage_db(om, g, k, hp) local(x2, d) (
   x2 = sqr(om / g); d = sqr(1 - x2) + k * k * x2;
   10 * log10(max(hp ? x2 * x2 / d : 1 / d, 10^-20));
 );
-function fl_resp(f) local(sr, om, g, d) (
+// (from the sliders themselves: fl_hp_on and the targets are the audio thread's, set a block after a @gfx edit, and
+// the curve is cached under the sliders' values the frame they change -- review, 2026-10-07)
+function fl_resp(f) local(sr, om, g, d, s24) (
   sr = max(srate, 8000);
   om = tan($pi * min(f, sr * 0.49) / sr);
+  s24 = slider3 >= 0.5;
   d = 0;
-  fl_hp_on ? (
-    g = tan($pi * exp(fl_hp_lf_t) / sr);
-    d += fl_sm_t ? fl_stage_db(om, g, FL_K24A, 1) + fl_stage_db(om, g, FL_K24B, 1) : fl_stage_db(om, g, FL_K12, 1);
+  slider1 > FL_FMIN + 0.5 ? (
+    g = tan($pi * exp(fl_lf(slider1)) / sr);
+    d += s24 ? fl_stage_db(om, g, FL_K24A, 1) + fl_stage_db(om, g, FL_K24B, 1) : fl_stage_db(om, g, FL_K12, 1);
   );
-  fl_lp_on ? (
-    g = tan($pi * exp(fl_lp_lf_t) / sr);
-    d += fl_sm_t ? fl_stage_db(om, g, FL_K24A, 0) + fl_stage_db(om, g, FL_K24B, 0) : fl_stage_db(om, g, FL_K12, 0);
+  slider2 < FL_FMAX - 0.5 ? (
+    g = tan($pi * exp(fl_lf(slider2)) / sr);
+    d += s24 ? fl_stage_db(om, g, FL_K24A, 0) + fl_stage_db(om, g, FL_K24B, 0) : fl_stage_db(om, g, FL_K12, 0);
   );
   d;
 );
@@ -230,7 +252,7 @@ rk_link_on_slider();
 
 @block
 srate != fl_sr_seen ? ( fl_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
-atomic_get(dsp_dirty) ? ( atomic_set(dsp_dirty, 0); recalc_dsp(); );
+atomic_exch(dsp_dirty, 0) ? recalc_dsp();   // read and cleared in one step: an edit landing between the two is kept
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
@@ -244,9 +266,15 @@ rk_ps_tick();
 // ── the glides: the cutoffs ease to their settings over 5 ms in the log domain and the coefficients follow every
 // sample, until both have landed (then nothing here runs: at rest every value sits on its target) ──
 fl_live ? (
-  fl_hp_lf += (fl_hp_lf_t - fl_hp_lf) * sm_coeff; abs(fl_hp_lf_t - fl_hp_lf) < FL_SNAP ? fl_hp_lf = fl_hp_lf_t;
-  fl_lp_lf += (fl_lp_lf_t - fl_lp_lf) * sm_coeff; abs(fl_lp_lf_t - fl_lp_lf) < FL_SNAP ? fl_lp_lf = fl_lp_lf_t;
-  fl_hp_coefs(); fl_lp_coefs();
+  fl_hp_lf !== fl_hp_lf_t ? (
+    fl_hp_lf += (fl_hp_lf_t - fl_hp_lf) * sm_coeff; abs(fl_hp_lf_t - fl_hp_lf) < FL_SNAP ? fl_hp_lf = fl_hp_lf_t;
+    fl_hp_coefs();
+  ) : fl_force ? fl_hp_coefs();
+  fl_lp_lf !== fl_lp_lf_t ? (
+    fl_lp_lf += (fl_lp_lf_t - fl_lp_lf) * sm_coeff; abs(fl_lp_lf_t - fl_lp_lf) < FL_SNAP ? fl_lp_lf = fl_lp_lf_t;
+    fl_lp_coefs();
+  ) : fl_force ? fl_lp_coefs();
+  fl_force = 0;
   fl_hp_lf === fl_hp_lf_t && fl_lp_lf === fl_lp_lf_t ? fl_live = 0;   // exact compares: EEL2's == has a dead zone
 );
 // the SLOPE key: both paths run while a filter is on and the output crossfades over 10 ms. Every fade here runs
@@ -262,22 +290,12 @@ hp_mix > 0 ? (
   fl_mx = hp_mix * hp_mix * (3 - 2 * hp_mix);
   !hp_run ? (   // starting from fully off: clear the stale state, and start AT the new cutoff (the fade-in carries
                 // the change; a glide up from the end stop left a -69 dBFS blip at the first samples, ysfx rig 2026-10-07)
-    hpL12.fl_svf_clear(); hpL24a.fl_svf_clear(); hpL24b.fl_svf_clear();
-    hpR12.fl_svf_clear(); hpR24a.fl_svf_clear(); hpR24b.fl_svf_clear();
+    hpL.fl_chan_clear(); hpR.fl_chan_clear();
     fl_hp_lf = fl_hp_lf_t; fl_hp_coefs();
     hp_run = 1;
   );
-  fl_d0 = spl0; fl_d1 = spl1;
-  fl_x = spl0 + cDenorm;
-  fl_y12 = hpL12.fl_svf_hp(fl_x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
-  fl_y24 = hpL24b.fl_svf_hp(hpL24a.fl_svf_hp(fl_x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
-  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
-  spl0 = hp_mix < 1 ? fl_d0 + (fl_y - fl_d0) * fl_mx : fl_y;
-  fl_x = spl1 + cDenorm;
-  fl_y12 = hpR12.fl_svf_hp(fl_x, hp12_a1, hp12_a2, hp12_a3, FL_K12);
-  fl_y24 = hpR24b.fl_svf_hp(hpR24a.fl_svf_hp(fl_x, hp24a_a1, hp24a_a2, hp24a_a3, FL_K24A), hp24b_a1, hp24b_a2, hp24b_a3, FL_K24B);
-  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
-  spl1 = hp_mix < 1 ? fl_d1 + (fl_y - fl_d1) * fl_mx : fl_y;
+  fl_y = hpL.fl_hp_run(spl0); spl0 = hp_mix < 1 ? spl0 + (fl_y - spl0) * fl_mx : fl_y;
+  fl_y = hpR.fl_hp_run(spl1); spl1 = hp_mix < 1 ? spl1 + (fl_y - spl1) * fl_mx : fl_y;
 ) : ( hp_run = 0; );
 
 // ── LP: faded like the HP ──
@@ -285,22 +303,12 @@ lp_mix = fl_lp_on && rk_ps_active ? min(lp_mix + fade_step, 1) : max(lp_mix - fa
 lp_mix > 0 ? (
   fl_mx = lp_mix * lp_mix * (3 - 2 * lp_mix);
   !lp_run ? (
-    lpL12.fl_svf_clear(); lpL24a.fl_svf_clear(); lpL24b.fl_svf_clear();
-    lpR12.fl_svf_clear(); lpR24a.fl_svf_clear(); lpR24b.fl_svf_clear();
+    lpL.fl_chan_clear(); lpR.fl_chan_clear();
     fl_lp_lf = fl_lp_lf_t; fl_lp_coefs();
     lp_run = 1;
   );
-  fl_d0 = spl0; fl_d1 = spl1;
-  fl_x = spl0 + cDenorm;
-  fl_y12 = lpL12.fl_svf_lp(fl_x, lp12_a1, lp12_a2, lp12_a3);
-  fl_y24 = lpL24b.fl_svf_lp(lpL24a.fl_svf_lp(fl_x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
-  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
-  spl0 = lp_mix < 1 ? fl_d0 + (fl_y - fl_d0) * fl_mx : fl_y;
-  fl_x = spl1 + cDenorm;
-  fl_y12 = lpR12.fl_svf_lp(fl_x, lp12_a1, lp12_a2, lp12_a3);
-  fl_y24 = lpR24b.fl_svf_lp(lpR24a.fl_svf_lp(fl_x, lp24a_a1, lp24a_a2, lp24a_a3), lp24b_a1, lp24b_a2, lp24b_a3);
-  fl_y = fl_sm >= 1 ? fl_y24 : fl_sm <= 0 ? fl_y12 : fl_y12 + (fl_y24 - fl_y12) * fl_smx;
-  spl1 = lp_mix < 1 ? fl_d1 + (fl_y - fl_d1) * fl_mx : fl_y;
+  fl_y = lpL.fl_lp_run(spl0); spl0 = lp_mix < 1 ? spl0 + (fl_y - spl0) * fl_mx : fl_y;
+  fl_y = lpR.fl_lp_run(spl1); spl1 = lp_mix < 1 ? spl1 + (fl_y - spl1) * fl_mx : fl_y;
 ) : ( lp_run = 0; );
 
 meter_process_sample(spl0, spl1);
@@ -355,22 +363,27 @@ fl_skip = rk_embed_idle(0);   // nothing on the strip moves by itself: the curve
 // so a drag reads as it moves. Right-click and double-click: OFF (the end of the range), the house default for an
 // unset filter. Returns 1 while the knob is hovered or held (the embed's click-through).
 // ═══════════════════════════════════════════════════════════════════════
+// is filter i (0 HP, 1 LP) in, by its slider (the audio thread's fl_hp_on / fl_lp_on follow a block later)
+function fl_on(i) ( i == 0 ? slider1 > FL_FMIN + 0.5 : slider2 < FL_FMAX - 0.5; );
+
 function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th, act) (
   m = km + i * KS;
   cur = i == 0 ? slider1 : slider2;
-  on = i == 0 ? fl_hp_on : fl_lp_on;
+  on = fl_on(i);
   pos = fl_pos(cur);
   nv = fl_block_knobs ? pos : ssl_knob_interact(m, cx, cy, r, pos, 0, 1000, i == 0 ? 0 : 1000, 0);
   act = m[6];
   nv != pos ? (
     hz = fl_hz(nv);
-    hz = nv <= 0 || nv >= 1000 ? hz : max(FL_FMIN + 1, min(FL_FMAX - 1, fl_round_hz(hz)));   // inside: never OFF by accident
+    hz = nv <= 0 || nv >= 1000 ? hz : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(hz)));   // inside: never OFF by accident
     hz != cur ? (
       i == 0 ? ( slider1 = hz; slider_automate(slider1); ) : ( slider2 = hz; slider_automate(slider2); );
       atomic_set(dsp_dirty, 1);
     );
   );
-  i == 0 ? rk_role_col(2, on, hp_cr, hp_cg, hp_cb) : rk_role_col(2, on, lp_cr, lp_cg, lp_cb);   // FREQ role
+  // the caps keep their own colours under a theme, as the EQ's band knobs do (the FREQ role would paint both the same)
+  on ? ( i == 0 ? ( sk_kbr = hp_cr; sk_kbg = hp_cg; sk_kbb = hp_cb; ) : ( sk_kbr = lp_cr; sk_kbg = lp_cg; sk_kbb = lp_cb; ); )
+     : ( sk_kbr = 0.30; sk_kbg = 0.35; sk_kbb = 0.40; );
   rk_knob_draw(sk_kp, cx, cy, r, pos, 0, 1000, 0, m[0], sk_kbr, sk_kbg, sk_kbb, 0, _th_bg_r, _th_bg_g, _th_bg_b);
   vy > 0 ? (
     fl_fmt(cur, on, #fl_v);
@@ -386,14 +399,14 @@ function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th,
 // while hovered.
 function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
   mb = bm + i * BS;
-  on = i == 0 ? fl_hp_on : fl_lp_on;
+  on = fl_on(i);
   nv = fl_block_knobs ? on : btn_led_interact(mb, cx, cy, r, on);
   nv != on ? (
     i == 0 ? (
-      on ? ( fl_hp_last = slider1; slider1 = FL_FMIN; ) : ( slider1 = max(FL_FMIN + 1, min(FL_FMAX - 1, fl_hp_last)); );
+      on ? slider1 = FL_FMIN : slider1 = max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_hp_last));
       slider_automate(slider1);
     ) : (
-      on ? ( fl_lp_last = slider2; slider2 = FL_FMAX; ) : ( slider2 = max(FL_FMIN + 1, min(FL_FMAX - 1, fl_lp_last)); );
+      on ? slider2 = FL_FMAX : slider2 = max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_lp_last));
       slider_automate(slider2);
     );
     atomic_set(dsp_dirty, 1);
@@ -424,9 +437,9 @@ function fl_slope_key(x, y, sw, h, fs) local(mb, nv) (
 // ═══════════════════════════════════════════════════════════════════════
 FL_TOP = 6; FL_BOT = -42;
 FL_SEMI = 2 ^ (1 / 12);
-function fl_dby(db, y, h) ( y + (FL_TOP - db) / (FL_TOP - FL_BOT) * h; );
+function fl_dby(db, y, h) ( rk_curve_a2y(db, y, h, FL_TOP, FL_BOT); );   // rk_curve's absolute mapping, clamped to the plate
 function fl_set_f(i, f) local(hz) (
-  hz = f <= FL_FMIN ? FL_FMIN : f >= FL_FMAX ? FL_FMAX : max(FL_FMIN + 1, min(FL_FMAX - 1, fl_round_hz(f)));
+  hz = f <= FL_FMIN ? FL_FMIN : f >= FL_FMAX ? FL_FMAX : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(f)));
   i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); atomic_set(dsp_dirty, 1); ); )
          : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); atomic_set(dsp_dirty, 1); ); );
 );
@@ -495,7 +508,7 @@ function fl_draw_curve(x, y, w, h, s, compact, ev)
   !compact ? (
     // ── the nodes: at each filter's corner, on the curve; an OFF filter's at the plate's edge, dimmed ──
     nr = 7 * s;
-    on0 = fl_hp_on; on1 = fl_lp_on;
+    on0 = fl_on(0); on1 = fl_on(1);
     nx0 = on0 ? rk_curve_f2x(slider1, x, w) : x + nr + 2 * s;
     nx1 = on1 ? rk_curve_f2x(slider2, x, w) : x + w - nr - 2 * s;
     ny0 = on0 ? fl_dby(fl_cv_at(slider1), y, h) : fl_dby(0, y, h);
@@ -549,6 +562,11 @@ function fl_draw_curve(x, y, w, h, s, compact, ev)
 );
 
 
+// where each filter was before it went OFF, by ANY route (the knob to its end, a node double-click, automation, the
+// LED): the last ON value seen, committed the frame the filter reads OFF; the LED brings the filter back there
+fl_on(0) ? fl_hp_lastv = slider1 : fl_hp_lastv > 0 ? ( fl_hp_last = fl_hp_lastv; fl_hp_lastv = 0; );
+fl_on(1) ? fl_lp_lastv = slider2 : fl_lp_lastv > 0 ? ( fl_lp_last = fl_lp_lastv; fl_lp_lastv = 0; );
+
 // ═══════════════════════════════════════════════════════════════════════
 // MODE: embedded (MCP/TCP) vs standalone
 // ═══════════════════════════════════════════════════════════════════════
@@ -563,7 +581,7 @@ gfx_ext_flags & 1 ? (
 
   gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
   emb_widget_active = 0;
-  fl_wide = gfx_w > gfx_h * 1.15;   // a track panel: the knobs side by side
+  fl_wide = gfx_w > gfx_h * 1.15;   // a track panel: the curve at the right of the knobs instead of under them
 
   // the curve is this copy's option: shown, it takes the bottom (or the right, wide); folded, the knobs take the strip
   // and a small CURVE tab sits at the bottom. Its place is known BEFORE the knobs run: a press on the tab is the
@@ -577,47 +595,47 @@ gfx_ext_flags & 1 ? (
   ) : fl_tab_hov = 0;
   fl_tab_own = fl_tab_hov && !km[1] && !km[KS + 1];   // not while a knob is already being dragged
 
+  // the knobs: HP and LP SIDE BY SIDE (the user, 2026-10-07: "not on top of one another"), in a zone that leaves the
+  // link badge's row (the top 14 px) clear in a narrow strip; the curve under them, or at their right when wide
+  fl_badge_h = 14*ret;
   fl_wide ? (
-    // side by side: the knobs in the left part, the curve at the right (while shown and there is room)
-    fl_cv_w = fl_strip_curve ? min(gfx_w * 0.42, gfx_h * 1.6) : 0;
+    fl_cv_w = fl_strip_curve ? min(gfx_w * 0.45, gfx_h * 1.8) : 0;
     fl_cv_w > 0 && fl_cv_w < 36*ret ? fl_cv_w = 0;
-    fl_kz_w = gfx_w - fl_cv_w;
+    fl_kz_x = 0; fl_kz_y = 0; fl_kz_w = gfx_w - fl_cv_w;
     fl_kz_h = fl_strip_curve ? gfx_h : gfx_h - fl_tab_h - 2;
-    fl_cell_w = fl_kz_w * 0.5; fl_cell_h = fl_kz_h;
-    fl_cx0 = fl_cell_w * 0.5; fl_cx1 = fl_cell_w * 1.5; fl_cy0 = fl_cy1 = 0;
   ) : (
-    // stacked: HP over LP, the curve under them (while shown)
-    fl_cv_h = fl_strip_curve ? max(30*ret, gfx_h * 0.26) : 0;
-    fl_cv_h > 0 && gfx_h - fl_cv_h < 80*ret ? fl_cv_h = max(0, gfx_h - 80*ret);
+    fl_cv_h = fl_strip_curve ? max(30*ret, gfx_h * 0.30) : 0;
+    fl_cv_h > 0 && gfx_h - fl_badge_h - fl_cv_h < 56*ret ? fl_cv_h = max(0, gfx_h - fl_badge_h - 56*ret);
     fl_cv_h > 0 && fl_cv_h < 24*ret ? fl_cv_h = 0;
-    fl_kz_w = gfx_w;
-    fl_kz_h = fl_strip_curve ? gfx_h - fl_cv_h : gfx_h - fl_tab_h - 2;
-    fl_cell_w = gfx_w; fl_cell_h = fl_kz_h * 0.5;
-    fl_cx0 = fl_cx1 = gfx_w * 0.5; fl_cy0 = 0; fl_cy1 = fl_cell_h;
+    fl_kz_x = 0; fl_kz_y = fl_badge_h; fl_kz_w = gfx_w;
+    fl_kz_h = (fl_strip_curve ? gfx_h - fl_cv_h : gfx_h - fl_tab_h - 2) - fl_badge_h;
   );
-  // one cell: the knob, then the light and the name on a row, then the value
-  mcp_r = max(8, min(fl_cell_w * 0.24, fl_cell_h * 0.24));
-  mcp_lbl_font = max(7, floor(min(fl_cell_w * 0.13, fl_cell_h * 0.13) * ret));
-  mcp_val_font = max(7, floor(min(fl_cell_w * 0.11, fl_cell_h * 0.11) * ret));
+  fl_cell_w = fl_kz_w * 0.5;
+  // one cell: the knob, the light and the name on a row under it, the value under that; the knob as big as the cell
+  // allows with that block inside it
+  mcp_lbl_font = max(7, floor(min(fl_cell_w * 0.22, fl_kz_h * 0.14) * ret));
+  mcp_val_font = max(7, floor(min(fl_cell_w * 0.19, fl_kz_h * 0.12) * ret));
+  mcp_r = min(fl_cell_w * 0.34, (fl_kz_h - 8*ret - mcp_lbl_font - 2 - mcp_val_font) * 0.5);
+  mcp_r = max(mcp_r, 7);
   mcp_led_r = max(2.5, min(mcp_r * 0.20, 5));
-  fl_blk = mcp_r * 2 + 6 + mcp_lbl_font + 2 + mcp_val_font;   // the cell's content, stacked
-  fl_blk_y = max(2, (fl_cell_h - fl_blk) * 0.5);
+  fl_blk = mcp_r * 2 + 5 + mcp_lbl_font + 2 + mcp_val_font;
+  fl_blk_y = fl_kz_y + max(1, (fl_kz_h - fl_blk) * 0.5);
 
   fl_tab_own ? ( fl_lmb_keep = lmb_down; fl_rmb_keep = rmb_down; lmb_down = rmb_down = 0; );   // the tab's press
   i = 0;
   loop(2,
-    cx = i == 0 ? fl_cx0 : fl_cx1; cy = (i == 0 ? fl_cy0 : fl_cy1) + fl_blk_y + mcp_r;
+    cx = fl_kz_x + fl_cell_w * (i + 0.5); cy = fl_blk_y + mcp_r;
     emb_widget_active |= fl_knob(i, cx, cy, mcp_r, 0, mcp_val_font);
     // the name and its light
     gfx_setfont(1, "Arial", mcp_lbl_font, 'b');
     gfx_measurestr(i == 0 ? "HP" : "LP", tw, th);
-    lbl_y = cy + mcp_r + 6;
+    lbl_y = cy + mcp_r + 5;
     lbl_x = cx - (tw + mcp_led_r * 2 + 4) * 0.5 + mcp_led_r * 2 + 4;
     emb_widget_active |= fl_led(i, lbl_x - mcp_led_r - 4, lbl_y + th * 0.5, mcp_led_r);
-    (i == 0 ? fl_hp_on : fl_lp_on) ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
+    fl_on(i) ? gfx_set(_th_tx_r, _th_tx_g, _th_tx_b, 1) : gfx_set(_th_td_r, _th_td_g, _th_td_b, 1);
     gfx_x = lbl_x; gfx_y = lbl_y; gfx_drawstr(i == 0 ? "HP" : "LP");
     // the value
-    fl_fmt(i == 0 ? slider1 : slider2, i == 0 ? fl_hp_on : fl_lp_on, #fl_v);
+    fl_fmt(i == 0 ? slider1 : slider2, fl_on(i), #fl_v);
     gfx_set(_th_td_r, _th_td_g, _th_td_b, 1); gfx_setfont(1, "Arial", mcp_val_font);
     gfx_measurestr(#fl_v, tw, th); gfx_x = cx - tw / 2; gfx_y = lbl_y + mcp_lbl_font + 2; gfx_drawstr(#fl_v);
     i += 1;
@@ -631,19 +649,20 @@ gfx_ext_flags & 1 ? (
   rk_link_draw_badge(gfx_w - 16*ret, 2*ret, 12*ret, ac_r, ac_g, ac_b, mx, my, lmb_down);
 
   fl_strip_curve ? (
-    // ── the compact curve (a click on it folds it away: a live control, so the click does not open the window) ──
+    // ── the compact curve (a click on it folds it away: a live control, so the click does not open the window);
+    // wide, it starts under the badge's row, so the badge stays in view and a click on the badge is the badge's ──
     fl_wide ? (
       fl_cv_w > 0 ? (
         gfx_set(0.15, 0.18, 0.22, 0.5); gfx_line(fl_kz_w, 3, fl_kz_w, gfx_h - 3);
-        cv_x = fl_kz_w + 3*ret; cv_y = 3*ret; cv_w = fl_cv_w - 6*ret; cv_h = gfx_h - 6*ret;
+        cv_x = fl_kz_w + 3*ret; cv_y = fl_badge_h + 2*ret; cv_w = fl_cv_w - 6*ret; cv_h = gfx_h - cv_y - 3*ret;
       ) : cv_w = 0;
     ) : (
       fl_cv_h > 0 ? (
-        gfx_set(0.15, 0.18, 0.22, 0.5); gfx_line(3, fl_kz_h, gfx_w - 3, fl_kz_h);
-        cv_x = 3*ret; cv_y = fl_kz_h + 3*ret; cv_w = gfx_w - 6*ret; cv_h = fl_cv_h - 6*ret;
+        gfx_set(0.15, 0.18, 0.22, 0.5); gfx_line(3, fl_kz_y + fl_kz_h, gfx_w - 3, fl_kz_y + fl_kz_h);
+        cv_x = 3*ret; cv_y = fl_kz_y + fl_kz_h + 3*ret; cv_w = gfx_w - 6*ret; cv_h = fl_cv_h - 6*ret;
       ) : cv_w = 0;
     );
-    cv_w > 0 ? (
+    cv_w > 0 && cv_h >= 12*ret ? (
       fl_draw_curve(cv_x, cv_y, cv_w, cv_h, ret, 1, 0);
       mx >= cv_x && mx <= cv_x + cv_w && my >= cv_y && my <= cv_y + cv_h ? (
         emb_widget_active = 1;
@@ -729,7 +748,11 @@ gfx_ext_flags & 1 ? (
   // knobs see it. NAME BAR row: opt-in, per instance (rkth_namebar every frame so the chip tracks the slider).
   rkth_namebar(fl_name_bar);
   rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
-  rkth_cluster_hdr(fl_thx, fl_thy, 0, 0);
+  // under the header (a narrow window) the cluster's chip sits where the popped curve paints: a click there is the
+  // curve's, not the chip's (review, 2026-10-07)
+  fl_chip && fl_pop && fl_thy >= hdr_h ? (
+    fl_lmb_keep = lmb_down; lmb_down = 0; rkth_cluster_hdr(fl_thx, fl_thy, 0, 0); lmb_down = fl_lmb_keep;
+  ) : rkth_cluster_hdr(fl_thx, fl_thy, 0, 0);
   rkth_nb_pick >= 0 ? (
     fl_name_bar = rkth_nb_pick; slider_automate(fl_name_bar); rkth_nb_pick = -1;
   );
@@ -796,7 +819,7 @@ gfx_ext_flags & 1 ? (
   i = 0;
   loop(2,
     cx = col_w * (i + 0.5);
-    on = i == 0 ? fl_hp_on : fl_lp_on;
+    on = fl_on(i);
     i == 0 ? ( cr = hp_lr; cg = hp_lg; cb = hp_lb; ) : ( cr = lp_lr; cg = lp_lg; cb = lp_lb; );
     // the section header: the light, the name, the accent bar
     gfx_setfont(1, "Arial", sh_font, 'b');
