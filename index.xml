@@ -1228,6 +1228,25 @@
         <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
         <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/e88db73f6ba710da40ea0c8236e786e3d59706e8/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
       </version>
+      <version name="1.0.25" author="Quaz (EON Studios)" time="2026-10-07T20:24:11Z">
+        <changelog><![CDATA[The dock's gear menu opens at its size straight away (it crept wider while open). A Tooltips switch in the gear menu: off hides the bar's tips and the icon picker's.]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="ReaKit FX - Add a track with all six.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/ReaKit%20FX%20-%20Add%20a%20track%20with%20all%20six.lua</source>
+        <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
+        <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
+      </version>
     </reapack>
   </category>
   <category name="EON Floatter">
@@ -1283,6 +1302,12 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
         <source file="ReaKit FX - 16 track board.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%2016%20track%20board.rpp</source>
         <source file="ReaKit FX - One track demo.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%20One%20track%20demo.rpp</source>
         <source type="tracktpl" file="ReaKit FX - All six.RTrackTemplate">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8cb7dfbceb0854b1b344c1f85ed243bfd964f71c/Templates/ReaKit%20FX%20-%20All%20six.RTrackTemplate</source>
+      </version>
+      <version name="1.0.2" author="Quaz (EON Studios)" time="2026-10-07T20:24:11Z">
+        <changelog><![CDATA[The 16 track board has the De-Esser on every track and bus, right after GainKit, so each one carries all six.]]></changelog>
+        <source file="ReaKit FX - 16 track board.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/Templates/ReaKit%20FX%20-%2016%20track%20board.rpp</source>
+        <source file="ReaKit FX - One track demo.rpp">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/Templates/ReaKit%20FX%20-%20One%20track%20demo.rpp</source>
+        <source type="tracktpl" file="ReaKit FX - All six.RTrackTemplate">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/19994fc9bee0cf2ce3fc20741b2ecdb848c4b49a/Templates/ReaKit%20FX%20-%20All%20six.RTrackTemplate</source>
       </version>
     </reapack>
   </category>
