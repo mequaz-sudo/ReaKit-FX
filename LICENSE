@@ -6,8 +6,9 @@ icons.
 
 It does NOT cover the four effects built on other authors' DSP. Saturation, 3-Band EQ
 and DDC keep Michael Gruhn's (LOSER) terms; the De-Esser keeps Lubomir I. Ivanov's
-(Liteon) GPL. Each of those plugin files carries its author's original header, and
-LICENSE.md gives the details.
+(Liteon) GPL, whose full text is beside it (Eon_JSFX/FX/DeEsser_ReaKit.GPL-3.0.md).
+Each of those plugin files carries its author's original header, and LICENSE.md gives
+the details.
 
 ----------------------------------------------------------------------------------------
 

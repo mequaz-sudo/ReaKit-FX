@@ -7,9 +7,9 @@ code, no image files, so it scales to any size and renders at full resolution on
 GainKit Plus package adds a dock that keeps the selected track's effects in view: see
 [The ReaKit FX dock](#the-reakit-fx-dock).
 
-![The six free effects in every mixer strip, on the EON theme](screenshots/session/session_eon.png)
+![Six of the seven effects in every mixer strip, on the EON theme](screenshots/session/session_eon.png)
 
-*The six, embedded, on every channel of a session, on a REAPER with nothing but this package
+*Six of the seven, embedded, on every channel of a session, on a REAPER with nothing but this package
 installed: GainKit on top (the track's name and colour from GainKit Plus), Saturation, the 3-Band
 EQ, DDC with its gain-reduction bar, and Stereo Width at the bottom; the De-Esser sits on the two
 vocal tracks. This is the EON theme, the look a fresh install opens on. Click a strip's empty
@@ -25,9 +25,9 @@ it; with VU DRAG on, drag the meter to set the gain.*
 
 ## The plugins
 
-![The six windows on the Light theme](screenshots/session/six_windows_light.png)
+![Six of the seven windows on the Light theme](screenshots/session/six_windows_light.png)
 
-*The six windows on the Light theme.*
+*Six of the seven windows on the Light theme.*
 
 ### GainKit
 
@@ -98,8 +98,9 @@ in the Actions list as `Script: GainKit Plus…`):
   `Scripts/__startup.lua`, nothing else there is touched); run it again to take it out.
 - **ReaKit FX - Start with REAPER** — one press for everything: GainKit Plus into the start-up
   file, and EON Floatter started once so it registers itself. Once, it sets the seven to open
-  embedded in the mixer strip (REAPER's own default for new instances; other plugins' defaults are
-  left as they are); after a reinstall or a moved folder, GainKit Plus gives the seven's new copies
+  embedded in the mixer strip (REAPER's own default for new instances; any of the seven you had set
+  to open in the track panel moves too, and the window names it; other plugins' defaults are left
+  as they are); after a reinstall or a moved folder, GainKit Plus gives the seven's new copies
   the same place at its next start, and a place you set yourself stays as you left it. The first time, it also offers a track
   with all seven, the 16 track board in a new project tab, and to raise REAPER's meter refresh to 120 a second so the
   mixer strips answer quicker (from the next start). Run it again and nothing changes.
@@ -363,13 +364,13 @@ REAPER's own setting, so it holds for every docker and after a restart.
   *The same session on Dark and on Light (EON is at the top of this page), on a machine without
   Swing.*
 
-  ![The six windows on the EON theme](screenshots/session/six_windows_eon.png)
+  ![Six of the seven windows on the EON theme](screenshots/session/six_windows_eon.png)
 
-  ![The six windows on the Dark theme](screenshots/session/six_windows_dark.png)
+  ![Six of the seven windows on the Dark theme](screenshots/session/six_windows_dark.png)
 
-  ![The six windows on the Light theme](screenshots/session/six_windows_light.png)
+  ![Six of the seven windows on the Light theme](screenshots/session/six_windows_light.png)
 
-  *The six windows on the three built-in themes.*
+  *Six of the seven windows on the three built-in themes.*
 
   GainKit's panel also picks the VU's face, what the strip shows, the name's row (ROW, BAND or
   OFF) and its FONT, the meter's colour (FACE or TRACK), when the VU alone prints the gain (TOUCH
@@ -456,10 +457,11 @@ there, ReaPack now lists that package as obsolete: uninstall it and install this
 ## Licence
 
 Saturation, 3-Band EQ and DDC keep their DSP author's terms, Michael Gruhn (LOSER); the De-Esser's
-crossover and detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it. Each
-plugin file carries its author's original header, word for word. GainKit and the GainKit Plus
-scripts are EON Studios' own code, MIT, and so are the `ReaKit/` includes. The full text is in
-[LICENSE.md](LICENSE.md).
+crossover and detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it, and the
+GPL's full text is beside it ([DeEsser_ReaKit.GPL-3.0.md](Eon_JSFX/FX/DeEsser_ReaKit.GPL-3.0.md)).
+Each plugin file carries its author's original header, word for word. GainKit, Stereo Width,
+Filter, the GainKit Plus scripts, EON Floatter, the templates and the track icons are EON Studios'
+own work, MIT, and so are the `ReaKit/` includes. The details are in [LICENSE.md](LICENSE.md).
 
 ## Building on it
 
