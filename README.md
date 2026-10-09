@@ -214,6 +214,8 @@ very short window the WIDTH row folds onto the knob's line, so the knob stays wh
 
 ### Filter
 
+![The Filter with both filters off and its drawer shut, then at 86 Hz and 9.9 kHz with the CURVE drawer open](screenshots/session/filter_curve.png)
+
 A high-pass and a low-pass, nothing else: two knobs, HIGH PASS and LOW PASS, each 20 Hz to
 20 kHz, and a SLOPE key for 12 or 24 dB per octave. A knob at the end of its travel is OFF (the
 high-pass at 20 Hz, the low-pass at 20 kHz) and its light goes out; a click on the light switches
