@@ -7,13 +7,12 @@ code, no image files, so it scales to any size and renders at full resolution on
 GainKit Plus package adds a dock that keeps the selected track's effects in view: see
 [The ReaKit FX dock](#the-reakit-fx-dock).
 
-![Six of the seven effects in every mixer strip, on the EON theme](screenshots/session/session_eon.png)
+![All seven effects in every mixer strip of the 16 track board, on the EON theme](screenshots/session/board_mixer_full.png)
 
-*Six of the seven, embedded, on every channel of a session, on a REAPER with nothing but this package
-installed: GainKit on top (the track's name and colour from GainKit Plus), Saturation, the 3-Band
-EQ, DDC with its gain-reduction bar, and Stereo Width at the bottom; the De-Esser sits on the two
-vocal tracks. This is the EON theme, the look a fresh install opens on. Click a strip's empty
-space to open a plugin's window, click the strip again to close it.*
+*The 16 track board from the templates package: every channel and bus has all seven, GainKit on top,
+then the Filter, De-Esser, Saturation, 3-Band EQ, DDC and Stereo Width, on the EON theme a fresh
+install opens on. Click a strip's empty space to open a plugin's window, click the strip again to
+close it.*
 
 ![ReaKit FX](screenshots/session/cover_ssl.png)
 
@@ -25,9 +24,9 @@ it; with VU DRAG on, drag the meter to set the gain.*
 
 ## The plugins
 
-![Six of the seven windows on the Light theme](screenshots/session/six_windows_light.png)
+![The seven windows on the Light theme](screenshots/session/seven_windows_light.png)
 
-*Six of the seven windows on the Light theme.*
+*The seven windows on the Light theme.*
 
 ### GainKit
 
@@ -346,11 +345,11 @@ colour, close this track's or every track's windows, pin.
 
 ![The gear menu](screenshots/session/dock_bar_menu.png)
 
-![The track icon picker: the categories down the side, the grid in the track's colour](screenshots/session/dock_icon_picker.png)
+![The track icon picker on the Kick track: Drums picked, its own groups in the second row, the grid in the track's colour](screenshots/session/dock_icon_picker.png)
 
 ![Eight coloured tracks wearing their icons in their colours](screenshots/session/dock_icon_colour.png)
 
-![The ReaKit FX track icons, the EON category](screenshots/session/track_icons.png)
+![The 104 ReaKit FX track icons, the EON category](screenshots/session/track_icons.png)
 
 ![Renaming the track on the bar](screenshots/session/dock_rename.png)
 
@@ -395,13 +394,13 @@ REAPER's own setting, so it holds for every docker and after a restart.
   *The same session on Dark and on Light (EON is at the top of this page), on a machine without
   Swing.*
 
-  ![Six of the seven windows on the EON theme](screenshots/session/six_windows_eon.png)
+  ![The seven windows on the EON theme](screenshots/session/seven_windows_eon.png)
 
-  ![Six of the seven windows on the Dark theme](screenshots/session/six_windows_dark.png)
+  ![The seven windows on the Dark theme](screenshots/session/seven_windows_dark.png)
 
-  ![Six of the seven windows on the Light theme](screenshots/session/six_windows_light.png)
+  ![The seven windows on the Light theme](screenshots/session/seven_windows_light.png)
 
-  *Six of the seven windows on the three built-in themes.*
+  *The seven windows on the three built-in themes.*
 
   GainKit's panel also picks the VU's face, what the strip shows, the name's row (ROW, BAND or
   OFF) and its FONT, the meter's colour (FACE or TRACK), when the VU alone prints the gain (TOUCH
