@@ -406,9 +406,9 @@ REAPER's own setting, so it holds for every docker and after a restart.
   OFF) and its FONT, the meter's colour (FACE or TRACK), when the VU alone prints the gain (TOUCH
   or ALWAYS), one needle or two meters (METERS), whether the strip's meter sets the gain (VU DRAG)
   and whether the strip shows its STEREO / MONO key (ST/MONO), and has LOCK, which freezes that
-  instance's look while the rest follows the theme. It has two pages: LOOK (the theme, the knob,
-  the VU's face and colour, METERS, LOCK) and STRIP (everything about the mixer strip), and a line
-  at the bottom says what the row under the mouse does.
+  instance's look while the rest follows the theme. It has three pages: LOOK (the theme, the knob,
+  the VU's face and colour, METERS, LOCK), STRIP (everything about the mixer strip) and METER (how the
+  meter reads), and a line at the bottom says what the row under the mouse does.
 
   ![GainKit's THEME panel: the LOOK page at METERS, the STRIP page at VU DRAG](screenshots/session/gainkit_theme_panel.png)
 
