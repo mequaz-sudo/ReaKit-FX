@@ -34,6 +34,9 @@ has the same arrow.
 The METER page sets where 0 VU sits (-18, -20 or -14 dBFS), how fast the needle moves, what marks the last high,
 and when the PEAK light comes on.
 
+Six **look presets** in REAPER's preset menu set GainKit up for the job: Mono track (MONO on), Stereo track, Bus,
+Headphone cue and Master; Default look puts it back. The gain, trims and cuts stay where they are.
+
 ![GainKit with METERS on ONE and on TWO](screenshots/session/gainkit_one_two.png)
 
 ### Filter
@@ -131,8 +134,9 @@ with. With EON Swing running, they also follow the theme picked in Swing (SSL, N
 
 ## Across the plugins
 
-- **Presets**: 74 factory presets in REAPER's preset menu, named for the job (Vocal Smooth, Kick Punch, Drum Bus
-  Glue, Hi-Hat Tame, De-Mud...). A preset sets the sound and leaves the look alone.
+- **Presets**: 80 factory presets in REAPER's preset menu, named for the job (Vocal Smooth, Kick Punch, Drum Bus
+  Glue, Hi-Hat Tame, De-Mud...). A preset sets the sound and leaves the look alone; GainKit's six look presets set
+  the look (Mono track and Stereo track also set MONO).
 - **Mixer strip or track panel**: the THEME panel's EMBED row moves a plugin between the two, with GainKit Plus
   running.
 - **Link groups**: six of the seven have sixteen link groups; turn a knob on one and its group follows.

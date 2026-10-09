@@ -532,7 +532,10 @@ local function find_fx(tr, guid, path)
   return hit
 end
 -- A user preset file (REAPER's ini: [General] with NbPresets=, then [Preset0] .. with Data= / Len= / Name=): its
--- [General] lines and its presets in order; nil when there is none
+-- [General] lines and its presets in order; nil when there is none. In order BY NUMBER: REAPER writes the sections
+-- sorted as text ([Preset0], [Preset1], [Preset10], [Preset11], [Preset2] ..) and lists them by number, so a file of
+-- eleven or more read in file order came out shuffled in the other copy's list (GainKit's 13 with its LOOK presets,
+-- 2026-10-09: the long view listed Init, Pad -6 dB, Headphone cue, Master, Default look, Pad -12 dB ..).
 local function read_presets(p)
   local txt = p and p ~= "" and slurp(p)
   if not txt then return nil end
@@ -541,7 +544,7 @@ local function read_presets(p)
     local s = line:match("^%[(.-)%]%s*$")
     if s then
       cur = s == "General" and "general" or nil
-      if s:match("^Preset%d+$") then cur = { lines = {} }; list[#list + 1] = cur end
+      if s:match("^Preset%d+$") then cur = { lines = {}, n = tonumber(s:match("%d+")) }; list[#list + 1] = cur end
     elseif line:match("%S") then
       if cur == "general" then gen[#gen + 1] = line
       elseif cur then
@@ -550,6 +553,7 @@ local function read_presets(p)
       end
     end
   end
+  table.sort(list, function(a, b) return a.n < b.n end)
   return gen, list
 end
 -- every preset of from_file that to_file has no preset of that name for, added to it (written beside and moved in)

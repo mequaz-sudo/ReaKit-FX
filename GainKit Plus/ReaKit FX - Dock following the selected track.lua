@@ -227,11 +227,12 @@ end
 local function label(rec) return rec.name .. ":" .. KINDS[rec.kind].short end
 local bar_rows = 1                     -- 2+ when the dock is too narrow for one row (draw_bar decides)
 local bar_chip_rows = 1                -- of those, the rows the chips take (the name and the buttons get the last)
+bar_rows_ar = { [false] = 1, [true] = 1 }   -- the rows without and with STRIP's < > (layout(); a GLOBAL: the 200-local limit)
 local function stripe_h() return opt.color == "stripe" and math.floor(STRIPE_H * sc + 0.5) or 0 end
 local function folded() return opt.fold == "1" and not fold_open end
-local function bar_h()
+local function bar_h(arrows)           -- as drawn; arrows true / false: as it would be with or without the < >
   if folded() then return math.floor(FOLD_H * sc + 0.5) end
-  return math.floor(BAR * sc + 0.5) * bar_rows + stripe_h()
+  return math.floor(BAR * sc + 0.5) * (arrows == nil and bar_rows or bar_rows_ar[arrows]) + stripe_h()
 end
 -- The shown track's colour (GetTrackColor; 0 = none), looked up about twice a second with the chain.
 local tcol = { tr = nil, t = 0, has = false, r = 0, g = 0, b = 0 }
@@ -712,59 +713,66 @@ end
 -- over goes to each in proportion to how far it can grow, up to its own window's width, and past that in
 -- proportion to its width, so the strip always fills the dock. Scrolled to the end with room to spare, it steps
 -- back so no room is wasted.
+-- STRIP's < > can wrap the bar a row taller, so the arrows are decided from the bar as it is without them and, when
+-- some do not fit, again with them (as many or fewer fit then, so they stay): never from the last frame's arrows. A
+-- dock one bar row tall flipped forever on those (2026-10-09: the arrows took the row, no room, no arrows, room...,
+-- ~8 times a second, new floats each time). No room even then: nothing on view, the bar one row, no arrows.
 local function layout()
   local ok, w, h = r.JS_Window_GetClientSize(dock)
   if not ok then return end
-  local b = bar_h()
   local list = cur and cur.list or {}
-  local want = {}
-  on_view, more_left, more_right = {}, false, false
-  if #list > 0 and w >= 2 and h >= b + 2 then
-    -- ACROSS (side by side, the dock's full height each) or DOWN (stacked, the dock's full width each: a side
-    -- docker; the user, 2026-10-07). The gear's Layout: auto = down when the plugin area is taller than wide.
-    -- lay_down is a GLOBAL on purpose (the 200-local limit; publish() reads it).
-    local body = h - b
-    lay_down = opt.layout == "down" or (opt.layout == "auto" and body > w)
-    if not strip then
-      want[1] = { e = list[1], x = 0, y = b, w = w, h = body }
-    else
-      local gap = math.max(1, math.floor(GAP * sc + 0.5))
-      local span = lay_down and body or w                             -- the axis the effects line up on
-      local function mn(e) local k = KINDS[e.kind]; return math.floor((lay_down and k.minh or k.minw) * sc + 0.5) end
-      local function nat(e) local k = KINDS[e.kind]; return (lay_down and k.h or k.w) * sc end
-      local function fits_from(s)
-        local n, used = 0, 0
-        for i = s, #list do
-          local need = mn(list[i]) + (n > 0 and gap or 0)
-          if n > 0 and used + need > span then break end
-          n, used = n + 1, used + need
+  local b, want
+  -- ACROSS (side by side, the dock's full height each) or DOWN (stacked, the dock's full width each: a side
+  -- docker; the user, 2026-10-07). The gear's Layout: auto = down when the plugin area (under the bar without the
+  -- arrows) is taller than wide. lay_down is a GLOBAL on purpose (the 200-local limit; publish() reads it).
+  lay_down = opt.layout == "down" or (opt.layout == "auto" and h - bar_h(false) > w)
+  for pass = 1, 2 do
+    b, want = bar_h(pass == 2), {}
+    on_view, more_left, more_right = {}, false, false
+    if #list > 0 and w >= 2 and h >= b + 2 then
+      local body = h - b
+      if not strip then
+        want[1] = { e = list[1], x = 0, y = b, w = w, h = body }
+      else
+        local gap = math.max(1, math.floor(GAP * sc + 0.5))
+        local span = lay_down and body or w                           -- the axis the effects line up on
+        local function mn(e) local k = KINDS[e.kind]; return math.floor((lay_down and k.minh or k.minw) * sc + 0.5) end
+        local function nat(e) local k = KINDS[e.kind]; return (lay_down and k.h or k.w) * sc end
+        local function fits_from(s)
+          local n, used = 0, 0
+          for i = s, #list do
+            local need = mn(list[i]) + (n > 0 and gap or 0)
+            if n > 0 and used + need > span then break end
+            n, used = n + 1, used + need
+          end
+          return n
         end
-        return n
-      end
-      first = math.max(1, math.min(first, #list))
-      while first > 1 and first - 1 + fits_from(first - 1) - 1 >= #list do first = first - 1 end
-      local n = fits_from(first)
-      local last = first + n - 1
-      more_left, more_right = first > 1, last < #list
-      local room = span - gap * (n - 1)
-      local smin, snat = 0, 0
-      for i = first, last do smin = smin + mn(list[i]); snat = snat + nat(list[i]) end
-      local pos = 0
-      for i = first, last do
-        local e = list[i]
-        local m, nt = mn(e), nat(e)
-        local cw
-        if room <= smin then cw = m
-        elseif room <= snat then cw = m + (nt - m) * (room - smin) / (snat - smin)
-        else cw = nt * room / snat end
-        cw = i == last and span - pos or math.floor(cw + 0.5)
-        cw = math.max(2, cw)
-        if lay_down then want[#want + 1] = { e = e, x = 0, y = b + pos, w = w, h = cw }
-        else want[#want + 1] = { e = e, x = pos, y = b, w = cw, h = body } end
-        pos = pos + cw + gap
-        on_view[e.fg] = true
+        first = math.max(1, math.min(first, #list))
+        while first > 1 and first - 1 + fits_from(first - 1) - 1 >= #list do first = first - 1 end
+        local n = fits_from(first)
+        local last = first + n - 1
+        more_left, more_right = first > 1, last < #list
+        local room = span - gap * (n - 1)
+        local smin, snat = 0, 0
+        for i = first, last do smin = smin + mn(list[i]); snat = snat + nat(list[i]) end
+        local pos = 0
+        for i = first, last do
+          local e = list[i]
+          local m, nt = mn(e), nat(e)
+          local cw
+          if room <= smin then cw = m
+          elseif room <= snat then cw = m + (nt - m) * (room - smin) / (snat - smin)
+          else cw = nt * room / snat end
+          cw = i == last and span - pos or math.floor(cw + 0.5)
+          cw = math.max(2, cw)
+          if lay_down then want[#want + 1] = { e = e, x = 0, y = b + pos, w = w, h = cw }
+          else want[#want + 1] = { e = e, x = pos, y = b, w = cw, h = body } end
+          pos = pos + cw + gap
+          on_view[e.fg] = true
+        end
       end
     end
+    if not (more_left or more_right) then break end
   end
   local have = {}
   for _, s in ipairs(slots) do have[s.fg] = s end
@@ -1112,9 +1120,9 @@ local function draw_bar()
     return t
   end
   local pinned, hidden = pin ~= "", tabs_hidden()
-  local function right_set(tabs_label)                   -- { label, act, lit, dim }
+  local function right_set(tabs_label, arrows)           -- { label, act, lit, dim }
     local t = {}
-    if strip and (more_left or more_right) then
+    if arrows then
       t[#t + 1] = { "<", "left", false, not more_left }
       t[#t + 1] = { ">", "right", false, not more_right }
     end
@@ -1129,37 +1137,40 @@ local function draw_bar()
     t[#t + 1] = { ICON_X, "close", false, false }
     return t
   end
-  local right_long, right_short = right_set(hidden and "SHOW TABS" or "HIDE TABS"), right_set("TABS")
   local long, short = {}, {}
   for i, c in ipairs(chips) do long[i], short[i] = c.long, c.short end
   -- "Full effect names" (the gear): on = the full names ALWAYS, the bar wrapping to more rows when they do not fit
   -- in one (the user, 2026-10-05: it looked dead when the bar quietly fell back to the short ones); off = the short
   local full = opt.labels == "long"
   if not full then for i = 1, #long do long[i] = short[i] end end
-  local labels, right = long, right_long
-  local rows = 1
-  if width(right) + width(labels) + div_w + 60 * sc > w then
-    right = right_short
-    if width(right) + width(labels) + div_w + nx + 4 * sc > w then
-      rows = 2                                           -- the chips on their own row(s), the rest under them
-      right = width(right_long) + nx + 40 * sc <= w and right_long or right_short
-      if not full and width(labels) + div_w + nx > w then   -- a long chain in a narrow dock: markers lose their words
-        local tiny = {}
-        for i, c in ipairs(chips) do tiny[i] = (not c.other) and c.short end
-        labels = tiny
-      end
-    end
-  end
-  -- each chip's row: one row unless even the narrow layout's labels run past the edge; then they wrap
   local row = math.floor(BAR * sc + 0.5)
   local sy = stripe_h()                                  -- the rows start under the stripe
+  local labels, right, rows, crows
   local function cwidth(i)
     local c = chips[i]
     if c.other then return labels[i] and gfx.measurestr(labels[i]) + 2 * pad or slim end
     return gfx.measurestr(labels[i]) + 2 * pad
   end
-  local crows = 1
-  do
+  -- The bar's rows with STRIP's < > or without them: layout() decides the arrows from both, never from the last
+  -- frame's (a dock one bar row tall flipped forever, 2026-10-09). The last call sets the chips' rows: this frame's.
+  local function fit_rows(arrows)
+    local right_long = right_set(hidden and "SHOW TABS" or "HIDE TABS", arrows)
+    local right_short = right_set("TABS", arrows)
+    labels, right, rows = long, right_long, 1
+    if width(right) + width(labels) + div_w + 60 * sc > w then
+      right = right_short
+      if width(right) + width(labels) + div_w + nx + 4 * sc > w then
+        rows = 2                                         -- the chips on their own row(s), the rest under them
+        right = width(right_long) + nx + 40 * sc <= w and right_long or right_short
+        if not full and width(labels) + div_w + nx > w then   -- a long chain in a narrow dock: markers lose their words
+          local tiny = {}
+          for i, c in ipairs(chips) do tiny[i] = (not c.other) and c.short end
+          labels = tiny
+        end
+      end
+    end
+    -- each chip's row: one row unless even the narrow layout's labels run past the edge; then they wrap
+    crows = 1
     local x0 = nx - pad
     local x = x0
     for i, c in ipairs(chips) do
@@ -1168,8 +1179,12 @@ local function draw_bar()
       c.row = crows - 1
       x = x + cw + gap
     end
+    if rows > 1 then rows = crows + 1 end
+    bar_rows_ar[arrows] = rows
   end
-  if rows > 1 then rows = crows + 1 end
+  local arrows = strip and (more_left or more_right)
+  if strip then fit_rows(not arrows) end
+  fit_rows(arrows)
   bar_rows, bar_chip_rows = rows, crows
   local b = bar_h()
   -- the bar's face: its grey, or the track's colour as a band across it; the stripe along the top
