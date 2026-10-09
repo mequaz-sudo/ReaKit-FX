@@ -1,13 +1,17 @@
 -- GainKit Plus -- copy the LOOK of the selected track's GainKit to every GainKit in the project
 -- (the master's too, and GainKits inside FX containers): the THEME panel's STRIP, NUMBERS, NAME,
--- FONT, VU COLOR, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR and NATIVE rows, and the METER tab's 0 VU,
--- SPEED, HOLD, READOUT and PEAK LIGHT (2026-10-03: a 0 VU of -20 set on one GainKit goes to them all). Not
--- the VU face (it is kept inside each plugin's own saved state, out of a script's reach) and not the knob
--- style (it follows the suite theme). Gains, keys and names stay as they are. One undo step. MIT, EON Studios, 2026.
+-- FONT, VU COLOR, VALUE, METERS, VU DRAG, ST/MONO, NAME BAR and NATIVE rows, its FILTERS and TRIMS rows
+-- (the window's and the strip's, 2026-10-08), and the METER tab's 0 VU, SPEED, HOLD, READOUT and PEAK
+-- LIGHT (2026-10-03: a 0 VU of -20 set on one GainKit goes to them all). Not the VU face (it is kept inside
+-- each plugin's own saved state, out of a script's reach), not the knob style (it follows the suite theme)
+-- and not whether a window's filter drawer is open: that is shut where FILTERS stops being DRAWER, as
+-- GainKit does itself, but before its window next opens. Gains, keys and names stay as they are. One undo
+-- step. MIT, EON Studios, 2026.
 local r = reaper
 local LOOK = { ["Strip view"] = true, ["Strip numbers"] = true, ["Name style"] = true, ["Name font"] = true,
                ["Meter colour"] = true, ["Gain number"] = true, ["VU meters"] = true, ["VU drag"] = true,
                ["Stereo key"] = true, ["Name bar"] = true, ["Native look"] = true,
+               ["Filters view"] = true, ["Trims"] = true, ["Strip filters"] = true, ["Strip trims"] = true,
                ["0 VU"] = true, ["VU speed"] = true, ["VU hold"] = true, ["VU readout"] = true, ["Peak light"] = true }
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with
@@ -56,6 +60,11 @@ for p = 0, r.TrackFX_GetNumParams(src_tr, src_fx) - 1 do
   if LOOK[key(pn)] then look[key(pn)] = (r.TrackFX_GetParam(src_tr, src_fx, p)) end
 end
 
+-- FILTERS copied as OFF or BAR (anything but DRAWER, 1): every other GainKit's drawer is shut too. GainKit
+-- shuts it itself, but only once its window draws, and EON Floatter would first open that window grown.
+local fv = look["Filters view"]
+local shut_drawer = fv ~= nil and math.floor(fv + 0.5) ~= 1
+
 r.Undo_BeginBlock()
 r.PreventUIRefresh(1)
 local n = 0
@@ -67,6 +76,7 @@ for i = -1, r.CountTracks(0) - 1 do
       local _, pn = r.TrackFX_GetParamName(tr, f, p, "")
       local v = look[key(pn)]
       if v ~= nil then r.TrackFX_SetParam(tr, f, p, v) end
+      if shut_drawer and key(pn) == "Filter drawer" then r.TrackFX_SetParam(tr, f, p, 0) end
     end
     n = n + 1
   end)

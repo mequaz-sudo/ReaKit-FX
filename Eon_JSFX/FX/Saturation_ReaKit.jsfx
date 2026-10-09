@@ -12,7 +12,7 @@
 // ENTRUST SOMEBODY ELSE WITH DOING SO.
 //
 // GUI by EON Studios (ReaKit Libraries)
-// Version: 1.1.2
+// Version: 1.1.3
 desc:EON: Saturation
 //tags: processing amplitude gain saturation
 //author: LOSER
@@ -25,6 +25,7 @@ import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
 import ../../ReaKit/rk_drawer.jsfx-inc
+import ../../ReaKit/rk_srf.jsfx-inc
 
 slider1:0<0,100,1>-Drive (%)
 slider2:1<0,1,1>-Drive Enable
@@ -211,10 +212,15 @@ sat_theme_on ? (
 rk_link_key = gfx_getchar();
 mx = mouse_x; my = mouse_y;
 LMB = mouse_cap & 1; RMB = mouse_cap & 2;
-CTRL = mouse_cap & 4; SHIFT = mouse_cap & 8;
+// One Saturation shown in the track panel AND the mixer runs @gfx on both, pass for pass: a press latch per surface,
+// the pressed surface's press handed to the other's pass, the modifiers from it, the wheel to the surface under the
+// pointer (rk_srf.jsfx-inc; MEASURED on GainKit 2026-10-07: without it a track-panel drag pressed on every pass)
+is_embedded = (gfx_ext_flags & 1);
+rk_srf_load();
+CTRL = _srf_cap & 4; SHIFT = _srf_cap & 8;
 lmb_down = LMB && !prev_LMB;
 rmb_down = RMB && !prev_RMB;
-frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
+frame_wheel = rk_srf_wheel();   // it zeroes mouse_wheel when it takes it
 timer = time_precise();
 
 dt = min(timer - frame_last_timer, 0.05);
@@ -223,7 +229,7 @@ hv_speed = 11;
 ret = max(1, gfx_ext_retina);
 rk_link_menu_gate();
 
-sat_skip = rk_embed_idle(0);
+sat_skip = rk_embed_idle(0) && frame_wheel == 0;   // never skip a pass carrying a wheel notch
 // Background
 !sat_skip ? (
   gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
@@ -294,7 +300,10 @@ gfx_ext_flags & 1 ? (
 // ║  EMBEDDED — DRIVE knob centered                                      ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
-  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  // 0x200 is cleared and armed only by a pass whose canvas holds the pointer; a wheel frame's pointer can be stale:
+  // this surface's own last one (rk_srf.jsfx-inc)
+  rk_srf_in() && (gfx_ext_flags & 0x200) ? gfx_ext_flags -= 0x200;
+  frame_wheel != 0 ? ( mx = _srf_hx; my = _srf_hy; );
   emb_widget_active = 0;
 
   mcp_cx = gfx_w * 0.5;
@@ -343,7 +352,7 @@ gfx_ext_flags & 1 ? (
   (mx - (gfx_w - 10*ret)) * (mx - (gfx_w - 10*ret)) + (my - 8*ret) * (my - 8*ret) <= (6*ret + 2) * (6*ret + 2) ? emb_widget_active = 1;
   rk_link_draw_badge(gfx_w - 16 * ret, 2 * ret, 12 * ret, drv_lr, drv_lg, drv_lb, mx, my, lmb_down);
 
-  !emb_widget_active ? gfx_ext_flags |= 0x200;
+  rk_srf_in() && !emb_widget_active ? gfx_ext_flags |= 0x200;
 
 
   );   // !sat_skip (rk_embed_idle)
@@ -621,5 +630,4 @@ rkth_cluster_overlay();   // open THEME/KNOB panels draw on top (floating only)
   sat_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
 );
 rk_link_on_gfx_change();
-prev_LMB = LMB;
-prev_RMB = RMB;
+rk_srf_store();   // per-surface latches: prev_LMB / prev_RMB for the next pass (rk_srf.jsfx-inc)

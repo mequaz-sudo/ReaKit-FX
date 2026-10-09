@@ -50,8 +50,22 @@ hides it; MONO then shows as a small cyan dot) and prints the value under the me
 it, or all the time. The track's name is printed on the meter like a legend and on top of the
 strip. Click the middle of the window's meter face and type, and that renames the track itself
 (with GainKit Plus running), so the meter, the dock and REAPER always agree. The name shows in every view:
-as a plain row, on a band in the track's colour, or not at all. The high-pass, low-pass, trims and
-M/S modes it used to show are still there as parameters, so old projects sound the same.
+as a plain row, on a band in the track's colour, or not at all. The M/S modes it used to show are
+still there as parameters, so old projects sound the same.
+
+The low and high cut are back on the face as an option. The THEME panel's LOOK page: FILTERS shows
+them in the window as a DRAWER under the face (the response, and a bar with a handle for each cut)
+or as a BAR under the face, or not at all (the default); TRIMS shows or hides the window's L / R
+trim knobs with TWO meters (a trim set away from 0 shows as a badge when hidden). Its STRIP page
+does the same for the mixer strip: FILTERS puts the cut bar along the bottom of the strip, TRIMS a
+small L / R trim beside the gain knob (with TWO meters); both are off by default. Drag a handle (Ctrl for fine),
+wheel it a semitone at a time, or double-click it to switch that cut off; a cutoff glides to a new
+setting, so a sweep or an automation step never clicks.
+
+With GainKit Plus running, a strip with its FILTERS bar on shows a small arrow at the bar's right
+end: it opens the long view, the same strip with the cuts' response and their bar under it, and an
+arrow there brings the short strip back. The mixer strip grows by the room the long view takes where
+it can (not the master's), so the effects under it keep theirs; the swap keeps every setting and does not interrupt the sound.
 
 The THEME panel's METER tab sets how the meter reads: where 0 VU sits (-18, -20 or -14 dBFS), how
 fast the needle moves (the standard speed, twice as fast, or half), what marks the last high (a
@@ -79,7 +93,8 @@ in the Actions list as `Script: GainKit Plus…`):
   runs. On REAPER 7.81 and later every GainKit reads its track's name from REAPER itself, so
   the name needs no script there; the colour, the icon and the master's project name still come
   from GainKit Plus, which serves the first 512 tracks. It also carries out the THEME panel's EMBED
-  row: it moves the plugin and sets where new copies of the seven open.
+  row (it moves the plugin and sets where new copies of the seven open) and the long-view arrow on
+  a GainKit's or a Filter's strip.
 - **Insert on selected tracks** — GainKit first in the chain of every selected track that has
   none, opened embedded in the mixer strip.
 - **GainKit first in every chain** — moves the GainKit a track already has to the top of its
@@ -210,9 +225,11 @@ on or off fades over 5 ms; a slope switch lets the new slope settle for a tenth 
 crossfades over 10 ms, so nothing clicks. The strip along the bottom edge drops a CURVE drawer (the
 window grows for it with EON Floatter running): the response, with a node per filter at its
 corner to drag sideways, scroll a semitone at a time, or double-click to switch off. In a mixer
-strip it is the two knobs side by side with the compact curve under them (at their right in a wide
-track panel); a click on the curve folds it away and the CURVE tab brings it back (each copy
-remembers). In the dock, the CURVE chip pops the curve over the knobs.
+strip or the track panel it is the two knobs side by side. With GainKit Plus running, a small arrow
+at the strip's bottom right opens the long view: the same knobs with the curve and its two nodes
+under them, and an arrow back. The mixer strip grows by the room the long view takes where it can,
+so the effects under it keep theirs; the swap keeps every setting and does not interrupt the sound. In
+the dock, the CURVE chip pops the curve over the knobs.
 
 ## The ReaKit FX dock
 
@@ -274,6 +291,9 @@ colour, close this track's or every track's windows, pin.
   `<` `>`, an effect's chip or the mouse wheel over the bar bring the rest on view. With STRIP off,
   the effect you pick fills the dock;
 - the pin — the dock stays on this track (or the master) whatever you select;
+- **SLOT** — every mixer strip on screen scrolls its effect list to the same row at once: a click
+  lists Top, Slot 2 and on, and the wheel over it steps through them. It moves the mouse pointer
+  over the strips for a moment while it works, and puts it back;
 - **HIDE TABS** / **SHOW TABS** (**TABS** in a narrow dock) — the same as the Docker tabs action
   below;
 - the gear — the bar's options: the layout (Auto lays the effects side by side in a docker under

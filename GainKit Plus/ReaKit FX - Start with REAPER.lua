@@ -42,21 +42,31 @@ local function read_opt(p)
   local s = fh:read("*a"); fh:close()
   return s
 end
--- the new text in without ever leaving no file: written beside it, the old one moved aside, the new
--- one moved in, the old one put back when that fails
+-- the new text in without ever leaving no file: written beside it and read back, the old one moved
+-- aside, the new one moved in, the old one put back when that fails. A spare already there is never
+-- removed (outside audit, 2026-10-08): read_opt put a stranded one back when REAPER's file was gone,
+-- so one still here sits beside a file REAPER has written since -- it may be the only full copy -- or
+-- was left by a remove that failed. It moves to a name nothing uses and stays; the second return
+-- value names it. (os.rename onto itself succeeds only for a path that is there, readable or not.)
 local function replace_file(p, text)
-  local tmp, bak = p .. ".reakitfx-tmp", p .. ".reakitfx-bak"
+  local tmp, bak, keep = p .. ".reakitfx-tmp", p .. ".reakitfx-bak", nil
+  if os.rename(bak, bak) then
+    for i = 0, 99 do
+      local n = ("%s.reakitfx-kept-%d-%d"):format(p, math.floor(os.time()), i)
+      if not os.rename(n, n) then keep = n; break end
+    end
+    if not keep or not os.rename(bak, keep) then return false end
+  end
   local fh = io.open(tmp, "wb")
-  if not fh then return false end
+  if not fh then return false, keep end
   local ok = fh:write(text) and true or false
   if not fh:close() then ok = false end
-  if not ok then os.remove(tmp); return false end
-  os.remove(bak)
+  if not ok or read(tmp) ~= text then os.remove(tmp); return false, keep end
   local had = os.rename(p, bak)
-  if os.rename(tmp, p) then os.remove(bak); return true end
+  if os.rename(tmp, p) then os.remove(bak); return true, keep end
   if had then os.rename(bak, p) end
   os.remove(tmp)
-  return false
+  return false, keep
 end
 -- 0. Extensions installed but not loaded yet. ReaPack puts js_ReaScriptAPI and ReaImGui in
 -- UserPlugins and REAPER loads them only at its next start; its report says so, but it is easy to
@@ -117,9 +127,12 @@ end
 -- plugin's line in reaper-fxoptions.ini [defcfg], and REAPER reads that file at every insert
 -- (measured, 2026-10-01). Each install path REAPER lists for the seven (reaper-jsfx.ini) gets the
 -- bit, the line's other bits kept. Once: a plugin the user later sets back stays as they set it.
+-- One the user had set to the track panel moves too (REAPER takes the track panel when both bits
+-- are on), and the summary line names it (outside audit, 2026-10-08).
 local FREE7 = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
                 "Filter_ReaKit.jsfx" }                -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
+local FREE7_NAME = { "GainKit", "Saturation", "3-Band EQ", "DDC", "De-Esser", "Stereo Width", "Filter" }
 local BUSY = "REAPER was busy, so the effects weren't set to open in the mixer strip. Run this again."
 -- returns ok, the line to show (nil, nil when it was done on an earlier run)
 local function embed_defaults()
@@ -150,7 +163,7 @@ local function embed_defaults()
   end
   if not sec_at then lines[#lines + 1] = "[defcfg]"; sec_at = #lines end
   sec_end = sec_end or sec_at
-  local changed = 0
+  local changed, was_tcp = 0, {}
   for _, p in ipairs(paths) do
     local found = false
     for i = sec_at + 1, #lines do
@@ -162,18 +175,37 @@ local function embed_defaults()
         -- MCP: bit 4 on and bit 2 (TCP) off -- with both REAPER uses TCP; the other bits kept
         local n2 = n - (math.floor(n / 2) % 2) * 2 + (math.floor(n / 4) % 2 == 0 and 4 or 0)
         if n2 ~= n then lines[i] = p .. "=" .. n2; changed = changed + 1 end
+        if math.floor(n / 2) % 2 == 1 then
+          for j, f in ipairs(FREE7) do if p == f or p:sub(-(#f + 1)) == "/" .. f then was_tcp[j] = true end end
+        end
       end
     end
     if not found then table.insert(lines, sec_end + 1, p .. "=4"); sec_end = sec_end + 1; changed = changed + 1 end
   end
-  if changed > 0 and not replace_file(opt, bom .. table.concat(lines, nl) .. nl) then return false, BUSY end
+  local wrote, kept = true, nil
+  if changed > 0 then wrote, kept = replace_file(opt, bom .. table.concat(lines, nl) .. nl) end
+  if not wrote then return false, BUSY, nil, kept end
   r.SetExtState("EON_ReaKitFX", "embed_defaults", "1", true)
+  -- the ones that had been set to open in the track panel, by name: "GainKit", "GainKit and DDC", ...
+  local moved = {}
+  for j = 1, #FREE7 do if was_tcp[j] then moved[#moved + 1] = FREE7_NAME[j] end end
+  local text = "The ReaKit FX effects open right in the mixer strip"
+  if #moved > 0 then
+    local last = table.remove(moved)
+    text = text .. ". " .. (#moved > 0 and table.concat(moved, ", ") .. " and " or "") .. last
+      .. " opened in the track panel before"
+  end
   -- REAPER's own setting per plugin: the line stays plain, its tooltip says where to change it
-  return true, "The ReaKit FX effects open right in the mixer strip",
-    "REAPER's own setting for each plugin: right-click it in the FX browser, then Default settings for new instances."
+  return true, text,
+    "REAPER's own setting for each plugin: right-click it in the FX browser, then Default settings for new instances.",
+    kept
 end
-local eok, emsg, etip = embed_defaults()
+local eok, emsg, etip, ekept = embed_defaults()
 if emsg then say(eok, emsg, etip) end
+if ekept then                                         -- a spare replace_file set aside, never removed
+  say(true, "An older copy of REAPER's effect settings was kept, as " .. ekept:match("[^\\/]*$"),
+    ekept .. "  --  left by an earlier run that was cut off; it may hold settings the current file lacks.")
+end
 
 -- 2. EON Floatter: registers itself in the start-up file on its first run
 local need_floatter = false

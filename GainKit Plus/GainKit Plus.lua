@@ -4,7 +4,8 @@
 -- master's GainKit gets the PROJECT's name (MASTER while the project is unsaved), and a GainKit
 -- inside an FX container counts for its track. It also does what the free plugins' EMBED row asks:
 -- shows that plugin in the mixer strip, in the track panel or in neither, and opens new copies of
--- the seven there.
+-- the seven there; and what the long-view arrow on a GainKit's or a Filter's strip asks: swaps that
+-- plugin for its tall copy, or back (LONG VIEW, below).
 --
 -- A background script: run it once to start, run it again to stop. It costs one pass over the
 -- tracks every 0.3 s and writes only when something changed.
@@ -210,7 +211,10 @@ end
 -- seven are set to open there (reaper-fxoptions.ini [defcfg]: bit 4 MCP, bit 2 TCP, neither = OFF;
 -- REAPER reads it at every insert, and 6 would mean TCP). Published back: +0 a heartbeat (os.time,
 -- the clock a JSFX's time() reads; 0 at exit), +1 that default (GainKit's line decides), +2 the
--- request served last.
+-- request served last, +3 the long view served (6: modes 4 DOCK and 5 / 6 LONG VIEW for GainKit;
+-- 7: the Filter's too; each plugin offers its arrow only at the level it needs, so a Plus that would
+-- mark its request served and do nothing shows no arrow; 0 at exit, and 0 from a Plus older than the
+-- long view), +4 1 while a long-view swap waits for the transport to stop (LONG VIEW's writing()).
 local EMB = 31365504
 local SEVEN = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
@@ -237,21 +241,32 @@ local function read_opt(p)
   local s = fh:read("*a"); fh:close()
   return s
 end
--- the new text in without ever leaving no file: written beside it, the old one moved aside, the new
--- one moved in, the old one put back when that fails
+-- the new text in without ever leaving no file: written beside it and read back, the old one moved
+-- aside, the new one moved in, the old one put back when that fails. A spare already there is never
+-- removed (outside audit, 2026-10-08): read_opt put a stranded one back when REAPER's file was gone,
+-- so one still here sits beside a file REAPER has written since -- it may be the only full copy -- or
+-- was left by a remove that failed. It moves to a name nothing uses and stays; the second return
+-- value names it. (os.rename onto itself succeeds only for a path that is there, readable or not.)
+-- The same as "ReaKit FX - Start with REAPER" (iniwrite_test.py runs both).
 local function replace_file(p, text)
-  local tmp, bak = p .. ".reakitfx-tmp", p .. ".reakitfx-bak"
+  local tmp, bak, keep = p .. ".reakitfx-tmp", p .. ".reakitfx-bak", nil
+  if os.rename(bak, bak) then
+    for i = 0, 99 do
+      local n = ("%s.reakitfx-kept-%d-%d"):format(p, math.floor(os.time()), i)
+      if not os.rename(n, n) then keep = n; break end
+    end
+    if not keep or not os.rename(bak, keep) then return false end
+  end
   local fh = io.open(tmp, "wb")
-  if not fh then return false end
+  if not fh then return false, keep end
   local ok = fh:write(text) and true or false
   if not fh:close() then ok = false end
-  if not ok then os.remove(tmp); return false end
-  os.remove(bak)
+  if not ok or slurp(tmp) ~= text then os.remove(tmp); return false, keep end
   local had = os.rename(p, bak)
-  if os.rename(tmp, p) then os.remove(bak); return true end
+  if os.rename(tmp, p) then os.remove(bak); return true, keep end
   if had then os.rename(bak, p) end
   os.remove(tmp)
-  return false
+  return false, keep
 end
 
 -- the seven's paths as REAPER names them in [defcfg]: each one reaper-jsfx.ini lists, plus ReaPack's
@@ -428,6 +443,418 @@ local function dock_request(ti, pos, fl)
   reopen_dock()                              -- returns at once when the dock is up
 end
 
+-- LONG VIEW (modes 5 and 6). REAPER sizes a strip by the plugin's @gfx shape, so a long strip is a second copy of the
+-- plugin with a taller one, in a dot folder beside its own (Eon_JSFX/.tall/, made by the bundle's
+-- .dev_tests/gk_tall_sync.py; REAPER's FX browser skips dot folders). The arrow on a GainKit's or a Filter's strip
+-- asks: 5 = to the tall copy, 6 = back. The swap is the plugin's own saved block with its file pointed at the other
+-- copy, loaded on a temporary track and moved into place (TrackFX_CopyToTrack), the original and the temporary track
+-- deleted, all one undo step. What the block holds comes along -- settings and saved state, automation and its items,
+-- modulation, MIDI learn, the name, wet, bypass, pins, oversampling, the mixer mark -- with the GUID, while the other
+-- plugins keep running (rewriting the track's chunk in place would silence the track for ~130 ms). The user presets of
+-- the copy left behind are merged into the other's file by name (REAPER files them by the plugin's path), and an open
+-- window keeps its size. In a mixer strip, the long swap also grows the strip's effect area so the effects under the
+-- plugin keep their room, and the short swap shrinks it back (FIT, below).
+local NL = "\n"
+-- The plugins with a long view, by their FILE (the exact name, as is_gainkit): the name for the undo point, the tall
+-- copy's @gfx height over the short one's (FIT counts what a squeezed tall face lacks; the heights must match the
+-- bundle's .dev_tests/gk_tall_sync.py, which writes the tall copies, and EON Floatter's TALL_GFX_H), and the kind its
+-- hand-over publishes (rk_handoff.jsfx-inc: kind * 100 + its state layout's version, the plugin's rk_ho_init).
+local LONG = { ["channeltool_reakit.jsfx"] = { name = "GainKit", k = 900 / 540, ho = 102 },
+               ["filter_reakit.jsfx"]      = { name = "Filter",  k = 588 / 283, ho = 201 } }
+local function long_kind(tr, f)                 -- the file name whole (its folders cut off), case-folded, looked up
+  local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
+  return ok and LONG[(id:gsub("^.*[/\\]", "")):lower()] or nil
+end
+local function lines_of(s) local t = {}; for l in (s .. NL):gmatch("(.-)" .. NL) do t[#t + 1] = l end; return t end
+local function esc(s) return (s:gsub("%p", "%%%0")) end
+-- the plugin's block in a track chunk, by its GUID: from the line after the previous plugin's WAK (or the chain's head)
+-- to its own WAK; j = its <JS line
+local function fx_block(L, guid)
+  local fi
+  for i, l in ipairs(L) do if l:match("^%s*FXID%s+" .. esc(guid)) then fi = i; break end end
+  if not fi then return end
+  local i1
+  for i = fi, #L do if L[i]:match("^%s*WAK%s") then i1 = i; break end end
+  local j = fi
+  while j > 1 and not L[j]:match("^%s*<JS%s") do j = j - 1 end
+  if not i1 or not L[j]:match("^%s*<JS%s") then return end
+  local i0 = j
+  while i0 > 1 do
+    local p = L[i0 - 1]
+    if p:match("^%s*WAK%s") or p:match("^%s*DOCKED%s") or p:match("^%s*<FXCHAIN") or p:match("^%s*<CONTAINER")
+       or p:match("^%s*SHOW%s") or p:match("^%s*LASTSEL%s") or p:match("^%s*CONTAINER_CFG") or p:match("^%s*>%s*$") then break end
+    i0 = i0 - 1
+  end
+  return i0, i1, j
+end
+local function js_path(line)
+  local rest = line:match("^%s*<JS%s+(.*)$") or ""
+  return rest:match('^"([^"]*)"') or rest:match("^(%S+)")
+end
+local function set_js_path(line, newpath)
+  local head, rest = line:match("^(%s*<JS%s+)(.*)$")
+  local after = rest:match('^"[^"]*"(.*)$') or rest:match("^%S+(.*)$") or ""
+  return head .. '"' .. newpath .. '"' .. after
+end
+-- the other copy, spelled as the <JS line spells this one: <dir>/FX/<file> <-> <dir>/.tall/<file>; nil when the
+-- plugin is already the copy asked for
+local function other_copy(path, to_tall)
+  local dir, file = path:match("^(.-)([^/\\]+)$")
+  local up, sub, sep = (dir or ""):match("^(.-)([^/\\]+)([/\\])$")
+  if not sub then return nil end
+  if (sub:lower() == ".tall") == to_tall then return nil end
+  return up .. (to_tall and ".tall" or "FX") .. sep .. file
+end
+local function js_file(path)                  -- a <JS path on disk: relative to Effects unless it is absolute
+  if path:match("^%a:[/\\]") or path:match("^[/\\]") then return path end
+  return RES .. "/Effects/" .. path
+end
+-- the address of the plugin with this GUID whose file ends with this path (a copy and its swap share the GUID while
+-- both are on the track; no path: any file); containers searched
+local function find_fx(tr, guid, path)
+  local tail, hit = path and path:gsub("\\", "/"):lower(), nil
+  local function walk(f)
+    if hit then return end
+    if r.TrackFX_GetFXGUID(tr, f) == guid then
+      local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
+      id = ok and id:gsub("\\", "/"):lower() or ""
+      if not tail or id:sub(-#tail) == tail then hit = f; return end
+    end
+    local ok, n = r.TrackFX_GetNamedConfigParm(tr, f, "container_count")
+    if ok then
+      for i = 0, (tonumber(n) or 0) - 1 do
+        local ok2, c = r.TrackFX_GetNamedConfigParm(tr, f, "container_item." .. i)
+        if ok2 and tonumber(c) then walk(tonumber(c)) end
+      end
+    end
+  end
+  for f = 0, r.TrackFX_GetCount(tr) - 1 do walk(f) end
+  return hit
+end
+-- A user preset file (REAPER's ini: [General] with NbPresets=, then [Preset0] .. with Data= / Len= / Name=): its
+-- [General] lines and its presets in order; nil when there is none
+local function read_presets(p)
+  local txt = p and p ~= "" and slurp(p)
+  if not txt then return nil end
+  local gen, list, cur = {}, {}, nil
+  for line in (txt .. "\n"):gmatch("(.-)\r?\n") do
+    local s = line:match("^%[(.-)%]%s*$")
+    if s then
+      cur = s == "General" and "general" or nil
+      if s:match("^Preset%d+$") then cur = { lines = {} }; list[#list + 1] = cur end
+    elseif line:match("%S") then
+      if cur == "general" then gen[#gen + 1] = line
+      elseif cur then
+        cur.lines[#cur.lines + 1] = line
+        cur.name = line:match("^Name=(.*)$") or cur.name
+      end
+    end
+  end
+  return gen, list
+end
+-- every preset of from_file that to_file has no preset of that name for, added to it (written beside and moved in)
+local function merge_presets(from_file, to_file)
+  if not to_file or to_file == "" or from_file == to_file then return end
+  local sgen, src = read_presets(from_file)
+  if not src or #src == 0 then return end
+  local gen, dst = read_presets(to_file)
+  gen, dst = gen or sgen, dst or {}           -- a file not there yet takes the other's [General] (its import stamp)
+  local have, added = {}, 0
+  for _, p in ipairs(dst) do if p.name then have[p.name] = true end end
+  for _, p in ipairs(src) do
+    if p.name and not have[p.name] then dst[#dst + 1] = p; have[p.name] = true; added = added + 1 end
+  end
+  if added == 0 then return end
+  local out = { "[General]" }
+  for _, l in ipairs(gen) do if not l:match("^NbPresets=") then out[#out + 1] = l end end
+  out[#out + 1] = "NbPresets=" .. #dst
+  for i, p in ipairs(dst) do
+    out[#out + 1] = ""
+    out[#out + 1] = ("[Preset%d]"):format(i - 1)
+    for _, l in ipairs(p.lines) do out[#out + 1] = l end
+  end
+  replace_file(to_file, table.concat(out, "\r\n") .. "\r\n")
+end
+-- REAPER is writing automation on this track: playing or recording (not paused) with the track, or the global
+-- override, in Touch, Write, Latch or Latch Preview. A swap then waits for the transport to stop: done while Write
+-- wrote, the gain's envelope kept the OLD values for ~0.3 s from the swap on (gk_long_run.py case H, 2026-10-08).
+local function writing(tr)
+  local ps = r.GetPlayState()
+  if ps & 5 == 0 or ps & 2 == 2 then return false end
+  local m = r.GetGlobalAutomationOverride and r.GetGlobalAutomationOverride() or -1
+  if m < 0 then m = r.GetMediaTrackInfo_Value(tr, "I_AUTOMODE") end
+  return m >= 2 and m <= 5
+end
+-- The strip's room. A strip's effect area has a fixed height and its embedded faces fill it from the top, so a tall
+-- copy would leave the effects under it only what was left. Around a long swap of a GainKit or a Filter shown in a
+-- mixer strip on screen, that strip's effect area grows by the room the effects under it lost (F_MCP_FXSEND_SCALE, the
+-- strip's own share for effects and sends: its fader gets that much shorter); the short swap puts the old value back, unless it
+-- was changed since. All of it from REAPER's own map, never a theme's numbers: the strip windows (REAPERMCPDisplay)
+-- and the strip by GetTrackFromPoint, as the ReaKit FX dock's SLOT finds them, then GetThingFromPoint down its middle
+-- ("mcp.fxembed N" a face, "mcp.fxlist N fx:N" an effect's row; "mcp.fxlist N" alone is an empty slot), after a
+-- forced repaint that lays the mixer out inside this tick. One trial step gives the px per unit, the value is set and
+-- checked (one more step if short). The old and the set value ride in the track's P_EXT, inside the swap's undo
+-- point, so an undo, a save and a reopen keep them with the strip. The strip's own value comes back only when no
+-- tall copy is left in its chain: a second long plugin on it (GainKit or Filter) grows it further and keeps the first
+-- old value; a long one deleted or moved away is noticed within a second (FIT.sweep; a frozen track waits for its
+-- unfreeze). Sandbox: the bundle's .dev_tests/rk_vu_audit/gk_fxarea_run.py (REAPER's layout, box plugins), gk_fit_run.py
+-- (this script, GainKit and a plugin under it) and fl_long_run.py (the Filter's).
+local FIT = { KEY = "P_EXT:EON_GK_LONG_FIT", t = 0 }
+function FIT.ok()
+  return r.JS_Window_ArrayAllChild and r.JS_Window_ListAllTop and r.JS_Window_Update and r.JS_Window_InvalidateRect
+     and r.GetThingFromPoint and r.GetTrackFromPoint and r.new_array and true or false
+end
+function FIT.displays()                         -- the mixer's strip windows on screen (docked: under the main window;
+  local main = r.GetMainHwnd()                  -- floating: under a top-level window the main window owns)
+  local roots, out = { main }, {}
+  local _, tops = r.JS_Window_ListAllTop()
+  for a in (tops or ""):gmatch("[^,]+") do
+    local h = r.JS_Window_HandleFromAddress(tonumber(a))
+    if h and h ~= main and r.JS_Window_IsVisible(h) and r.JS_Window_GetRelated(h, "OWNER") == main then roots[#roots + 1] = h end
+  end
+  for _, root in ipairs(roots) do
+    local arr = r.new_array({}, 512)
+    local got = r.JS_Window_ArrayAllChild(root, arr)        -- too small: a NEGATIVE count and nothing filled
+    if got and got < 0 then arr = r.new_array({}, -got + 16); r.JS_Window_ArrayAllChild(root, arr) end
+    for _, ad in ipairs(arr.table()) do
+      local c = ad ~= 0 and r.JS_Window_HandleFromAddress(ad)
+      if c and r.JS_Window_GetClassName(c) == "REAPERMCPDisplay" and r.JS_Window_IsVisible(c) then
+        local _, L, T, R, B = r.JS_Window_GetRect(c)
+        if R - L > 40 and B - T > 80 then out[#out + 1] = { h = c, L = L, T = T, R = R, B = B } end
+      end
+    end
+  end
+  return out
+end
+-- the track's strip, laid out now: its effect list down the strip's middle -- emb[N] / row[N] the px of effect N's
+-- face / rows, bot the list's last pixel (screen y); nil when the mixer does not show the strip
+function FIT.list(tr)
+  if r.GetToggleCommandState(40078) ~= 1 then return end
+  local ds = FIT.displays()
+  for _, d in ipairs(ds) do r.JS_Window_InvalidateRect(d.h, 0, 0, d.R - d.L, d.B - d.T, true); r.JS_Window_Update(d.h) end
+  for _, d in ipairs(ds) do
+    -- a row the strip answers on: a track's fader row; the master's strip (its own window, titled "master") answers
+    -- nothing across its meter, only higher up (measured 2026-10-08, gk_fit_master_probe.lua)
+    for _, f in ipairs({ 0.72, 0.5, 0.9, 0.25, 0.1 }) do
+      local y, x0, x1 = d.T + math.floor((d.B - d.T) * f), nil, nil
+      for x = d.L + 1, d.R - 1, 2 do if r.GetTrackFromPoint(x, y) == tr then x0 = x0 or x; x1 = x end end
+      if x0 then
+        local x, L, past = math.floor((x0 + x1) / 2), { emb = {}, row = {} }, 0
+        for yy = d.T, d.B do
+          local t, info = r.GetThingFromPoint(x, yy)
+          info = t == tr and info or ""
+          local n = info:match("^mcp%.fxembed (%d+)")
+          local m = info:match("^mcp%.fxlist (%d+) fx:")
+          if n then L.emb[tonumber(n)] = (L.emb[tonumber(n)] or 0) + 1 end
+          if m then L.row[tonumber(m)] = (L.row[tonumber(m)] or 0) + 1 end
+          if info:find("^mcp%.fxembed") or info:find("^mcp%.fxlist") then L.bot, past = yy, 0
+          elseif L.bot then past = past + 1; if past > 60 then break end end
+        end
+        return L.bot and L or nil
+      end
+    end
+  end
+end
+function FIT.under(L, k)                        -- the px the effects after effect k have in the list
+  local s = 0
+  for i, h in pairs(L.emb) do if i > k then s = s + h end end
+  for i, h in pairs(L.row) do if i > k then s = s + h end end
+  return s
+end
+function FIT.set(tr, v) r.SetMediaTrackInfo_Value(tr, "F_MCP_FXSEND_SCALE", v); r.TrackList_AdjustWindows(false) end
+-- after a long swap: grow the strip's area until the effects after effect k have the room they had (before = FIT.list
+-- then); the old and the set value kept in the track's P_EXT. tall_k: the tall copy's @gfx height over the short one's
+-- (LONG's k: GainKit 900 / 540, the Filter 588 / 283)
+function FIT.grow(tr, k, before, tall_k)
+  local now = FIT.list(tr)
+  if not now then return end
+  local need = FIT.under(before, k) - FIT.under(now, k)
+  if need <= 1 then return end
+  local s0 = r.GetMediaTrackInfo_Value(tr, "F_MCP_FXSEND_SCALE")
+  local trial = math.min(1, s0 + 0.1)
+  if trial - s0 < 0.005 then return end
+  FIT.set(tr, trial)
+  local t2 = FIT.list(tr)
+  local per = t2 and (t2.bot - now.bot) / (trial - s0) or 0
+  if per < 20 then FIT.set(tr, s0); return end              -- this theme does not grow the list with it: as it was
+  -- the tall face itself squeezed (another tall face above it on the strip) takes the first of any new room: its full
+  -- height is the short face's times tall_k (the two copies' @gfx), so count what it lacks too (without it, two long
+  -- plugins on one strip stopped short and were put back)
+  local nat = math.floor((before.emb[k] or 0) * (tall_k or 900 / 540) + 0.5)
+  local function lacks(L) return math.max(0, nat - (L.emb[k] or 0) - 2) end
+  local want, cur, short = math.min(1, s0 + (need + lacks(now)) / per), s0, need
+  for _ = 1, 3 do                                            -- set, read back, and up to two more steps if short
+    FIT.set(tr, want); cur = want
+    local t3 = FIT.list(tr)
+    if not t3 then short = need; break end
+    short = FIT.under(before, k) - FIT.under(t3, k)
+    if short <= 1 or want >= 1 then break end
+    want = math.min(1, want + (short + lacks(t3)) / per)
+  end
+  -- all of the room or none: a strip that cannot grow that far (the master's, its meter keeps the height: 2026-10-08)
+  -- keeps its fader and the squeeze, as it was
+  if short > 2 then FIT.set(tr, s0); return end
+  local old, set = FIT.rec(tr)                               -- grown already by another long plugin, and not changed
+  if not (old and math.abs(s0 - set) < 1e-4) then old = s0 end   -- since: the strip's own value stays the one to restore
+  r.GetSetMediaTrackInfo_String(tr, FIT.KEY, ("%.6f %.6f"):format(old, cur), true)
+end
+function FIT.rec(tr)                            -- the record: the strip's own value and the one set, or nil
+  local ok, v = r.GetSetMediaTrackInfo_String(tr, FIT.KEY, "", false)
+  local o, s = (ok and v or ""):match("^(%S+) (%S+)$")
+  if tonumber(o) and tonumber(s) then return tonumber(o), tonumber(s) end
+end
+function FIT.tall_left(tr)                      -- a tall copy still in the chain (top level: only those grow a strip)
+  for f = 0, r.TrackFX_GetCount(tr) - 1 do
+    local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
+    if ok and id:gsub("\\", "/"):lower():find("/.tall/", 1, true) then return true end
+  end
+  return false
+end
+-- after a short swap (or a long plugin gone): the strip's own value back once no tall copy is left in its chain,
+-- unless the strip's share was changed since it was set; the record removed then either way
+function FIT.back(tr)
+  local ok, v = r.GetSetMediaTrackInfo_String(tr, FIT.KEY, "", false)
+  if not ok or v == "" or FIT.tall_left(tr) then return end
+  local s0, set = FIT.rec(tr)
+  if s0 and math.abs(r.GetMediaTrackInfo_Value(tr, "F_MCP_FXSEND_SCALE") - set) < 1e-4 then FIT.set(tr, s0) end
+  r.GetSetMediaTrackInfo_String(tr, FIT.KEY, "", true)
+end
+-- once a second: a strip still grown whose long plugin was deleted or moved to another track gets its value back.
+-- No undo point of its own. REAPER's undo puts back only what the undone step changed, so an undo of the delete
+-- brings the long plugin back on a strip at its own value with no record (consistent: it squeezes as with the mixer
+-- shut until its next long swap; measured 2026-10-08, gk_fit_sweep_probe.lua S2)
+function FIT.sweep()
+  for i = -1, r.CountTracks(0) - 1 do
+    local tr = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
+    local ok, v = r.GetSetMediaTrackInfo_String(tr, FIT.KEY, "", false)
+    if ok and v ~= "" and not FIT.tall_left(tr) then
+      local _, ch = r.GetTrackStateChunk(tr, "", false)      -- a frozen track keeps its plugins aside: not gone
+      if not (ch or ""):find("\n%s*<FREEZE") then FIT.back(tr) end
+    end
+  end
+end
+local pend = {}                                -- the swaps that wait, by plugin GUID: { tg = its track's GUID, to_tall }
+-- The seamless hand-over (rk_handoff.jsfx-inc): a new copy starts from rest, so a swap would click whenever the
+-- plugin's cuts or gain are set. The plugin, armed by the swap's own request, writes its DSP state at the end of each
+-- audio block into a slot of the EON_RKFX_HANDOFF band; the new copy takes it over at its first block, which follows
+-- the old copy's last one exactly. So the swap waits until the slot is fresh: up to HO.WAIT (an engine that runs no
+-- blocks publishes nothing; then the swap is done without it).
+local HO = { BASE = 31367680, N = 16, STRIDE = 96, WAIT = 0.3, wait = {} }   -- wait: by plugin GUID, { tg, to_tall, t0 }
+-- the slot of a fresh publish of this kind at this placement, not taken over yet (a copy swapped in a moment ago leaves
+-- its predecessor's slot taken: a second ask waits for its own; a slot reserved and not yet written reads -1), or nil.
+-- Flags not compared: a request's are the plugin's own, and a take's FX never gets here. The swap writes its go into
+-- the slot (+11) right before it moves the new copy in: only that slot can be taken over, so a plugin the user inserts
+-- at the same place while a swap waits takes nothing.
+function HO.ready(ti, pos, kind)
+  local now = r.time_precise()
+  for i = 0, HO.N - 1 do
+    local s = HO.BASE + i * HO.STRIDE
+    if r.gmem_read(s) > 0 and r.gmem_read(s + 1) == kind and r.gmem_read(s + 2) == ti and r.gmem_read(s + 3) == pos
+       and r.gmem_read(s + 8) == 0 and math.abs(now - r.gmem_read(s + 6)) < 0.25 then return s end
+  end
+end
+local function swap_length(ti, pos, fl, to_tall)
+  if fl % 2 == 1 then return end                                   -- a take's FX: not a strip
+  local tr
+  if ti == -1 then tr = r.GetMasterTrack(0) elseif ti >= 0 then tr = r.GetTrack(0, ti) end
+  local kind = tr and long_kind(tr, pos)                           -- GainKit or the Filter (LONG), by its file
+  if not kind then return end
+  local guid = r.TrackFX_GetFXGUID(tr, pos)
+  if guid and writing(tr) then                                     -- after the transport stops (pend_tick)
+    pend[guid] = { tg = r.GetTrackGUID(tr), to_tall = to_tall }
+    HO.wait[guid] = nil
+    r.gmem_write(EMB + 4, 1)
+    return
+  end
+  local hos = guid and HO.ready(ti, pos, kind.ho)                  -- the hand-over: its state published first (HO.tick)
+  if guid and not hos then
+    local w = HO.wait[guid]
+    if not w then HO.wait[guid] = { tg = r.GetTrackGUID(tr), to_tall = to_tall, t0 = r.time_precise() }; return end
+    if r.time_precise() - w.t0 < HO.WAIT then return end
+  end
+  if guid then HO.wait[guid] = nil end
+  local ok, ch = r.GetTrackStateChunk(tr, "", false)
+  if not guid or not ok or not ch then return end
+  local L = lines_of(ch)
+  local i0, i1, j = fx_block(L, guid)
+  if not j then return end
+  local path = js_path(L[j])
+  local other = path and other_copy(path, to_tall)
+  if not other or not r.file_exists(js_file(other)) then return end
+  local blk = {}
+  for i = i0, i1 do blk[#blk + 1] = (i == j) and set_js_path(L[i], other) or L[i] end
+  local presets_from = r.TrackFX_GetUserPresetFilename(tr, pos, "")
+  local rect                                                       -- an open window keeps its size
+  local hw = r.TrackFX_GetOpen(tr, pos) and r.TrackFX_GetFloatingWindow(tr, pos)
+  if hw and r.JS_Window_GetRect then
+    local okr, wl, wt, wr, wb = r.JS_Window_GetRect(hw)
+    if okr then rect = { wl, wt, wr - wl, wb - wt } end
+  end
+  local before = to_tall and FIT.ok() and FIT.list(tr) or nil     -- the strip as it is: the plugin's face in it, on screen
+  if before and not before.emb[pos] then before = nil end
+  r.Undo_BeginBlock()
+  r.PreventUIRefresh(1)
+  local n = r.CountTracks(0)
+  r.InsertTrackAtIndex(n, false)
+  local tmp, new = r.GetTrack(0, n), nil
+  if tmp and r.SetTrackStateChunk(tmp, "<TRACK" .. NL .. "NAME __gainkit_swap" .. NL .. "<FXCHAIN" .. NL .. "SHOW 0" .. NL ..
+       "LASTSEL 0" .. NL .. "DOCKED 0" .. NL .. table.concat(blk, NL) .. NL .. ">" .. NL .. ">", false)
+     and r.TrackFX_GetCount(tmp) == 1 then
+    -- the go: this swap's new copy may take that slot over (only within 0.25 s of it). Written HERE, once the copy is
+    -- built on the temporary track: loading and compiling it takes ~0.33 s, so a go written before was stale on arrival
+    if hos then r.gmem_write(hos + 11, r.time_precise()) end
+    r.TrackFX_CopyToTrack(tmp, 0, tr, pos, true)
+    new = find_fx(tr, guid, other)
+    local old = new and find_fx(tr, guid, path)
+    if old then r.TrackFX_Delete(tr, old); new = find_fx(tr, guid, other) end
+  end
+  if tmp then r.DeleteTrack(tmp) end
+  r.PreventUIRefresh(-1)
+  if new and to_tall and before then FIT.grow(tr, new, before, kind.k)   -- the strip's room, in the same undo point
+  elseif new and not to_tall then FIT.back(tr) end
+  r.Undo_EndBlock(kind.name .. (to_tall and ": long view" or ": short view"), -1)
+  if not new then return end
+  merge_presets(presets_from, r.TrackFX_GetUserPresetFilename(tr, new, ""))
+  if rect then
+    local nhw = r.TrackFX_GetFloatingWindow(tr, new)
+    if nhw then r.JS_Window_SetPosition(nhw, rect[1], rect[2], rect[3], rect[4]) end
+  end
+end
+-- the swaps that waited: each done once REAPER stops writing on its track, wherever the plugin is then (by its GUID:
+-- a track or a plugin moved meanwhile is followed; one deleted drops its swap). +4 stays 1 while any waits, which keeps
+-- the arrow that asked lit.
+local function pend_tick()
+  if next(pend) == nil then return end
+  for fg, p in pairs(pend) do
+    local tr
+    for i = -1, r.CountTracks(0) - 1 do
+      local t = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
+      if r.GetTrackGUID(t) == p.tg then tr = t; break end
+    end
+    if not tr or not writing(tr) then
+      pend[fg] = nil
+      local pos = tr and find_fx(tr, fg)
+      if pos then swap_length(tr == r.GetMasterTrack(0) and -1 or r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER") - 1, pos, 0, p.to_tall) end
+    end
+  end
+  if next(pend) == nil then r.gmem_write(EMB + 4, 0) end
+end
+-- the swaps that wait for the hand-over's publish: asked again every tick, wherever the plugin is (by its GUID; one
+-- deleted drops its swap); swap_length does it once the state is published, or HO.WAIT after the ask without it
+function HO.tick()
+  if next(HO.wait) == nil then return end
+  for fg, w in pairs(HO.wait) do
+    local tr
+    for i = -1, r.CountTracks(0) - 1 do
+      local t = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
+      if r.GetTrackGUID(t) == w.tg then tr = t; break end
+    end
+    local pos = tr and find_fx(tr, fg)
+    if not pos then HO.wait[fg] = nil
+    else swap_length(tr == r.GetMasterTrack(0) and -1 or r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER") - 1, pos, 0, w.to_tall) end
+  end
+end
+
 -- A copy of the seven at a path REAPER has no [defcfg] line for yet opens un-embedded. The start-up action set the
 -- lines ONCE (its embed_defaults flag), for the paths it saw then; a reinstall or a moved folder later gives new
 -- path names, and those never got the default (found 2026-10-07 on the user's machine: lines for an older folder
@@ -479,7 +906,7 @@ local served = r.gmem_read(EMB + 12)       -- a request older than this run is n
 local hb_last, def_t, paths = 0, -10, nil
 local function embed_tick(now)
   local t = os.time()
-  if t ~= hb_last then hb_last = t; r.gmem_write(EMB, t) end
+  if t ~= hb_last then hb_last = t; r.gmem_write(EMB, t); r.gmem_write(EMB + 3, 7) end   -- +3: the long view served (7: GainKit's and the Filter's)
   local g = r.gmem_read(EMB + 12)
   if g ~= served then
     served = g
@@ -494,6 +921,9 @@ local function embed_tick(now)
     elseif mode == 4 then
       dock_request(math.floor(r.gmem_read(EMB + 9) + 0.5), math.floor(r.gmem_read(EMB + 10) + 0.5),
                    math.floor(r.gmem_read(EMB + 11) + 0.5))
+    elseif mode == 5 or mode == 6 then
+      swap_length(math.floor(r.gmem_read(EMB + 9) + 0.5), math.floor(r.gmem_read(EMB + 10) + 0.5),
+                  math.floor(r.gmem_read(EMB + 11) + 0.5), mode == 5)
     end
     r.gmem_write(EMB + 2, g)
   end
@@ -542,13 +972,18 @@ local function loop()
   if dock_reopen_at and now >= dock_reopen_at then dock_reopen_at = nil; reopen_dock() end
   rename_tick()
   embed_tick(now)
+  pend_tick()
+  HO.tick()
   if now - t_last >= 0.3 then t_last = now; tick() end
+  if now - FIT.t >= 1 then FIT.t = now; FIT.sweep() end
   r.defer(loop)
 end
 
 r.atexit(function()
   for i = 0, MASTER do if last[i] then r.gmem_write(BASE + i * STRIDE, 0) end end
   r.gmem_write(EMB, 0)                                         -- the EMBED row says NEEDS PLUS at once
+  r.gmem_write(EMB + 3, 0)                                     -- and no strip offers the long view
+  r.gmem_write(EMB + 4, 0)                                     -- nor shows a swap waiting
   if sec and cmd and cmd > 0 then r.SetToggleCommandState(sec, cmd, 0); r.RefreshToolbar2(sec, cmd) end
 end)
 loop()

@@ -82,7 +82,7 @@ rkdr_init(160, 20, 150, 244);   // the CURVE drawer: 160 px, its strip 20 px, th
 // other copy. The short strip is the knobs alone; the long strip is the short one with the curve plate under it. The
 // floating window keeps its own design (244 + the drawer's 160, EON Floatter's SIZES); without Floatter a new window
 // opens at the @gfx size and rk_drawer shares it between the face and the drawer.
-FL_LONG = 0;                          // 1 in the tall copy
+FL_LONG = 1;                          // 1 in the tall copy
 FL_SHORT_W = 260; FL_SHORT_H = 283;   // the SHORT copy's @gfx, in both copies
 // The swap's hand-over (rk_handoff.jsfx-inc): kind 2, layout 1, the state in fl_ho_put's order; a new state variable
 // in @sample goes in both lists and the layout up.
@@ -395,7 +395,7 @@ rkho_x ? (
 meter_process_sample(spl0, spl1);
 
 
-@gfx 260 283
+@gfx 260 588
 gfx_clear = 0x443D38;
 // EON theme: bridge mirrors the band into the suite's segment; follow when live.
 rk_theme_apply();

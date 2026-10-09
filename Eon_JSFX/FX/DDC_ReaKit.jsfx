@@ -17,7 +17,7 @@
 // EON Studios — ReaKit Suite. LOSER's Digital Drum Compressor with a ReaKit GUI (Quaz) and
 // additions around his detector and gain computer: knee, mix, sidechain HPF, stereo link,
 // lookahead, and 2x on the detector. His header above is kept as he wrote it.
-// v2.1.2
+// v2.1.3
 desc:EON: DDC
 options:gfx_hz=60 no_meter
 options:gmem=Swing_Media_Transfer
@@ -27,6 +27,7 @@ import ../../ReaKit/buttons_kbsg.jsfx-inc
 import ../../ReaKit/smooth_kbsg.jsfx-inc
 import ../../ReaKit/oversample_kbsg.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_srf.jsfx-inc
 
 in_pin:left input
 in_pin:right input
@@ -553,19 +554,26 @@ rkth_active() ? (   // NATIVE (for all six) leaves the plugin's own colours
 gfx_getchar(); // enable keyboard/focus handling
 // ── Mouse ────────────────────────────────────────────────
 mx = mouse_x; my = mouse_y;
-prev_LMB = LMB; LMB = (mouse_cap & 1);
+LMB = (mouse_cap & 1);
+RMB = (mouse_cap & 2);
+// One DDC shown in the track panel AND the mixer runs @gfx on both, pass for pass: a press latch per surface, the
+// pressed surface's press handed to the other's pass, the modifiers from it, the wheel to the surface under the pointer
+// (rk_srf.jsfx-inc; MEASURED on GainKit 2026-10-07: without it a track-panel drag pressed on every pass).
+// prev_LMB / prev_RMB for the next pass: rk_srf_store(), the frame's last line.
+is_embedded = (gfx_ext_flags & 1);
+rk_srf_load();
 lmb_down    = LMB && !prev_LMB;
-prev_RMB = RMB; RMB = (mouse_cap & 2);
 rmb_down    = RMB && !prev_RMB;   // the THEME panel's rows step back on it, the knobs reset
-CTRL        = (mouse_cap & 4) ? 1 : 0;
-SHIFT       = mouse_cap & 8;
-frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
+CTRL        = (_srf_cap & 4) ? 1 : 0;
+SHIFT       = _srf_cap & 8;
+frame_wheel = rk_srf_wheel();   // it zeroes mouse_wheel when it takes it
 dt          = 1/60;
 tau         = 2*$pi;
 hv_speed    = 11;
 ret         = max(1, gfx_ext_retina);
 
-ddc_skip = rk_embed_idle(0);   // the GR bar reads slider10, already in the hash
+ddc_skip = rk_embed_idle(0) && frame_wheel == 0;   // the GR bar reads slider10, already in the hash; never skip a
+                                                  // pass carrying a wheel notch
 is_embedded = (gfx_ext_flags & 1);
 
 is_embedded ? (
@@ -573,7 +581,10 @@ is_embedded ? (
 // ══════════════════════════════════════════════════════════
 // EMBEDDED MODE — GR Bar + 2 Knobs (THRESH + OUTPUT)
 // ══════════════════════════════════════════════════════════
-  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  // 0x200 is cleared and armed only by a pass whose canvas holds the pointer; a wheel frame's pointer can be stale:
+  // this surface's own last one (rk_srf.jsfx-inc)
+  rk_srf_in() && (gfx_ext_flags & 0x200) ? gfx_ext_flags -= 0x200;
+  frame_wheel != 0 ? ( mx = _srf_hx; my = _srf_hy; );
   emb_widget_active = 0;
   ew = gfx_w; eh = gfx_h;
   gfx_set(bg_r, bg_g, bg_b, 1); gfx_rect(0, 0, ew, eh);
@@ -639,7 +650,7 @@ is_embedded ? (
   );
   btn_pill_draw(pill_xe, pill_ye, pill_we, pill_he, slider8|0, "AUTO", pill_me[0], led_r,led_g,led_b);
 
-  !emb_widget_active ? gfx_ext_flags |= 0x200;
+  rk_srf_in() && !emb_widget_active ? gfx_ext_flags |= 0x200;
 
   );   // !ddc_skip (rk_embed_idle)
 ) : (
@@ -968,4 +979,5 @@ is_embedded ? (
 
   rkth_cluster_overlay();   // the open THEME panel and its lists draw on top
 ); // end floating
+rk_srf_store();   // per-surface latches: prev_LMB / prev_RMB for the next pass (rk_srf.jsfx-inc)
 

@@ -1,7 +1,7 @@
 // Stereo Width (ReaKit)
 // (C) 2026 EON Studios
 // Mid/side stereo width control with correlation meter, and a STEREO FIELD drawer (a live scope)
-// Version: 1.2.0
+// Version: 1.2.1
 //
 // GUI by EON Studios (ReaKit Libraries)
 desc:EON: Stereo Width
@@ -16,6 +16,7 @@ import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
 import ../../ReaKit/rk_drawer.jsfx-inc
+import ../../ReaKit/rk_srf.jsfx-inc
 
 slider1:100<0,200,1>-Width (%)
 slider2:1<0,1,1>-Enable
@@ -174,10 +175,15 @@ rkth_active() ? (   // NATIVE (for all six) leaves the plugin's own colours
 rk_link_key = gfx_getchar();
 mx = mouse_x; my = mouse_y;
 LMB = mouse_cap & 1; RMB = mouse_cap & 2;
-CTRL = mouse_cap & 4; SHIFT = mouse_cap & 8;
+// One Stereo Width shown in the track panel AND the mixer runs @gfx on both, pass for pass: a press latch per surface,
+// the pressed surface's press handed to the other's pass, the modifiers from it, the wheel to the surface under the
+// pointer (rk_srf.jsfx-inc; MEASURED on GainKit 2026-10-07: without it a track-panel drag pressed on every pass)
+is_embedded = (gfx_ext_flags & 1);
+rk_srf_load();
+CTRL = _srf_cap & 4; SHIFT = _srf_cap & 8;
 lmb_down = LMB && !prev_LMB;
 rmb_down = RMB && !prev_RMB;
-frame_wheel = mouse_wheel / 120; mouse_wheel = 0;
+frame_wheel = rk_srf_wheel();   // it zeroes mouse_wheel when it takes it
 timer = time_precise();
 
 dt = min(timer - frame_last_timer, 0.05);
@@ -198,7 +204,8 @@ denom > 0.000000000001 ? (
 corr_gui_coeff = 0.85;
 corr_smooth = corr_gui_coeff * corr_smooth + (1.0 - corr_gui_coeff) * corr_val;
 
-sw_skip = rk_embed_idle(floor(corr_smooth * 40 + 0.5));   // the correlation bar
+sw_skip = rk_embed_idle(floor(corr_smooth * 40 + 0.5)) && frame_wheel == 0;   // the correlation bar; never skip a
+                                                                            // pass carrying a wheel notch
 // Background
 !sw_skip ? (
   gfx_set(_th_bg_r, _th_bg_g, _th_bg_b, 1);
@@ -372,7 +379,10 @@ gfx_ext_flags & 1 ? (
 // ║  EMBEDDED — vertical: WIDTH knob top, correlation bar bottom          ║
 // ╚═══════════════════════════════════════════════════════════════════════╝
 
-  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  // 0x200 is cleared and armed only by a pass whose canvas holds the pointer; a wheel frame's pointer can be stale:
+  // this surface's own last one (rk_srf.jsfx-inc)
+  rk_srf_in() && (gfx_ext_flags & 0x200) ? gfx_ext_flags -= 0x200;
+  frame_wheel != 0 ? ( mx = _srf_hx; my = _srf_hy; );
   emb_widget_active = 0;
 
   // the correlation meter is this copy's option (the user, 2026-10-06: "can that be an option for just it"):
@@ -468,7 +478,7 @@ gfx_ext_flags & 1 ? (
     sw_tab_hov ? ( emb_widget_active = 1; lmb_down ? sw_strip_corr = 1; );
   );
 
-  !emb_widget_active ? gfx_ext_flags |= 0x200;
+  rk_srf_in() && !emb_widget_active ? gfx_ext_flags |= 0x200;
 
 
   );   // !sw_skip (rk_embed_idle)
@@ -737,5 +747,4 @@ rkth_cluster_overlay();   // open THEME/KNOB panels draw on top (floating only)
   sw_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
 );
 rk_link_on_gfx_change();
-prev_LMB = LMB;
-prev_RMB = RMB;
+rk_srf_store();   // per-surface latches: prev_LMB / prev_RMB for the next pass (rk_srf.jsfx-inc)

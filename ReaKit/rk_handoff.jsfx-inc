@@ -1,0 +1,130 @@
+// rk_handoff.jsfx-inc -- the long view's seamless hand-over. GainKit Plus swaps GainKit or the Filter for its other copy
+// (Eon_JSFX/FX/ <-> Eon_JSFX/.tall/) while the song plays; a new instance starts from rest, so without this its filters
+// and smoothers would jump (a click whenever a cut or a gain is set). REAPER runs the new instance's first block exactly
+// where the old one's last block ended (playing: the next play_position; stopped: the same one), no block run by both.
+// So the old instance, armed by a swap request for its own placement (rk_theme's EMBED band, modes 5 / 6), writes its
+// whole DSP state at the end of every block into a slot of the EON_RKFX_HANDOFF band; GainKit Plus swaps once that slot
+// is fresh (it waits up to 0.3 s); the new instance, in its first 2 s, takes over a slot published at its placement, by
+// its kind and layout, at its sample rate, fresh, whose next block is this one, before it runs a sample, and marks it
+// taken; the old instance, if it still runs after it that block, passes the audio through. Anything that does not add
+// up (a loop jump, a seek, a playback rate other than 1, an undo) finds no slot: the new instance starts from rest.
+//
+// Band EON_RKFX_HANDOFF in Swing_Media_Transfer (the bundle's .refs/gmem_regions_supplement.tsv): RKHO_N slots of
+// RKHO_STRIDE cells:
+//   +0 -1 reserved (claimed, nothing published yet), > 0 published (the publisher's own count, written LAST)
+//   +1 kind (kind * 100 + the host's state layout version)
+//   +2 track, +3 chain position, +10 flags (get_host_placement)       +4 the claiming instance's id
+//   +5 the play_position the state is valid at (the next block's)     +6 time_precise() at the claim / publish
+//   +7 play_state then      +8 taken by (an instance id; 0 = not)     +9 srate
+//   +11 GainKit Plus's go: time_precise() right before it moves the new copy in (0 = none)      +12..15 spare
+//   +16..+95 the host's state, its own order (RKHO_DATA + i)
+// A slot is claimed by the publisher (its id in +4, reserved in +0, the go cleared); one older than 5 s, never claimed,
+// or left at this placement by an earlier swap is free. Only a slot with a go in the last 0.25 s is taken over, so an
+// instance the user inserts at the same placement while a swap is held takes nothing.
+//
+// The host (rk_theme imported before this, for RKTH_EM_BASE):
+//   @init    rk_ho_init(kind);
+//   @block   rk_ho_block();                                      // after the host's own @block work
+//            rkho_adopt >= 0 ? ( <copy the state from gmem[rkho_adopt + RKHO_DATA + i]>; rk_ho_take(); );
+//   @sample  rkho_gone ? <keep the input>;  <the processing>;
+//            rkho_x ? ( rkho_gone ? <put the input back>;
+//                       rk_ho_due() ? ( <write the state to gmem[rkho_slot + RKHO_DATA + i]>; rk_ho_seal(); ); );
+//            (rkho_x is 0 unless armed or taken over: one test per sample in the normal case)
+// Armed: a swap request naming this placement came in the last 3 s, or since then GainKit Plus holds a swap (EMBED +4:
+// REAPER writes automation; the swap is done at the stop).
+
+@init
+RKHO_BASE = 31367680; RKHO_N = 16; RKHO_STRIDE = 96; RKHO_DATA = 16; RKHO_MAX = 80;
+
+function rk_ho_init(kind) (
+  rkho_kind = kind;
+  rkho_id = floor(rand(899999)) + 100000;
+  rkho_new = 1; rkho_t0 = time_precise();
+  rkho_slot = -1; rkho_gone = 0; rkho_left = 0; rkho_pub = 0; rkho_adopt = -1; rkho_x = 0;
+  rkho_arm_t = 0; rkho_seq = 0;
+  rkho_req_seen = gmem[RKTH_EM_BASE + 12];   // the request that made this instance arms nothing
+);
+
+// @block: arms on a swap request for this placement; a new instance looks for a slot to take over; an armed one claims
+// its slot and arms the publish at this block's end
+function rk_ho_block() local(t, p, f, i, s, now, nx, st, m, armed) (
+  now = time_precise();
+  rkho_adopt = -1;
+  gmem[RKTH_EM_BASE + 12] != rkho_req_seen ? (
+    rkho_req_seen = gmem[RKTH_EM_BASE + 12];
+    m = gmem[RKTH_EM_BASE + 8];
+    m == 5 || m == 6 ? (
+      p = 0; f = 0;
+      t = get_host_placement(p, f);
+      t == gmem[RKTH_EM_BASE + 9] && p == gmem[RKTH_EM_BASE + 10] ? rkho_arm_t = now;
+    );
+  );
+  armed = rkho_arm_t > 0 && (now - rkho_arm_t < 3 || gmem[RKTH_EM_BASE + 4] > 0);
+  (rkho_new || (armed && !rkho_gone)) ? (
+    p = 0; f = 0;
+    t = get_host_placement(p, f);
+    rkho_new ? (
+      now - rkho_t0 > 2 ? ( rkho_new = 0; ) : (
+        i = 0;
+        loop(RKHO_N,
+          s = RKHO_BASE + i * RKHO_STRIDE;
+          rkho_adopt < 0 && gmem[s] > 0 && gmem[s + 1] == rkho_kind && gmem[s + 2] == t && gmem[s + 3] == p
+            && gmem[s + 10] == f && gmem[s + 4] != rkho_id && gmem[s + 8] == 0 && gmem[s + 9] == srate
+            && abs(now - gmem[s + 6]) < 0.5 && gmem[s + 11] > 0 && abs(now - gmem[s + 11]) < 0.25
+            && ((play_state & 1) ? (gmem[s + 7] & 1) && abs(gmem[s + 5] - play_position) < 0.5 / max(srate, 8000)
+                                 : !(gmem[s + 7] & 1) && gmem[s + 5] === play_position) ? rkho_adopt = s;
+          i += 1;
+        );
+      );
+    );
+    armed && !rkho_gone ? (
+      rkho_slot >= 0 && gmem[rkho_slot + 4] != rkho_id ? rkho_slot = -1;   // claimed by another meanwhile
+      rkho_slot < 0 ? (
+        i = 0; st = ((abs(t) * 7 + p * 13) % RKHO_N) | 0;   // start where this placement hashes
+        loop(RKHO_N,
+          s = RKHO_BASE + ((st + i) % RKHO_N) * RKHO_STRIDE;
+          rkho_slot < 0 && (gmem[s + 4] <= 0 || abs(now - gmem[s + 6]) > 5
+                            || (gmem[s + 2] == t && gmem[s + 3] == p && gmem[s + 10] == f && gmem[s] >= 0)) ? (
+            // reserved before anything is written: an older publish in it can no longer read as fresh
+            rkho_slot = s; gmem[s + 4] = rkho_id; gmem[s] = -1; gmem[s + 6] = now; gmem[s + 8] = 0; gmem[s + 11] = 0;
+          );
+          i += 1;
+        );
+      );
+      rkho_slot >= 0 ? (
+        gmem[rkho_slot + 8] > 0 && gmem[rkho_slot + 8] != rkho_id ? (
+          rkho_gone = 1; rkho_pub = 0;                   // taken over: the audio passes through from now on
+        ) : (
+          rkho_pub = 1; rkho_left = samplesblock;
+          rkho_t = t; rkho_p = p; rkho_f = f;
+          nx = (play_state & 1) ? play_position + samplesblock / max(srate, 8000) : play_position;
+          rkho_next = nx; rkho_ps = play_state;
+        );
+      );
+    ) : ( rkho_pub = 0; );
+  ) : ( rkho_pub = 0; );
+  rkho_x = rkho_gone || rkho_pub;
+);
+
+// @block, after the host copied the state from rkho_adopt
+function rk_ho_take() (
+  gmem[rkho_adopt + 8] = rkho_id;
+  rkho_new = 0;
+);
+
+// @sample: 1 on the block's last sample while armed and the slot still this instance's
+function rk_ho_due() (
+  rkho_pub ? ( rkho_left -= 1; rkho_left <= 0 ? ( rkho_pub = 0; gmem[rkho_slot + 4] == rkho_id; ) : 0; ) : 0;
+);
+
+// after the host wrote its state: the header, the count LAST (the go in +11 is GainKit Plus's: left as it is)
+function rk_ho_seal() local(s) (
+  s = rkho_slot;
+  s >= 0 ? (
+    gmem[s + 1] = rkho_kind; gmem[s + 2] = rkho_t; gmem[s + 3] = rkho_p; gmem[s + 10] = rkho_f;
+    gmem[s + 5] = rkho_next; gmem[s + 6] = time_precise(); gmem[s + 7] = rkho_ps;
+    gmem[s + 8] = 0; gmem[s + 9] = srate;
+    rkho_seq += 1;
+    gmem[s] = rkho_seq;
+  );
+);

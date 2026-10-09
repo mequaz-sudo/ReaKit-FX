@@ -21,8 +21,10 @@
 //******************************************************************************
 //
 // EON Studios ReaKit — De-Esser: Liteon's de-esser (LR2 crossover + peak compressor), ported,
-// with a ReaKit GUI. It stays under the GPL, as Liteon released it (his header above).
-// Version: 1.0.4
+// with a ReaKit GUI. It stays under the GPL, as Liteon released it (his header above). The GPL's
+// full text is beside this file, DeEsser_ReaKit.GPL-3.0.md: his header names no version, and the
+// GPL then lets anyone choose any version; the copy here is version 3.
+// Version: 1.0.5
 desc:EON: De-Esser
 
 slider1:-20<-60,0,0.1>-Threshold (dB)
@@ -54,6 +56,7 @@ import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc
 import ../../ReaKit/rk_gmem_link.jsfx-inc
 import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_srf.jsfx-inc
 
 @init
 // once, at load: REAPER would re-run it on play start and on enable, zeroing the lookahead and every
@@ -520,13 +523,18 @@ function d2y_spec(db, oy, oh, dblo, dbhi) ( oy + oh * (1 - (db - dblo) / (dbhi -
 rk_link_key = gfx_getchar();  // required for mouse_cap modifier keys; feeds Esc-to-close
 mx = mouse_x; my = mouse_y;
 LMB       = mouse_cap & 1;
-CTRL      = mouse_cap & 4;   // fine control for knobs
-SHIFT     = mouse_cap & 8;
+RMB       = mouse_cap & 2;
+// One De-Esser shown in the track panel AND the mixer runs @gfx on both, pass for pass: a press latch per surface,
+// the pressed surface's press handed to the other's pass, the modifiers from it, the wheel to the surface under the
+// pointer (rk_srf.jsfx-inc; MEASURED on GainKit 2026-10-07: without it a track-panel drag pressed on every pass).
+// prev_LMB / prev_RMB for the next pass: rk_srf_store(), the frame's last line.
+is_embedded = (gfx_ext_flags & 1);
+rk_srf_load();
+CTRL      = _srf_cap & 4;   // fine control for knobs
+SHIFT     = _srf_cap & 8;
 lmb_down  = LMB && !prev_LMB;
-prev_LMB  = LMB;
-RMB = mouse_cap & 2; rmb_down = RMB && !prev_RMB; prev_RMB = RMB;
-frame_wheel = mouse_wheel / 120;
-mouse_wheel = 0;
+rmb_down  = RMB && !prev_RMB;
+frame_wheel = rk_srf_wheel();   // it zeroes mouse_wheel when it takes it
 dt = 1/60;
 hv_speed = 11;
 tau = 2*$pi;
@@ -536,12 +544,15 @@ rk_link_menu_gate();
 // GR display ballistic: fast attack (~1 frame), slow release (~300ms at 60fps)
 gr_db_out < gr_disp ? gr_disp = gr_db_out : gr_disp += (0 - gr_disp) * 0.04;
 
-de_skip = rk_embed_idle(floor(gr_disp * 4 + 0.5));   // the GR bar
+de_skip = rk_embed_idle(floor(gr_disp * 4 + 0.5)) && frame_wheel == 0;   // the GR bar; never skip a wheel notch
 is_embedded = (gfx_ext_flags & 1);
 
 is_embedded ? (
   !de_skip ? (   // an idle strip keeps its last picture (rk_embed_idle, 2026-10-01)
-  gfx_ext_flags & 0x200 ? gfx_ext_flags -= 0x200;
+  // 0x200 is cleared and armed only by a pass whose canvas holds the pointer; a wheel frame's pointer can be stale:
+  // this surface's own last one (rk_srf.jsfx-inc)
+  rk_srf_in() && (gfx_ext_flags & 0x200) ? gfx_ext_flags -= 0x200;
+  frame_wheel != 0 ? ( mx = _srf_hx; my = _srf_hy; );
   emb_widget_active = 0;
   // ── EMBEDDED ──────────────────────────────────────────────────────────────
   w = gfx_w; h = gfx_h;
@@ -572,7 +583,7 @@ is_embedded ? (
   rk_link_draw_badge(w - 14*ret, h - 10*ret, 9*ret, 0.00, 0.70, 0.85, mx, my, lmb_down);
   rk_link_on_gfx_change();
 
-  !emb_widget_active ? gfx_ext_flags |= 0x200;
+  rk_srf_in() && !emb_widget_active ? gfx_ext_flags |= 0x200;
 
   );   // !de_skip (rk_embed_idle)
 ) : (
@@ -972,6 +983,7 @@ rkth_cluster_overlay();
 );
 
 rk_link_on_gfx_change();
+rk_srf_store();   // per-surface latches: prev_LMB / prev_RMB for the next pass (rk_srf.jsfx-inc)
 
 
 @serialize

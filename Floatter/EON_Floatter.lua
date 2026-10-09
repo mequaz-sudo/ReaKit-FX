@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.7
+-- @version 1.0.8
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -8,7 +8,7 @@
 --   the panel. Closing the panel never stops it. A window you resize by hand
 --   keeps that size until REAPER closes. A plugin with a drawer (the free
 --   ReaKit FX Saturation's CURVE, the 3-Band EQ's band display, Stereo
---   Width's stereo field, the Filter's CURVE) grows its
+--   Width's stereo field, the Filter's CURVE, GainKit's FILTERS) grows its
 --   window down when the drawer opens and gives the room back when it
 --   closes; in a window made bigger, the drawer is bigger too.
 --
@@ -43,7 +43,7 @@
 
 local r = reaper
 
-local VERSION   = "1.0.7"   -- shown in the panel; keep with @version above
+local VERSION   = "1.0.8"   -- shown in the panel; keep with @version above
 local EXT_D     = "EON_FloatSize"      -- captures / scale / global (the keys the pair used)
 local EXT_F     = "EON_Floatter"       -- this script's own state
 -- ⚠ Mirrored in rk_lua_core.lua (core.ALIVE_FLOATTER_*) for the Kit Bridge,
@@ -332,7 +332,7 @@ local SIZES = {
   ["DeEsser_ReaKit"] = { w = 465, h = 376, gfx_w = 540, gfx_h = 520 },
   ["Delay_ReaKit"] = { w = 581, h = 560, gfx_w = 620, gfx_h = 760 },
   ["EON_Drum_Strip"] = { w = 504, h = 368, gfx_w = 300, gfx_h = 700 },
-  ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 404 },
+  ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 283 },
   ["Gate_ReaKit"] = { w = 512, h = 430, gfx_w = 560, gfx_h = 520 },
   ["Saturation_ReaKit"] = { w = 288, h = 306, gfx_w = 220, gfx_h = 320 },
   ["StereoWidth_ReaKit"] = { w = 291, h = 204, gfx_w = 200, gfx_h = 280 },
@@ -778,6 +778,11 @@ local DRAWERS = {
   ["StereoWidth_ReaKit"] = { param = 4, h = 160, ch = 204, sh = 20, name = "Stereo field drawer", old = true },
   -- slider6 fl_drawer (Filter 1.0.0, ReaKit FX 1.5.0, 2026-10-07): born with the drawer, so no older copy to read
   ["Filter_ReaKit"]      = { param = 5, h = 160, ch = 244, sh = 20, name = "Curve drawer", old = false },
+  -- slider34 ct_drawer (GainKit, 2026-10-08: the FILTERS row's DRAWER): param 25, measured (sliders 1-4, 7, 12, 15-35
+  -- are sparse; gk_filtview_probe.lua). Shut unless the FILTERS row says DRAWER: GainKit keeps it 0 in every other
+  -- view, so this row never grows a window that has no drawer. ch is GainKit's SIZES row (546): the strip fits in it,
+  -- the face there is bound by its width. A GainKit from before has no such slider: "shut", as it had no drawer.
+  ["ChannelTool_ReaKit"] = { param = 25, h = 160, ch = 546, sh = 20, name = "Filter drawer", old = false },
 }
 local DRW         = 31365520   -- EON_RKFX_DRAWER (.refs/gmem_regions_supplement.tsv)
 local DRW_VERSION = 1          -- +1: the drawer protocol this Floatter speaks
@@ -895,11 +900,20 @@ end
 
 -- A fresh window says what the display scale is; learn it whenever one is
 -- in hand, whatever is about to be done to it.
+-- A hidden TALL copy (Eon_JSFX/.tall/, the same file name, so the same rows; GainKit's long strip view, 2026-10-08)
+-- declares a taller @gfx, and a fresh window of one opens at that: GainKit's at 450 x 900 (489 x 900 on the canvas,
+-- the float's minimum width), which against the short copy's 540 never read as fresh, so it kept that height. The
+-- Filter's long view (2026-10-09): its tall copy's @gfx is 260 x 588 (the bundle's .dev_tests/gk_tall_sync.py).
+local TALL_GFX_H = { ["ChannelTool_ReaKit"] = 900, ["Filter_ReaKit"] = 588 }
 local function learn_scale(e, rc)
   local ship = SIZES[e.key]
   if not ship or not rc then return nil end
+  local gh = ship.gfx_h
+  if TALL_GFX_H[e.key] and e.tr and e.fx and (L.fx_ident(e.tr, e.fx) or ""):gsub("\\", "/"):find("/.tall/", 1, true) then
+    gh = TALL_GFX_H[e.key]
+  end
   local ks, ksrc = W.scale_now()                  -- a scale seen before settles an ambiguous double bend
-  local s = L.fresh_scale(e.hwnd, rc, ship.gfx_w, ship.gfx_h, ksrc ~= "assumed" and ks or nil)
+  local s = L.fresh_scale(e.hwnd, rc, ship.gfx_w, gh, ksrc ~= "assumed" and ks or nil)
   if s then
     if s ~= W.scale_session then W.rev = W.rev + 1 end
     W.scale_session = s

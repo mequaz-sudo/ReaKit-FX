@@ -11,7 +11,7 @@ local r = reaper
 -- each by its listed name first (any install), then the ReaPack package's path, then the EON install's
 local SEVEN = {
   { name = "GainKit",      file = "ChannelTool_ReaKit.jsfx", w = 350, h = 546 },
-  { name = "Filter",       file = "Filter_ReaKit.jsfx",      w = 260, h = 404 },   -- its @gfx (not in Floatter's SIZES)
+  { name = "Filter",       file = "Filter_ReaKit.jsfx",      w = 260, h = 404 },   -- Floatter's 244 + its drawer's 160
   { name = "De-Esser",     file = "DeEsser_ReaKit.jsfx",     w = 465, h = 376 },
   { name = "Saturation",   file = "Saturation_ReaKit.jsfx",  w = 288, h = 506 },
   { name = "3-Band EQ",    file = "3BandEQ_ReaKit.jsfx",     w = 418, h = 228 },

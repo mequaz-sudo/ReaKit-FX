@@ -911,7 +911,7 @@ gk_fb_ytop = -1000000;     // a bar's row top, set by a caller around its gk_fba
 // end of the strip's filter bar asks GainKit Plus to swap this plugin for the other copy, everything kept (handoff
 // §10, its way B). The user, 2026-10-07: "keep it hidden from user view best we can. Just make this feature look like
 // a button."
-GK_LONG = 0;   // 1 in the tall copy: its strip has the room for the filter plate under the face
+GK_LONG = 1;   // 1 in the tall copy: its strip has the room for the filter plate under the face
 
 // a cutoff rounded as its readout prints it: whole Hz under 1 kHz, 10 Hz steps to 10 kHz, 100 Hz over (the Filter's)
 function gk_round_hz(f) (
@@ -1531,7 +1531,7 @@ rkho_x ? (
 // the VU reads what leaves the plugin, processed or passed through
 vu_ct.rk_vu_sample2(spl0, spl1);   // the louder side (the user, 2026-10-01): (L+R)/2 read a hard-panned source 6 dB low
 
-@gfx 450 540
+@gfx 450 900
 gfx_clear = 0x443D38;
 // GainKit maps the theme band itself and never calls rk_theme_apply, so the built-in themes'
 // painter and the strip's double-click window are taken here: without them a GainKit-only
