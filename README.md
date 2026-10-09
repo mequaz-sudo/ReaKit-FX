@@ -128,9 +128,9 @@ Three themes are built in, **EON**, **Dark** and **Light**, plus **NATIVE**, eac
 21 knob styles. Pick one on any of the seven and all seven follow; a project opens on the theme it was saved
 with. With EON Swing running, they also follow the theme picked in Swing (SSL, Neve, API and more).
 
-![The session on the Dark theme](screenshots/session/session_dark.png)
+![A 37-track session on the Dark theme, ReaKit FX in its mixer strips](screenshots/session/mix_dark.png)
 
-![The session on the Light theme](screenshots/session/session_light.png)
+![The same session on the Light theme, out to the master](screenshots/session/mix_light.png)
 
 ## Across the plugins
 
