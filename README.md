@@ -67,6 +67,11 @@ end: it opens the long view, the same strip with the cuts' response and their ba
 arrow there brings the short strip back. The mixer strip grows by the room the long view takes where
 it can (not the master's), so the effects under it keep theirs; the swap keeps every setting and does not interrupt the sound.
 
+![The arrow opening the long view and closing it again, on a Filter and then on a GainKit](screenshots/session/long_view.gif)
+
+*The first track's Filter, then the second track's GainKit: the arrow opens the long view, the strip grows for it, and the
+arrow brings the short strip back.*
+
 The THEME panel's METER tab sets how the meter reads: where 0 VU sits (-18, -20 or -14 dBFS), how
 fast the needle moves (the standard speed, twice as fast, or half), what marks the last high (a
 second needle, the arc, or nothing), the number on the window's meter (the VU reading, the peak in
@@ -334,6 +339,10 @@ colour, close this track's or every track's windows, pin.
   ReaImGui; without it, the gear shows a plain menu and the picker row opens REAPER's own icon
   dialog;
 - the chevron at the far left folds the bar; the X at the far right closes the dock.
+
+![SLOT scrolling every mixer strip to Slot 3, to Slot 5, then back to the top](screenshots/session/dock_slot.gif)
+
+*SLOT: Slot 3, Slot 5, then back to the top, on every strip at once.*
 
 ![The gear menu](screenshots/session/dock_bar_menu.png)
 
