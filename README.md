@@ -99,9 +99,9 @@ Install **GainKit Plus** from the same repository. Its actions are in the Action
 ![The REAPER window with the dock under the tracks: Lead Vox selected, its four effects side by side](screenshots/session/dock_overview.png)
 
 Select a track and its ReaKit FX open in a docker, whole and working. **PIN** keeps the dock on one track.
-**STRIP** shows every effect on the track side by side; with it off, the one you pick fills the dock. With GainKit
-Plus running, double-click a plugin's name at the top of its window to move it into the dock, and double-click it
-there to pop it back out.
+**STRIP** shows every effect on the track side by side; with it off, the one you pick fills the dock, and the wheel
+over the bar steps to the track's next or previous effect. With GainKit Plus running, double-click a plugin's name
+at the top of its window to move it into the dock, and double-click it there to pop it back out.
 The dock runs on Windows and needs js_ReaScriptAPI.
 
 ![The bar, each part named](screenshots/session/dock_bar.png)

@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.8
+-- @version 1.0.9
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -331,7 +331,7 @@ local SIZES = {
   ["DDC_ReaKit"] = { w = 573, h = 319, gfx_w = 600, gfx_h = 520 },
   ["DeEsser_ReaKit"] = { w = 465, h = 376, gfx_w = 540, gfx_h = 520 },
   ["Delay_ReaKit"] = { w = 581, h = 560, gfx_w = 620, gfx_h = 760 },
-  ["EON_Drum_Strip"] = { w = 504, h = 368, gfx_w = 300, gfx_h = 700 },
+  ["EON_Drum_Strip"] = { w = 504, h = 368, gfx_w = 300, gfx_h = 900 },
   ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 283 },
   ["Gate_ReaKit"] = { w = 512, h = 430, gfx_w = 560, gfx_h = 520 },
   ["Saturation_ReaKit"] = { w = 288, h = 306, gfx_w = 220, gfx_h = 320 },
@@ -606,7 +606,7 @@ function S.autostart_forget() autostart_cache.t = -1 end
 -- instance it starts knows to stay quiet (no panel at REAPER launch). If
 -- NamedCommandLookup ever stops resolving, the block strips ITSELF out.
 function S.self_register()
-  local key    = SCRIPT_NAME .. "_registered_v2"
+  local key    = SCRIPT_NAME .. "_registered_v3"   -- v3 (2026-10-14): the block checks the script file (every install re-registers once)
   local marker = "-- EON:" .. SCRIPT_NAME
   local path   = startup_path()
   -- A rewrite that failed half-way may have left the file stepped aside as
@@ -630,10 +630,13 @@ function S.self_register()
     and ('reaper.NamedCommandLookup("_' .. named_id .. '")')
     or tostring(reg_cmd_id)
 
+  -- The action must resolve AND the script file must open (2026-10-14: a folder deleted by hand leaves the action
+  -- behind, and REAPER showed "Can't load file" at every start); else the block strips itself. %q: a ]] in the path.
   local block =
     "\n" .. marker .. " BEGIN\n" ..
     "do local id=" .. cmd_token .. "\n" ..
-    "if id~=0 then\n" ..
+    string.format("local sf=io.open(%q,'r'); if sf then sf:close() end\n", self_path) ..
+    "if id~=0 and sf then\n" ..
     "  reaper.SetExtState('" .. EXT_F .. "','" .. LAUNCH_KEY .. "','startup:'..reaper.time_precise(),false)\n" ..
     "  reaper.Main_OnCommand(id,0)\n" ..
     "else\n" ..
@@ -655,7 +658,7 @@ function S.unregister_startup()
     local stripped, had = S.strip_block(c, SCRIPT_NAME)
     if had then eon_write_startup(path, stripped) end
   end
-  r.SetExtState(EXT_F, SCRIPT_NAME .. "_registered_v2", "", true)
+  r.SetExtState(EXT_F, SCRIPT_NAME .. "_registered_v3", "", true)
 end
 
 -- ── Retiring the pair this script replaced ───────────────────────────────────
