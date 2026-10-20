@@ -666,6 +666,48 @@ function rkth_dock_name(x, y, w, h) local(_in, _now, _p, _f, _t, _g) (
   );
 );
 
+// ── TRACK NAME (the free six): the track's own name after the title, in a lighter ink ──
+// The user (2026-10-15, from a render of two placements): "Build A: the track name after the title, in the lighter
+// ink, on the free ReaKit FX". REAPER 7.81+ hands @gfx the track's name through get_host_placement's third
+// argument: UTF-8, "Track N" for an unnamed track, "" for the master (probed 2026-09-30 on 7.81 and 7.79,
+// .dev_tests/rk_vu_audit/hostname_probe.*; GainKit 2.6.0 names itself the same way). An older REAPER compiles the
+// call and leaves the string alone, so there it draws nothing and moves nothing. A host calls, every frame, right
+// after drawing its title in its header (gfx_x and gfx_y as the title left them, the title's ink in gfx_r/g/b):
+//   rkth_track_name(fs, room);   // fs = the title's font size; room = the px the header can spare after the title,
+//                                // the gap included (the host subtracts what must still fit: its cluster, a switch)
+// Draws the name at fs, regular weight, the title's ink at 55 % (an alpha blend, so the header's own colour shows
+// through), RKTH_TN_GAP * fs after the title, cut with ".." on a UTF-8 letter boundary to fit; nothing at all when
+// the room after the gap is narrower than "MMM" at fs (a narrow window or the dock). Leaves gfx_x at the name's end
+// (the title's end when nothing was drawn),
+// so the cluster that follows moves with it, gfx_a at 1, and the font the regular one at fs (every caller sets its
+// own before it draws). The title's double-click box (rkth_dock_name) stays the title's own. Returns 1 when drawn.
+RKTH_TN_GAP = 0.75;   // 9 px at a 12 px title
+function rkth_track_name(fs, room) local(_p, _f, _tw, _th, _n, _x0, _w3, _gap, _drawn) (
+  _drawn = 0; _x0 = gfx_x; _gap = RKTH_TN_GAP * fs;
+  strcpy(#rkth_tn, "");
+  _p = 0; _f = 0;
+  get_host_placement(_p, _f, #rkth_tn);
+  strlen(#rkth_tn) > 0 && room - _gap > 0 ? (
+    gfx_setfont(1, "Arial", fs, 0);
+    gfx_measurestr("MMM", _w3, _th);
+    room - _gap >= _w3 ? (
+      gfx_measurestr(#rkth_tn, _tw, _th);
+      _n = strlen(#rkth_tn);
+      while (_tw > room - _gap && _n > 1) (
+        _n -= 1;
+        while (_n > 1 && (str_getchar(#rkth_tn, _n, 'cu') & 0xC0) == 0x80) ( _n -= 1; );   // never inside a letter
+        strcpy_substr(#rkth_tnc, #rkth_tn, 0, _n); strcat(#rkth_tnc, "..");
+        gfx_measurestr(#rkth_tnc, _tw, _th);
+      );
+      _n < strlen(#rkth_tn) ? strcpy(#rkth_tn, #rkth_tnc);
+      gfx_x = _x0 + _gap;
+      gfx_a = 0.55; gfx_drawstr(#rkth_tn); gfx_a = 1;
+      _drawn = 1;
+    );
+  );
+  _drawn;
+);
+
 // Host hook, called from @serialize so a locked look survives a project
 // reload. ⚠️APPEND-GUARDED: an old project's blob simply ends before this, and
 // file_avail(0) == 0 leaves the instance unlocked, which is the right default.

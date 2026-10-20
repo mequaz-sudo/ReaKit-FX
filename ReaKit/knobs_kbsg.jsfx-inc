@@ -1,31 +1,38 @@
 @init
 __knobs_kbsg_loaded = 1;
 
-// knobs_kbsg.jsfx-inc — EON Studios Knob Library (ReaKit) (16 Types)
+// knobs_kbsg.jsfx-inc — EON Studios Knob Library (ReaKit) (21 Styles)
 // ═══════════════════════════════════════════════════════════════════════════
-// All knob types except EQ1979 (which needs off-screen buffers, see knobs_eq1979.jsfx-inc).
+// Style ids — the numbers rk_knob_draw / rk_knob_interact dispatch on. This is
+// a copy of the dispatcher enum at the foot of this file; that enum is the
+// source, and the two must say the same thing:
+//   1  SSL 4000E        — ssl_knob_draw: light fluted skirt, big colour cap, painted bar
+//                         (also what 0 / an unknown id falls back to)
+//   2  Vari-Mu          — varimu_knob_draw: the Manley bar knob, white line, printed scale
+//   3  API 550A         — api_knob_draw: white fin knob, blue collar (the accent), grey cap
+//   4  Witti Sound      — ws_knob_draw: clean arc, dot indicator
+//   5  Neve 1073        — neve_knob_draw: blue body, full-diameter wedge stripe, detents
+//   6  Joanny/McFizz    — jo_knob_draw: blue pot, 4-pass shadow, box hover
+//   7  MPC Rubber Pad   — mpc_knob_draw: black domed rubber cap, white indicator, 270° arc
+//   8  Jog Wheel        — jog_knob_draw: iMPC-style metallic jog with grip notches
+//   9  Rainbow Arc      — rainbow_knob_draw: house-colour cycling arc, rimmed body, pointer
+//  10  Spice Pro        — sp_knob_draw: themed arc fill (value heat + glow), sweep needle
+//  11  Encoder          — encoder_draw: X-Touch Mini style 13-bar LED collar, no pointer
+//  12  Pultec EQP-1A    — pultec_knob_draw: black bakelite, ridged wall, silver-white pointer
+//  13  Ableton Live     — ableton_knob_draw: the Live 12 dial, thick arc band, dark needle
+//  14  FL Studio        — fl_knob_draw: dark body, accent dot pointer
+//  15  Pro Tools        — pt_knob_draw: very dark knurled cap, near-black pointer
+//  16  FabFilter        — fabfilter_knob_draw: the Pro-G knob, dome, white scoop, tick channel
+//  17  Serum            — serum_knob_draw: beveled body, glow arc, tick ring
+//  18  Roland 808/909   — roland_knob_draw: colored plastic cap, knurled edge, white pointer
+//  19  Pultec cream     — pultec_cream_knob_draw: Tube-Tech PE 1C, cream body, black pointer
+//  20  Neve Alt         — neve_alt_knob_draw: Heritage i73 concentric ring + satin dome
+//  21  SSL G            — sslg_knob_draw: fluted silver SSL-G console knob
+// The ids are persisted (ExtState eon_knob_<theme>): APPEND ONLY, never renumber.
 //
-// Types included:
-//   1. Rainbow Arc      — house-colour cycling arc, rimmed body, pointer (VIC look)
-//   2. Joanny/McFizz    — blue pot, 4-pass shadow, box hover, canChange gate
-//   3. Spice Pro        — themed arc fill (role hue, value heat + glow),
-//                         sweep needle, bipolar center-fill, panel-aware ring
-//   4. Witti Sound      — clean arc, dot indicator (3 color variants)
-//   5. SSL 4000E        — the E-Series knob: light fluted skirt, big colour cap, painted bar
-//   6. Pultec EQP-1A    — cream bakelite, chicken-head pointer, shadow
-//   7. API 550A         — the 550A knob: white fin knob, blue collar (the accent), grey cap
-//                         (+ api_ring_draw / api_dual_interact: drag=gain, scroll=freq)
-//   8. Neve 1073        — blue body, full-diameter wedge stripe, detents
-//   9. Encoder          — X-Touch Mini style: 13-bar LED collar (fill), no pointer; wraps 0-127
-//  10. MPC Rubber Pad   — black domed rubber cap, white indicator, 270° arc
-//  10b. Jog Wheel       — iMPC-style metallic jog with grip notches
-//  11. Vari-Mu          — the Manley bar knob: black bar, white line, printed scale (accent)
-//  12. Ableton Live     — the Live 12 dial: thick arc band, dark needle (is_sym=bipolar)
-//  13. Serum            — modern softsynth: beveled body, glow arc, tick ring
-//  14. Roland 808/909   — colored plastic cap, knurled edge, white pointer
-//  15. FabFilter        — the Pro-G knob: dome, white scoop, tick channel (is_sym=bipolar)
-//  16. Rotary Selector  — stepped chicken-head switch, snaps to N positions
-//                         (own interact: rotsel_interact; pos = integer 0..n-1)
+// Drawn by name, not through the dispatcher: bb_knob_draw (BirdBird),
+// rotsel_knob_draw (stepped chicken-head selector, own interact rotsel_interact,
+// pos = integer 0..n-1), api_ring_draw / api_dual_interact (drag=gain, scroll=freq).
 //
 // REQUIRED GLOBALS (set by caller each frame):
 //   mx, my        — mouse_x, mouse_y
@@ -45,7 +52,12 @@ __knobs_kbsg_loaded = 1;
 //   SHIFT         — mouse_cap & 8
 //   dt            — frame delta time
 //   hv_speed      — hover animation speed (typ. 11)
-//   frame_wheel   — mouse_wheel / 120 (caller zeroes mouse_wheel after)
+//   frame_wheel   — mouse_wheel / 120 (caller zeroes mouse_wheel after).
+//                   A hovered widget that applies a notch zeroes frame_wheel
+//                   (consumed), as the sliders, buttons, colour strip and curve
+//                   already do, so one notch cannot also turn the widget whose
+//                   rect sits under it (2026-10-14). The caller still owns
+//                   mouse_wheel; nothing here touches it.
 //   tau           — 2 * $pi
 //   _srf_foreign  — OPTIONAL, 0 unless the host runs one instance on two
 //                   surfaces at once. A host that embeds a face in both the
@@ -86,6 +98,17 @@ function sign_of(x) ( x < 0 ? -1 : x > 0 ? 1 : 0; );
 // (which runs after every import) to retune reset-on-double-click for all
 // knobs and sliders at once.
 RK_DBLCLICK_T = 0.3;
+
+// The modifier pair as one number, for the drag re-anchor in every interact
+// that scales its WHOLE travel from the press (sp, ws, ssl, api_dual, encoder;
+// bb and jo move per frame and need none). Scaling the whole travel by the
+// CURRENT modifier made the value jump when CTRL or SHIFT changed mid-drag:
+// 0.7 to 0.52 on the press, back to 0.7 on the release, with the pointer
+// still (the 2026-09-20 widget audit). So a drag restarts from the pointer
+// and the value of the moment the modifiers change, and the new sensitivity
+// applies to the travel from there. One global suffices: one pointer, one
+// drag at a time, and the foreign surface pass never reaches the maths.
+function rk_drag_mods() ( (CTRL ? 1 : 0) + (SHIFT ? 2 : 0); );
 
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -324,6 +347,7 @@ local(d, hover, new_val, now, sens, dy, _range)
   hover && frame_wheel != 0 ? (
     new_val = clamp(cur_val + frame_wheel * _range * (CTRL ? 0.005 : SHIFT ? 0.002 : 0.02), vmin, vmax);
     mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header)
   );
   new_val;
 );
@@ -402,6 +426,7 @@ local(hover, new_val, now, fine, nv, box_hw, _range)
   hover && frame_wheel != 0 ? (
     new_val = clamp(cur_val + frame_wheel * _range * (CTRL ? 0.005 : SHIFT ? 0.002 : 0.02), vmin, vmax);
     mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header)
   );
 
   // Double-click reset
@@ -588,6 +613,7 @@ local(d, hover, new_val, now, sens, sensitivity, _range)
   hover && frame_wheel != 0 ? (
     new_val = clamp(cur_val + frame_wheel * _range * (CTRL ? 0.005 : SHIFT ? 0.002 : 0.02), vmin, vmax);
     mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header)
   );
 
   // Double-click reset
@@ -602,10 +628,13 @@ local(d, hover, new_val, now, sens, sensitivity, _range)
     mem[1] = 1;
     mem[2] = my;         // drag_start_y
     mem[3] = cur_val;    // drag_start_val
+    _rk_drag_mod = rk_drag_mods();
   );
 
-  // Continue drag (absolute offset from start, CTRL=fine, SHIFT=extra-fine)
+  // Continue drag (absolute offset from start, CTRL=fine, SHIFT=extra-fine;
+  // a modifier change re-anchors the drag here: rk_drag_mods)
   mem[1] == 1 && !_srf_foreign ? (
+    rk_drag_mods() != _rk_drag_mod ? ( mem[2] = my; mem[3] = cur_val; _rk_drag_mod = rk_drag_mods(); );
     sens = CTRL ? 0.03 : SHIFT ? 0.0075 : 0.3;
     sensitivity = (_range / r) * sens;
     new_val = clamp(mem[3] + (mem[2] - my) * sensitivity, vmin, vmax);
@@ -702,9 +731,11 @@ local(hover, d, new_val, fine, step, now)
     mem[1] = 1;
     mem[2] = my;
     mem[3] = cur_val;
+    _rk_drag_mod = rk_drag_mods();
   );
-  // Continue drag
+  // Continue drag (a modifier change re-anchors it: rk_drag_mods)
   mem[1] && LMB && !_srf_foreign ? (
+    rk_drag_mods() != _rk_drag_mod ? ( mem[2] = my; mem[3] = cur_val; _rk_drag_mod = rk_drag_mods(); );
     fine = CTRL ? 0.1 : SHIFT ? 0.025 : 1;
     step = (mem[2] - my) / (radius * 4) * (vmax - vmin) * fine;
     new_val = clamp(mem[3] + step, vmin, vmax);
@@ -719,7 +750,7 @@ local(hover, d, new_val, fine, step, now)
     step = (vmax - vmin) * (CTRL ? 0.005 : SHIFT ? 0.002 : 0.02) * frame_wheel;
     new_val = clamp(cur_val + step, vmin, vmax);
     mem[5] = 1;
-
+    frame_wheel = 0;   // consumed (see the header)
   );
   new_val;
 );
@@ -834,9 +865,11 @@ local(hover, d, new_val, fine, step, now, det_step, cur_det, new_det)
     mem[1] = 1;
     mem[2] = my;
     mem[3] = cur_val;
+    _rk_drag_mod = rk_drag_mods();
   );
-  // Continue drag (continuous)
+  // Continue drag (continuous; a modifier change re-anchors it: rk_drag_mods)
   mem[1] && LMB && !_srf_foreign ? (
+    rk_drag_mods() != _rk_drag_mod ? ( mem[2] = my; mem[3] = cur_val; _rk_drag_mod = rk_drag_mods(); );
     fine = CTRL ? 0.1 : SHIFT ? 0.025 : 1;
     // Scale drag travel so it always takes ~200px for full range (prevents snapping on large ranges)
     step = (mem[2] - my) / max(radius * 4, 200) * (vmax - vmin) * fine;
@@ -861,6 +894,7 @@ local(hover, d, new_val, fine, step, now, det_step, cur_det, new_det)
       new_val = clamp(cur_val + frame_wheel * (vmax - vmin) * _scl, vmin, vmax);
     );
     mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header)
   );
   new_val;
 );
@@ -1140,8 +1174,11 @@ local(d, hover, ni, no_, fine, step, now, ds, cd, nd)
     mi[1] = 1;
     mi[2] = my;
     mi[3] = cur_i;
+    _rk_drag_mod = rk_drag_mods();
   );
+  // (a modifier change re-anchors the drag: rk_drag_mods)
   mi[1] && LMB && !_srf_foreign ? (
+    rk_drag_mods() != _rk_drag_mod ? ( mi[2] = my; mi[3] = cur_i; _rk_drag_mod = rk_drag_mods(); );
     fine = CTRL ? 0.1 : SHIFT ? 0.025 : 1;
     step = (mi[2] - my) / (ri * 4) * (imax - imin) * fine;
     ni = clamp(mi[3] + step, imin, imax);
@@ -1157,7 +1194,7 @@ local(d, hover, ni, no_, fine, step, now, ds, cd, nd)
     nd = clamp(cd + sign_of(frame_wheel), 0, o_steps - 1);
     no_ = omin + nd * ds;
     mo[5] = 1;
-
+    frame_wheel = 0;   // consumed (see the header)
   );
   mo[7] = no_;
   ni;
@@ -1490,9 +1527,11 @@ local(hover, d, new_val, step, now, _range, _scl)
     mem[1] = 1;
     mem[2] = my;
     mem[3] = cur_val;
+    _rk_drag_mod = rk_drag_mods();
   );
-  // Continue drag (CTRL=fine, SHIFT=extra-fine)
+  // Continue drag (CTRL=fine, SHIFT=extra-fine; a modifier change re-anchors it: rk_drag_mods)
   mem[1] && LMB && !_srf_foreign ? (
+    rk_drag_mods() != _rk_drag_mod ? ( mem[2] = my; mem[3] = cur_val; _rk_drag_mod = rk_drag_mods(); );
     step = (mem[2] - my) / max(radius * 4, 200) * _range * (CTRL ? 0.1 : SHIFT ? 0.025 : 1);
     new_val = clamp(mem[3] + step, vmin, vmax);
   );
@@ -1506,6 +1545,7 @@ local(hover, d, new_val, step, now, _range, _scl)
     _scl = CTRL ? 0.005 : SHIFT ? 0.002 : 0.02;
     new_val = clamp(cur_val + frame_wheel * _range * _scl, vmin, vmax);
     mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header)
   );
   new_val;
 );
@@ -2211,6 +2251,7 @@ local(d, hover, new_pos, dragdelta)
   hover && frame_wheel != 0 ? (
     new_pos = clamp(cur_pos + (frame_wheel > 0 ? 1 : -1), 0, n_pos - 1);
     new_pos != cur_pos ? mem[5] = 1;
+    frame_wheel = 0;   // consumed (see the header), at the rail too: the notch was aimed here
   );
   new_pos;
 );
@@ -2538,7 +2579,7 @@ local(ht, cap_a, val_rad, capr, i, fa, fw, px, py, ox, oy,
 // Lua T.KNOBS comment):
 //   1 ssl · 2 varimu · 3 api · 4 ws(witti) · 5 neve · 6 jo · 7 mpc · 8 jog
 //   · 9 rainbow · 10 sp · 11 encoder · 12 pultec · 13 ableton · 14 fl · 15 protools
-//   · 16 fabfilter · 17 serum · 18 roland · 19 pultec_cream · 20 neve_alt.
+//   · 16 fabfilter · 17 serum · 18 roland · 19 pultec_cream · 20 neve_alt · 21 sslg.
 //   1 / 0 (bridge idle) / unknown fall back to ssl.
 //   IDs are persisted in ExtState (eon_knob_<theme>) — APPEND ONLY, never renumber.
 //

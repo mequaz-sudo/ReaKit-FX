@@ -17,7 +17,9 @@
 // EON Studios — ReaKit Suite. LOSER's Digital Drum Compressor with a ReaKit GUI (Quaz) and
 // additions around his detector and gain computer: knee, mix, sidechain HPF, stereo link,
 // lookahead, and 2x on the detector. His header above is kept as he wrote it.
-// v2.1.3
+// v2.1.5   (2.1.5: the SC HPF runs always and blends in and out over 5 ms, so Off then On no longer
+//           resumes from stale history; the RMS ring's rate ceiling documented;
+//           2.1.4: the track's name after the title, REAPER 7.81+, rk_theme rkth_track_name)
 desc:EON: DDC
 options:gfx_hz=60 no_meter
 options:gmem=Swing_Media_Transfer
@@ -103,6 +105,8 @@ sc_hpf_a1 = 0; sc_hpf_a2 = 0;
 sc_hpf_x1L = 0; sc_hpf_x2L = 0; sc_hpf_y1L = 0; sc_hpf_y2L = 0;
 sc_hpf_x1R = 0; sc_hpf_x2R = 0; sc_hpf_y1R = 0; sc_hpf_y2R = 0;
 sc_hpf_on = 0;
+sc_hpf_w = 0;   // how much of the filtered signal the detector hears (0 off .. 1 on; @sample walks it over 5 ms)
+sc_hpf_oL = 0; sc_hpf_oR = 0;
 mix_snap = 1;      // the first sample takes the Mix as it is (no glide from 0 at load)
 
 // RMS ring buffer for stereo unlinked (R channel)
@@ -166,6 +170,9 @@ function recalc_dsp() (
   release = exp( -treshdB/max( slider5*det_sr/1000 , 1) / c_ampdB ) ;
 
   rms_size_1 = rms_size;
+  // The ring holds 1,000,000 detector steps: the knob's full 1000 ms up to a 1 MHz detector rate,
+  // which is a 500 kHz project with 2x on (1 MHz without). Past that the window is shorter than
+  // the knob says (outside audit 2026-10-05); no REAPER rate reaches it today.
   rms_size = min(max(floor(slider6/1000*det_sr + 0.5), 1), 1000000);
   rms_size_1 != rms_size ? (
       // no memset here (up to 192,000 cells per channel on the audio thread, audit 2026-10-05): the sums and
@@ -190,6 +197,16 @@ function recalc_dsp() (
   knee = slider11;
   knee_lo = treshdB - knee * 0.5;
   knee_hi = treshdB + knee * 0.5;
+  // The knee ends ON the curve above it: LOSER's linear-amplitude (t + (l - t) / ratio) / l, which reduces less than
+  // the textbook dB line. The 10-05 knee ended on the textbook line and left a step where the two meet: up 1.26 dB at
+  // -20 / 4:1 / knee 20, and below 1:1 a fall (it aimed for +90 dB at 0.1:1 where the curve above gives +17); pasted
+  // outside audit 2026-10-09, .dev_tests/ddc_knee_top.py. knee_g = that curve's gain at the knee's top (dB), knee_s =
+  // its slope there (dB per dB) times the knee's width; t / l at the top is exp(-knee / 2 / c_ampdB) whatever the
+  // threshold. knee_gt > 0 for every ratio (1 / ratio + (1 - 1 / ratio) * a number under 1).
+  knee_u = exp(-knee * 0.5 / c_ampdB);
+  knee_gt = 1 / ratio + (1 - 1 / ratio) * knee_u;
+  knee_g = log(knee_gt) * c_ampdB;
+  knee_s = -(1 - 1 / ratio) * knee_u / knee_gt * knee;
 
   // The hold and the target restart (LOSER's own reset) only when what they are computed from
   // changes: threshold, ratio, hold, RMS size, feed, knee, 2x or the rate. Every knob restarted
@@ -207,9 +224,11 @@ function recalc_dsp() (
   mix_pct = slider12 / 100;
   mix_k = 1 - exp(-1 / max(0.005 * srate, 1));
 
-  // SC HPF (RBJ highpass)
+  // SC HPF (RBJ highpass). The filter itself runs always (@sample); switched in or out, the
+  // detector's share of it walks over 5 ms.
   sc_hpf_freq = slider13;
   sc_hpf_on = sc_hpf_freq > 0;
+  sc_hpf_step = 1 / max(0.005 * srate, 1);
   sc_hpf_on ? (
     _w0 = 2 * $pi * sc_hpf_freq / srate;
     _cs = cos(_w0); _sn = sin(_w0);
@@ -330,10 +349,11 @@ function ddc_detect(scL, scR) (
     rms_dB < knee_lo ? (
       (under_treshL += 1) > hold ? ( seekgainL = 1; );
     ) : rms_dB < knee_hi ? (
-      // the quadratic soft knee: 0 dB of reduction at the knee's foot, the hard-knee line's exactly at its top
-      // (the old effective-ratio curve left a step there: (1 + ratio) / 2 instead of ratio; audit 2026-10-05)
-      _x = rms_dB - knee_lo;
-      _sg = exp((1 / ratio - 1) * _x * _x / (2 * knee) / c_ampdB);
+      // the soft knee, a cubic in dB: 0 and flat at the knee's foot, at its top the gain and the slope of the curve
+      // above (knee_g, knee_s, recalc_dsp), so no step and no corner there; it never leaves 0 .. knee_g and the
+      // output level rises with the input for every ratio and knee (checked 0.0001:1 .. 50:1, knee 0.1 .. 20)
+      _x = (rms_dB - knee_lo) / knee;
+      _sg = exp(_x * _x * ((3 - 2 * _x) * knee_g + (_x - 1) * knee_s) / c_ampdB);
       hold ? (
         ratio > 1 ? ( seekgainL = min(_sg, seekgainL); ) : ( seekgainL = max(_sg, seekgainL); );
       ) : ( seekgainL = _sg; );
@@ -363,10 +383,9 @@ function ddc_detect(scL, scR) (
     rms_dB < knee_lo ? (
       (under_treshR += 1) > hold ? ( seekgainR = 1; );
     ) : rms_dB < knee_hi ? (
-      // the quadratic soft knee: 0 dB of reduction at the knee's foot, the hard-knee line's exactly at its top
-      // (the old effective-ratio curve left a step there: (1 + ratio) / 2 instead of ratio; audit 2026-10-05)
-      _x = rms_dB - knee_lo;
-      _sg = exp((1 / ratio - 1) * _x * _x / (2 * knee) / c_ampdB);
+      // the soft knee, as the L channel's
+      _x = (rms_dB - knee_lo) / knee;
+      _sg = exp(_x * _x * ((3 - 2 * _x) * knee_g + (_x - 1) * knee_s) / c_ampdB);
       hold ? (
         ratio > 1 ? ( seekgainR = min(_sg, seekgainR); ) : ( seekgainR = max(_sg, seekgainR); );
       ) : ( seekgainR = _sg; );
@@ -426,6 +445,7 @@ rkth_native_tick();
 snap_params ? (
   vol_s.smooth_set(volume);
   la_tap = la_tap0 = la_size; la_xf = 1;   // the saved lookahead from the first sample, no fade
+  sc_hpf_w = sc_hpf_on ? 1 : 0;            // and the saved SC HPF in or out from the first sample
   snap_params = 0;
 );
 
@@ -438,18 +458,27 @@ feed == 1 ? ( sc_L = spl0_out; sc_R = spl1_out; );
 feed == 2 ? ( sc_L = spl2; sc_R = spl3; );
 
 // ── SC HPF (filter kick from detection) ──
-sc_hpf_on ? (
-  _inL = sc_L + cDenorm;
-  sc_L = sc_hpf_b0 * _inL + sc_hpf_b1 * sc_hpf_x1L + sc_hpf_b2 * sc_hpf_x2L
-         - sc_hpf_a1 * sc_hpf_y1L - sc_hpf_a2 * sc_hpf_y2L;
-  sc_hpf_x2L = sc_hpf_x1L; sc_hpf_x1L = _inL;
-  sc_hpf_y2L = sc_hpf_y1L; sc_hpf_y1L = sc_L;
+// The filter runs whether or not it is switched in, so its history is always of the signal it is
+// about to shape, and the detector's share of it (sc_hpf_w) walks between 0 and 1 over 5 ms. It used
+// to run only while on: Off then On resumed from history that was as old as the Off (outside audit
+// 2026-10-02), and the detector stepped between the dry and the filtered signal. With the filter out
+// and the walk at 0 the detector reads sc_L / sc_R untouched, as before.
+_inL = sc_L + cDenorm;
+sc_hpf_oL = sc_hpf_b0 * _inL + sc_hpf_b1 * sc_hpf_x1L + sc_hpf_b2 * sc_hpf_x2L
+            - sc_hpf_a1 * sc_hpf_y1L - sc_hpf_a2 * sc_hpf_y2L;
+sc_hpf_x2L = sc_hpf_x1L; sc_hpf_x1L = _inL;
+sc_hpf_y2L = sc_hpf_y1L; sc_hpf_y1L = sc_hpf_oL;
 
-  _inR = sc_R + cDenorm;
-  sc_R = sc_hpf_b0 * _inR + sc_hpf_b1 * sc_hpf_x1R + sc_hpf_b2 * sc_hpf_x2R
-         - sc_hpf_a1 * sc_hpf_y1R - sc_hpf_a2 * sc_hpf_y2R;
-  sc_hpf_x2R = sc_hpf_x1R; sc_hpf_x1R = _inR;
-  sc_hpf_y2R = sc_hpf_y1R; sc_hpf_y1R = sc_R;
+_inR = sc_R + cDenorm;
+sc_hpf_oR = sc_hpf_b0 * _inR + sc_hpf_b1 * sc_hpf_x1R + sc_hpf_b2 * sc_hpf_x2R
+            - sc_hpf_a1 * sc_hpf_y1R - sc_hpf_a2 * sc_hpf_y2R;
+sc_hpf_x2R = sc_hpf_x1R; sc_hpf_x1R = _inR;
+sc_hpf_y2R = sc_hpf_y1R; sc_hpf_y1R = sc_hpf_oR;
+
+sc_hpf_w = sc_hpf_on ? min(sc_hpf_w + sc_hpf_step, 1) : max(sc_hpf_w - sc_hpf_step, 0);   // lands exactly
+sc_hpf_w > 0 ? (
+  sc_L += (sc_hpf_oL - sc_L) * sc_hpf_w;
+  sc_R += (sc_hpf_oR - sc_R) * sc_hpf_w;
 );
 
 // ── Detector: 2x runs it on both upsampled sub-steps; the audio is never resampled ──
@@ -466,7 +495,7 @@ os_on ? (
 // other channel keeps walking (one flag for both left the other a few dB down, Link under 100 % and a
 // louder hit mid-walk, recovering at the top Threshold's 0.1 dB per Release time: seconds, tens with a
 // long Release; outside audit 2026-10-04, .dev_tests/ddc_reset_unlinked.py).
-// It walks to unity at most: a soft knee's target above 1 (its lower half) is left to the
+// It walks to unity at most: a target above 1 (a soft knee gives none at 1:1 or over since 2026-10-09) is left to the
 // detector's own slow release, as the old one-shot reset left it. Each lands exactly. ──
 ddc_rel_fL ? (
   gainL > seekgainL ? ( ddc_rel_fL = 0; ) : (   // attacking again: hand back, as the old reset did
@@ -679,6 +708,9 @@ is_embedded ? (
   // widgets so an open panel takes the click first. No NAME BAR row (no slider for it)
   // and no LOCK (no snapshot buffer); NATIVE is saved by rkth_self_serialize.
   rkth_scale = ret;
+  // the track's name after the title (REAPER 7.81+, rk_theme's rkth_track_name): only with room for it AND the
+  // cluster before the header's right edge; the cluster then follows the name (gfx_x moves to its end)
+  rkth_track_name(floor(14*ret), W - 24*ret - (rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56*rkth_scale) - gfx_x);
   rkth_embedrow();                     // EMBED row: MCP / TCP / OFF for this one and new copies (GainKit Plus moves it)
   rkth_cluster_hdr(gfx_x + 12*ret, (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2, 0, 0);
 

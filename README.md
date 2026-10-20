@@ -140,7 +140,9 @@ with. With EON Swing running, they also follow the theme picked in Swing (SSL, N
 - **Mixer strip or track panel**: the THEME panel's EMBED row moves a plugin between the two, with GainKit Plus
   running.
 - **Link groups**: six of the seven have sixteen link groups; turn a knob on one and its group follows.
-- **The mouse**: drag a knob, Ctrl for fine, Shift for finer; the wheel steps it; double-click resets it.
+- **The mouse**: drag a knob, Ctrl for fine, Shift for finer (press or let go of either mid-drag and the knob carries
+  on from where it is); the wheel steps the knob under the pointer; double-click resets it.
+- **The track's name** follows each plugin's title (REAPER 7.81 or newer).
 - **Snappier strips**: set Preferences > Appearance > Track meter settings > Meter update frequency to 120
   (the Start action offers it) and the knobs in the strips answer quicker.
 

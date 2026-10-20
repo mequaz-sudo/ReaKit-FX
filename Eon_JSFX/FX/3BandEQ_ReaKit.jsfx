@@ -16,7 +16,7 @@
 // SMOOTH (1.4.0, EON): the bands as shelves -- the MID level on the whole signal, a low and a high shelf at the
 // crossovers taking LOW and HIGH to their own levels, two shelves in series at each, so the bands sit flat at their
 // knobs' values and turn exactly on their lines (the user, 2026-10-04, after Airwindows' SmoothEQ3 was tried).
-// Version: 1.4.1
+// Version: 1.4.2   (1.4.2: the track's name after the title, REAPER 7.81+, rk_theme rkth_track_name)
 desc:EON: 3-Band EQ
 //tags: equalizer
 //author: LOSER
@@ -1043,6 +1043,22 @@ gfx_ext_flags & 1 ? (
   // The toggle sits right after the measured title (gfx_x is its end),
   // vertically centred, and the whole cluster scales with the face.
   rkth_scale = ret;
+  // the track's name after the title (REAPER 7.81+, rk_theme's rkth_track_name): only with room for it, the
+  // cluster AND the full CLASSIC / SMOOTH switch before the badge; the cluster then follows the name (gfx_x moves
+  // to its end). The gear and badge sizes are needed here; they are drawn below as before.
+  rk_gear_r = max(5*ret, hdr_h * 0.20);
+  rk_gear_x = body_w - rk_gear_r - 8*ret;
+  rk_badge_sz = max(9*ret, hdr_h * 0.36);
+  eq3_tnx = gfx_x;
+  gfx_setfont(1, "Arial", (RKTH_F_CHIP * rkth_scale) | 0, 'b');
+  gfx_measurestr("CLASSIC", tw, th); eq3_sww = tw + 14 * rkth_scale;
+  gfx_measurestr("SMOOTH", tw, th); eq3_sww += tw + 14 * rkth_scale;
+  // in the dock the BANDS chip shows only past the switch + 150 (below): keep that room too, or the name would hide
+  // the dock's one way to open the bands (self-audit 2026-10-15)
+  rkdr_mode == 2 ? ( gfx_measurestr("BANDS", tw, th); eq3_sww = max(eq3_sww, tw + 12 * rkth_scale + 150 * rkth_scale + 1); );
+  gfx_x = eq3_tnx;
+  rkth_track_name(floor(max(11*ret, hdr_h * 0.48)),
+    rk_gear_x - rk_badge_sz - 13*ret - (rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56 * rkth_scale) - 20*ret - eq3_sww - eq3_tnx);
   // NAME BAR row: opt-in, per instance. rkth_namebar() every frame so the
   // chip tracks the slider even when it is changed from REAPER's own param
   // list; the cluster never writes a host slider, it surfaces the pick.

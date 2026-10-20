@@ -2,7 +2,9 @@
 // (C) 2026 EON Studios
 // A high-pass and a low-pass, Butterworth at 12 or 24 dB/oct, on Andrew Simper's trapezoidal state-variable filter,
 // with a CURVE drawer (the response, two nodes to drag)
-// Version: 1.1.0
+// Version: 1.1.2   (1.1.2: a change on the face reaches the sound -- the knobs, LEDs, SLOPE key and CURVE nodes only
+//                   moved the picture, REAPER not running @slider after a face change (fl_dsp_req);
+//                   1.1.1: the track's name after the title, REAPER 7.81+, rk_theme rkth_track_name)
 //
 // DSP: each filter is one SVF stage (12 dB, Q 0.7071) or two in cascade (24 dB, Q 0.5412 and 1.3066: a 4th-order
 //   Butterworth), the trapezoidal form (Cytomic, "Solving the continuous SVF equations using trapezoidal integration
@@ -70,7 +72,7 @@ rk_ps_init(-1);
 rk_link_init(4, 3, freemem); freemem += 64;   // group in slider4, sliders 1-3 linked
 // EON_RKFX_LINK: GainKit 31360000, Saturation 31361100, 3-Band EQ 31362200, De-Esser 31363300, Stereo Width 31364400,
 // then the drawer band EON_RKFX_DRAWER at 31365520 (rk_drawer): this one takes the next 1100 stride past it. Each
-// plugin's block is 1024 group slots + the quick-link scratch at +1024..+1027. ⚠️ Check against the bundle's
+// plugin's block is 1024 group slots + four reserved cells at +1024..+1027 (unused since 2026-10-19). ⚠️ Check against the bundle's
 // gmem_regions_supplement.tsv before anything else claims 31366600..31367700.
 rk_link_set_base(31366600);
 rkdr_init(160, 20, 150, 244);   // the CURVE drawer: 160 px, its strip 20 px, the closed face 150 px at least, 244 as
@@ -307,6 +309,10 @@ rk_link_on_slider();
 
 @block
 srate != fl_sr_seen ? ( fl_sr_seen = srate; recalc_dsp(); );   // ext_noinit: the rate can move under us
+// a change made on the face (fl_dsp_req): the seen count is taken BEFORE the recompute, so a write that lands during
+// it bumps the counter again and is applied next block
+fl_dsp_s = atomic_get(fl_dsp_seq);
+fl_dsp_s != fl_dsp_seen ? ( fl_dsp_seen = fl_dsp_s; recalc_dsp(); );
 rk_link_pull() ? ( recalc_dsp(); );
 rk_ps_update_block();  // block-rate play-state decode (rk_playstate.jsfx-inc)
 
@@ -457,6 +463,14 @@ fl_skip = rk_embed_idle((rkth_em_alive() && gmem[RKTH_EM_BASE + 3] >= 7) * 0.79 
 // is filter i (0 HP, 1 LP) in, by its slider (the audio thread's fl_hp_on / fl_lp_on follow a block later)
 function fl_on(i) ( i == 0 ? slider1 > FL_FMIN + 0.5 : slider2 < FL_FMAX - 0.5; );
 
+// The face's change reaches the sound through this counter: every face write of slider1 / 2 / 3 bumps it AFTER the
+// slider (payload first, count last; atomic, so the order holds on a CPU that reorders stores) and @block recomputes
+// when it moves. REAPER does NOT run @slider after a slider_automate from @gfx: measured live 2026-10-19 on this
+// Filter, the face at LP 1.1 kHz while the audio thread still held fl_lp_on 0 and its cutoff at 20 kHz -- since the
+// Filter arrived (10-07, without the dirty flag GainKit has), the knobs, the LEDs, the SLOPE key and the CURVE nodes
+// changed only the picture; automation, presets and REAPER's own parameter list did reach the sound.
+function fl_dsp_req() ( atomic_add(fl_dsp_seq, 1); );
+
 function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th, act) (
   m = km + i * KS;
   cur = i == 0 ? slider1 : slider2;
@@ -469,6 +483,7 @@ function fl_knob(i, cx, cy, r, vy, vfont) local(m, cur, pos, nv, hz, on, tw, th,
     hz = nv <= 0 || nv >= 1000 ? hz : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(hz)));   // inside: never OFF by accident
     hz != cur ? (
       i == 0 ? ( slider1 = hz; slider_automate(slider1); ) : ( slider2 = hz; slider_automate(slider2); );
+      fl_dsp_req();
     );
   );
   // the caps keep their own colours under a theme, as the EQ's band knobs do (the FREQ role would paint both the same)
@@ -499,6 +514,7 @@ function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
       on ? slider2 = FL_FMAX : slider2 = max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_lp_last));
       slider_automate(slider2);
     );
+    fl_dsp_req();
   );
   i == 0 ? ( cr = hp_lr; cg = hp_lg; cb = hp_lb; ) : ( cr = lp_lr; cg = lp_lg; cb = lp_lb; );
   btn_led_draw(cx, cy, r, on, "", mb[0], cr, cg, cb, 0);
@@ -509,7 +525,7 @@ function fl_led(i, cx, cy, r) local(mb, on, nv, cr, cg, cb) (
 function fl_slope_key(x, y, sw, h, fs) local(mb, nv) (
   mb = bm + 2 * BS;
   nv = fl_block_knobs ? slider3 : btn_segment_interact(mb, x, y, sw, h, 2, 0, slider3);
-  nv != slider3 ? ( slider3 = nv; slider_automate(slider3); );
+  nv != slider3 ? ( slider3 = nv; slider_automate(slider3); fl_dsp_req(); );
   gfx_setfont(1, "Arial", fs, 'b');
   btn_segment_draw(x, y, sw, h, 0, slider3, "12 dB", mb[0], ac_r, ac_g, ac_b);
   btn_segment_draw(x + sw, y, sw, h, 1, slider3, "24 dB", mb[0], ac_r, ac_g, ac_b);
@@ -528,8 +544,8 @@ FL_SEMI = 2 ^ (1 / 12);
 function fl_dby(db, y, h) ( rk_curve_a2y(db, y, h, FL_TOP, FL_BOT); );   // rk_curve's absolute mapping, clamped to the plate
 function fl_set_f(i, f) local(hz) (
   hz = f <= FL_FMIN ? FL_FMIN : f >= FL_FMAX ? FL_FMAX : max(FL_HP_ON_MIN, min(FL_LP_ON_MAX, fl_round_hz(f)));
-  i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); ); )
-         : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); ); );
+  i == 0 ? ( hz != slider1 ? ( slider1 = hz; slider_automate(slider1); fl_dsp_req(); ); )
+         : ( hz != slider2 ? ( slider2 = hz; slider_automate(slider2); fl_dsp_req(); ); );
 );
 function fl_draw_curve(x, y, w, h, s, ev)
   local(i, f, gx_, gy_, tw, th, db, c, y0, y1, yb, t, cr, cg, cb, nr, nx0, nx1, ny0, ny1, hov, a, fs, on0, on1, lbl_f) (
@@ -872,6 +888,10 @@ gfx_ext_flags & 1 ? (
   rk_badge_sz = max(9*ret, hdr_h * 0.36);
   fl_thw = rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56*rkth_scale;
   fl_thr = rk_gear_x - rk_badge_sz - 13*ret;   // the badge's left edge, less a gap
+  // the track's name after the title (REAPER 7.81+, rk_theme's rkth_track_name): only with room for it AND the
+  // cluster in the header; the cluster then follows the name (fl_tx moves to its end)
+  rkth_track_name(floor(max(11*ret, hdr_h * 0.48)), fl_thr - fl_thw - 12*ret - fl_tx);
+  fl_tx = gfx_x;
   fl_tx + 12*ret + fl_thw <= fl_thr ? (
     fl_thx = fl_tx + 12*ret; fl_thy = (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2;
   ) : (

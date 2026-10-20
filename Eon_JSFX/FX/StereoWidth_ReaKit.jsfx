@@ -1,7 +1,7 @@
 // Stereo Width (ReaKit)
 // (C) 2026 EON Studios
 // Mid/side stereo width control with correlation meter, and a STEREO FIELD drawer (a live scope)
-// Version: 1.2.1
+// Version: 1.2.2   (1.2.2: the track's name after the title, REAPER 7.81+, rk_theme rkth_track_name)
 //
 // GUI by EON Studios (ReaKit Libraries)
 desc:EON: Stereo Width
@@ -585,6 +585,10 @@ gfx_ext_flags & 1 ? (
   rk_badge_sz = max(9*ret, hdr_h * 0.36);
   sw_thw = rkth_cl_hdr_w > 0 ? rkth_cl_hdr_w : 56*rkth_scale;
   sw_thr = rk_gear_x - rk_badge_sz - 13*ret;   // the badge's left edge, less a gap
+  // the track's name after the title (REAPER 7.81+, rk_theme's rkth_track_name): only with room for it AND the
+  // cluster in the header; the cluster then follows the name (sw_tx moves to its end)
+  rkth_track_name(floor(max(11*ret, hdr_h * 0.48)), sw_thr - sw_thw - 12*ret - sw_tx);
+  sw_tx = gfx_x;
   sw_tx + 12*ret + sw_thw <= sw_thr ? (
     sw_thx = sw_tx + 12*ret; sw_thy = (hdr_h - ((RKTH_H_CHIP*rkth_scale)|0)) / 2;
   ) : (

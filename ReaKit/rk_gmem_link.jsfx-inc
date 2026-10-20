@@ -42,11 +42,10 @@
 // count changed under it (a project in another tab seeded the same group while
 // its own did not run) watches again, so each tab keeps its own values. Two tabs
 // that run at the same time share their groups (gmem is per process, wiki 5.7).
-// Quick-link scratch (global, outside group blocks):
-//   [1024]               — slider index
-//   [1025]               — value
-//   [1026]               — mode (2 = force/reset)
-//   [1027]               — counter
+// [1024..1027] (global, outside the group blocks): RESERVED, unused. They held the "quick-link"
+// scratch, a reset-to-default broadcast no plugin ever called; it went on 2026-10-19 (the user:
+// "delete it") because its message carried no group, so every group would have taken it. The four
+// cells stay inside the region so no band declared around it moves.
 //
 // Local memory footprint: 64 slots consumed from mem_base
 //   [0..35]  — rk_link_prev : previous slider values (push/pull detector)
@@ -105,7 +104,6 @@ function rk_link_init(group_slider_, num_sliders_, mem_base)
   rk_link_sync_max = min(rk_link_num_sliders, 35);
 
   rk_link_last_ps_counter = 0;
-  rk_link_last_ql_counter = 0;
   // the join watch (s), the menu's occupancy-dot window. rk_link_in (the group this instance
   // is in, 0 = none or still watching) is NOT reset here: zero on load, and a plugin whose
   // @init re-runs on play start keeps its place instead of watching again.
@@ -249,7 +247,6 @@ function _rk_link_seed(g, base)
   gmem[base + 62] += 1; rk_link_seeds = gmem[base + 62];
   gmem[base + 33] = 1;
   gmem[base + 63] = time_precise();   // a member now: the next joiner's watch sees it at once
-  rk_link_last_ql_counter = gmem[rk_link_base + 1027];   // an older quick reset is not ours
   rk_link_in = g; rk_link_watch_g = 0;
 );
 
@@ -274,7 +271,6 @@ function _rk_link_adopt(g, base)
   rk_ps_en_play = gmem[base + 34]; rk_ps_en_rec = gmem[base + 35]; rk_ps_en_stop = gmem[base + 36];
   rk_link_last_ps_counter = gmem[base + 37];
   rk_link_seeds = gmem[base + 62];
-  rk_link_last_ql_counter = gmem[rk_link_base + 1027];
   rk_link_in = g; rk_link_watch_g = 0;
   changed;
 );
@@ -335,7 +331,7 @@ function rk_link_on_gfx_change()
 //   rk_link_prev[i] == slider(i) → we haven't touched it → pull if gmem differs
 //   rk_link_prev[i] != slider(i) → we changed it         → push to gmem
 function rk_link_pull()
-  local(g, base, i, updated, ps_counter, ql_counter, now)
+  local(g, base, i, updated, ps_counter, now)
 (
   g = slider(rk_link_group_slider) | 0;
   rk_link_group = g;
@@ -423,24 +419,6 @@ function rk_link_pull()
       rk_link_last_ps_counter = ps_counter;
     );
 
-    // ── Quick-link (force/reset broadcast) ───────────────────
-    ql_counter = gmem[rk_link_base + 1027];
-    ql_counter != rk_link_last_ql_counter ? (
-      gmem[rk_link_base + 1026] == 2 ? (
-        i = gmem[rk_link_base + 1024] | 0;
-        i >= 1 && i <= rk_link_sync_max &&
-        i != rk_link_group_slider && !rk_link_excl[i] ? (
-          slider(i) = gmem[rk_link_base + 1025];
-          slider_automate(slider(i));
-          rk_link_prev[i] = slider(i);
-          // Write through to group so other instances see it
-          gmem[base + rk_link_slot(i)] = slider(i);
-          updated = 1;
-        );
-      );
-      rk_link_last_ql_counter = ql_counter;
-    );
-
   ) : (
     // Not in a group — keep prev current so first join-push is clean
     rk_link_in = 0; rk_link_watch_g = 0;
@@ -465,26 +443,6 @@ function rk_link_pull()
 function rk_link_join_group()
 (
   0;
-);
-
-
-// ── Quick-link: broadcast a reset-to-default across the group ──
-// Call from a knob double-click handler when the plugin is in a group.
-function rk_link_quick_reset(slider_num, default_val)
-  local(g, base)
-(
-  g = slider(rk_link_group_slider) | 0;
-  g >= 1 && g <= 16 ? (
-    gmem[rk_link_base + 1024] = slider_num;
-    gmem[rk_link_base + 1025] = default_val;
-    gmem[rk_link_base + 1026] = 2;   // force/reset mode
-    gmem[rk_link_base + 1027] += 1;
-    rk_link_last_ql_counter = gmem[rk_link_base + 1027];
-
-    // Apply locally and write to group block so other instances pull it
-    base = rk_link_base + (g - 1) * 64;
-    gmem[base + rk_link_slot(slider_num)] = default_val;
-  );
 );
 
 
