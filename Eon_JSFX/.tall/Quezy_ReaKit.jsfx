@@ -29,7 +29,7 @@ desc:EON: Quezy
 // DSP: Simper SVF via rk_svf.jsfx-inc (ReEQ's svf_filter) + rk_svf_match.jsfx-inc (magnitude-matched coefficients,
 //      Ivantsov's maps, MIT) + qz_engine.jsfx-inc (band objects, ReEQ's shape dispatch and per-band mid/side
 //      placement, Quezy's own Flat Tilt / Flat Gain / Bell Prop Q).
-// Version: 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
+// Version: 1.0.1 (2026-11-04: a Quezy shown in the track panel AND the mixer no longer blinks). 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
 // window's lines, narrow bands and ReEQ's missing habits + auto gain 2 + click-free switching 3 + the looks + the
 // analyser 5 + the native looks and link groups 6 + the extras 7; 1.0.0 at release). Keep #qz_ver in @init in step.
 //tags: equalizer filter parametric shelf mid-side
@@ -500,7 +500,7 @@ function qz_listen_block(src, ff, w, lg)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;
 qz_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
-#qz_ver = "1.0.0";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
+#qz_ver = "1.0.1";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
 freemem = 0;
 freemem = qzg_setup(freemem);
 freemem = rkm_setup(freemem);      // the drawn menu's row tables (rk_menu.jsfx-inc)

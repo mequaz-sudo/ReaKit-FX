@@ -3146,11 +3146,17 @@ function qzg_dyn_moving() local(k, a) (
   qz_dlsn >= 0 && qzg_mode(qz_dlsn) < 3 ? qz_dlsn = -1;   // the listen chip lets go of a band that stopped reacting
   a = 0; k = 0; loop(16, abs(qz_dyng[k]) > 0.05 ? a = 1; k += 1; ); a;
 );
-function qzg_need_draw(pulse, force) local(m, sig, d) (
-  m = qzg_srfm + 4 * max(0, min(2, _srf | 0));    // [0] last sig, [1] last drawn, [2] last pass, [3] input last pass
+function qzg_need_draw(pulse, force) local(m, sig, d, sr, two) (
+  sr = max(0, min(2, _srf | 0));
+  m = qzg_srfm + 4 * sr;                          // [0] last sig, [1] last drawn, [2] last pass, [3] input last pass
+  // shown in the track panel AND the mixer at once: REAPER runs the two strips' passes in turn on ONE canvas, so a
+  // skipped pass shows the other strip's picture or nothing (MEASURED 2026-11-04, qz_face_dual.cfg: black or the other
+  // face, the user's "blinks all the time" under Swing). While the other strip has run in the last half second, every
+  // pass draws (rk_embed_idle never skips there either: its hash holds the canvas size, which flips every pass)
+  two = sr > 0 && qzg_now - qzg_srfm[4 * (3 - sr) + 2] < 0.5;
   sig = qzg_sig();
   qzg_now - m[2] > 0.25 ? rkm_close();
-  d = force || rkm_on || sig !== m[0] || m[3] || frame_wheel != 0 || qzg_now - m[2] > 0.25 || qzg_now - m[1] > 1 ||
+  d = force || two || rkm_on || sig !== m[0] || m[3] || frame_wheel != 0 || qzg_now - m[2] > 0.25 || qzg_now - m[1] > 1 ||
       (pulse && floor(qzg_now * 15) !== floor(m[1] * 15));
   m[0] = sig; m[2] = qzg_now;
   m[3] = LMB || RMB || lmb_down || rmb_down || frame_wheel != 0;
