@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="ReaKit FX">
   <category name="FX">
-    <reapack name="ReaKit FX" type="effect" desc="ReaKit FX - GainKit, Saturation, 3-Band EQ, DDC, De-Esser, Stereo Width and Filter: free effects with EON Studios interfaces (the ReaKit library)">
+    <reapack name="ReaKit FX" type="effect" desc="ReaKit FX - GainKit, Quezy, Saturation, 3-Band EQ, DDC, De-Esser, Stereo Width and Filter: free effects with EON Studios interfaces (the ReaKit library)">
       <metadata>
-        <description><![CDATA[Seven free effects with EON Studios interfaces. Saturation, 3-Band EQ and DDC (Digital Drum Compressor) by Michael Gruhn (LOSER) and a De-Esser built on Lubomir I. Ivanov's (Liteon), free as their authors released them, with their original terms and credits (LICENSE.md); and EON's own GainKit (gain staging on a VU, one meter or two), Stereo Width and Filter (a high-pass and a low-pass, 12 or 24 dB/oct) (MIT). The shared interface library that comes with them is ReaKit (MIT).]]></description>
+        <description><![CDATA[Eight free effects with EON Studios interfaces. Saturation, 3-Band EQ and DDC (Digital Drum Compressor) by Michael Gruhn (LOSER) and a De-Esser built on Lubomir I. Ivanov's (Liteon), free as their authors released them, with their original terms and credits (LICENSE.md); and EON's own GainKit (gain staging on a VU, one meter or two), Stereo Width, Filter (a high-pass and a low-pass, 12 or 24 dB/oct) and Quezy (a parametric EQ of up to sixteen bands, after Justin Johnson's ReEQ) (EON Free Licence 1.0: free to use in any work, not for sale or redistribution). The shared interface library that comes with them is ReaKit (MIT).]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-09-21T20:05:26Z">
@@ -1036,12 +1036,67 @@
         <source file="ReaKit/rk_handoff.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/eb71aeaa80838889c1a809fbee283b7a3358b318/ReaKit/rk_handoff.jsfx-inc</source>
         <source file="ReaKit/rk_srf.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/eb71aeaa80838889c1a809fbee283b7a3358b318/ReaKit/rk_srf.jsfx-inc</source>
       </version>
+      <version name="1.6.0" author="Quaz (EON Studios)" time="2026-11-04T22:38:18Z">
+        <changelog><![CDATA[Quezy joins the set: a free parametric EQ with up to sixteen bands and seventeen shapes, each band on both sides, the mid, the side, the left or the right. Any band can react to the music (WHEN LOUD / WHEN QUIET, with threshold, ratio, range, attack, release and lookahead). A live spectrum, auto gain, band listen, zero all gains (the 0 key or the right-click menus), three text sizes, nine presets, and SIMPLE: a console strip of six bands. All eight: knobs draw smoother, a click no longer nudges a knob, the pointer hides while you drag, and the knob code loads in four smaller files so the effects open quicker; the sound of the other seven does not change. Licence: from this version GainKit, Stereo Width, Filter and Quezy are under the EON Free Licence 1.0 (LICENSE-EON-FREE.md): free to use in any work, not for sale or redistribution. The ReaKit/ includes stay MIT. Earlier versions keep the MIT licence they came with.]]></changelog>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/3BandEQ_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/DDC_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/DDC_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/DeEsser_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/DeEsser_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/Filter_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Filter_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Filter_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Filter_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Saturation_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Saturation_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/StereoWidth_ReaKit.jsfx.rpl</source>
+        <source file="ReaKit/buttons_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/buttons_kbsg.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/knobs_kbsg.jsfx-inc</source>
+        <source file="ReaKit/meters_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/meters_kbsg.jsfx-inc</source>
+        <source file="ReaKit/oversample_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/oversample_kbsg.jsfx-inc</source>
+        <source file="ReaKit/rk_curve.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_curve.jsfx-inc</source>
+        <source file="ReaKit/rk_drawer.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_drawer.jsfx-inc</source>
+        <source file="ReaKit/rk_gmem_link.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_gmem_link.jsfx-inc</source>
+        <source file="ReaKit/rk_playstate.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_playstate.jsfx-inc</source>
+        <source file="ReaKit/rk_theme.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_theme.jsfx-inc</source>
+        <source file="ReaKit/rk_vu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_vu.jsfx-inc</source>
+        <source file="ReaKit/sliders_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/sliders_kbsg.jsfx-inc</source>
+        <source file="ReaKit/smooth_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/smooth_kbsg.jsfx-inc</source>
+        <source file="ReaKit/utils_kbsg.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/utils_kbsg.jsfx-inc</source>
+        <source file="LICENSE">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/LICENSE</source>
+        <source file="LICENSE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/LICENSE.md</source>
+        <source file="THIRD_PARTY_CREDITS.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/THIRD_PARTY_CREDITS.md</source>
+        <source file="Eon_JSFX/.tall/ChannelTool_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/ChannelTool_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/.tall/ChannelTool_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/ChannelTool_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/.tall/Filter_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/Filter_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/.tall/Filter_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/Filter_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/FX/DeEsser_ReaKit.GPL-3.0.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/DeEsser_ReaKit.GPL-3.0.md</source>
+        <source file="ReaKit/rk_handoff.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_handoff.jsfx-inc</source>
+        <source file="ReaKit/rk_srf.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_srf.jsfx-inc</source>
+        <source file="Eon_JSFX/FX/Quezy_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Quezy_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/FX/Quezy_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/FX/Quezy_ReaKit.jsfx.rpl</source>
+        <source file="Eon_JSFX/.tall/Quezy_ReaKit.jsfx">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/Quezy_ReaKit.jsfx</source>
+        <source file="Eon_JSFX/.tall/Quezy_ReaKit.jsfx.rpl">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Eon_JSFX/.tall/Quezy_ReaKit.jsfx.rpl</source>
+        <source file="ReaKit/qz_engine.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/qz_engine.jsfx-inc</source>
+        <source file="ReaKit/qz_face.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/qz_face.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg_p2.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/knobs_kbsg_p2.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg_p3.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/knobs_kbsg_p3.jsfx-inc</source>
+        <source file="ReaKit/knobs_kbsg_p4.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/knobs_kbsg_p4.jsfx-inc</source>
+        <source file="ReaKit/rk_knob_ring.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_knob_ring.jsfx-inc</source>
+        <source file="ReaKit/rk_menu.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_menu.jsfx-inc</source>
+        <source file="ReaKit/rk_spectrum.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_spectrum.jsfx-inc</source>
+        <source file="ReaKit/rk_svf.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_svf.jsfx-inc</source>
+        <source file="ReaKit/rk_svf_match.jsfx-inc">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/ReaKit/rk_svf_match.jsfx-inc</source>
+        <source file="LICENSE-EON-FREE.md">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/LICENSE-EON-FREE.md</source>
+      </version>
     </reapack>
   </category>
   <category name="GainKit Plus">
     <reapack name="GainKit Plus.lua" type="script" desc="GainKit Plus - the track's name and colour on every GainKit's meter, and the actions that handle every GainKit at once">
       <metadata>
-        <description><![CDATA[Companion scripts for GainKit (ReaKit FX). GainKit Plus, a background action, feeds every GainKit its track's name, colour and icon (the master's gets the project's name), and can start with REAPER. The others act on the GainKits in the project, FX containers included: Insert on selected tracks, GainKit first in every chain, GainKit first on selected tracks, GainKit last on the master, Copy look to all, Reset all gains, All MONO, All STEREO, Bypass all and Remove all GainKits; and ReaKit FX - Start with REAPER, one press that starts GainKit Plus and EON Floatter with REAPER. MIT, EON Studios.]]></description>
+        <description><![CDATA[Companion scripts for GainKit (ReaKit FX). GainKit Plus, a background action, feeds every GainKit its track's name, colour and icon (the master's gets the project's name), and can start with REAPER. The others act on the GainKits in the project, FX containers included: Insert on selected tracks, GainKit first in every chain, GainKit first on selected tracks, GainKit last on the master, Copy look to all, Reset all gains, All MONO, All STEREO, Bypass all and Remove all GainKits; and ReaKit FX - Start with REAPER, one press that starts GainKit Plus and EON Floatter with REAPER; the ReaKit FX dock, one dock tab per effect, and the Quezy helper. EON Free Licence 1.0, EON Studios.]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-09-28T20:57:54Z">
@@ -1543,6 +1598,35 @@
         <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/06cd691d8c33b33d445dbf6f103d90428713e7a9/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
         <source file="ReaKit FX - Dock icon picker.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/06cd691d8c33b33d445dbf6f103d90428713e7a9/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20icon%20picker.lua</source>
       </version>
+      <version name="1.0.30" author="Quaz (EON Studios)" time="2026-11-04T22:38:18Z">
+        <changelog><![CDATA[Quezy joins: GainKit Plus docks it, floats it and gives it its long view in the mixer strip. New actions: ReaKit FX - Dock GainKit, - Dock Filter, - Dock Quezy and one for each of the others, each effect alone in its own docker tab that reopens with REAPER; a double-click on a plugin's name goes to its own tab. Quezy helper: Quezy docks and floats with a double-click on its name without GainKit Plus running. From this version the scripts are under the EON Free Licence 1.0 (LICENSE-EON-FREE.md in the ReaKit FX package).]]></changelog>
+        <source main="main" file="GainKit Plus - All MONO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20All%20MONO.lua</source>
+        <source main="main" file="GainKit Plus - All STEREO.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20All%20STEREO.lua</source>
+        <source main="main" file="GainKit Plus - Bypass all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Bypass%20all.lua</source>
+        <source main="main" file="GainKit Plus - Copy look to all.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Copy%20look%20to%20all.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first in every chain.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20in%20every%20chain.lua</source>
+        <source main="main" file="GainKit Plus - GainKit first on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20first%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - GainKit last on the master.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20GainKit%20last%20on%20the%20master.lua</source>
+        <source main="main" file="GainKit Plus - Insert on selected tracks.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Insert%20on%20selected%20tracks.lua</source>
+        <source main="main" file="GainKit Plus - Remove all GainKits.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Remove%20all%20GainKits.lua</source>
+        <source main="main" file="GainKit Plus - Reset all gains.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Reset%20all%20gains.lua</source>
+        <source main="main" file="GainKit Plus - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="GainKit Plus.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/GainKit%20Plus.lua</source>
+        <source main="main" file="ReaKit FX - Start with REAPER.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Start%20with%20REAPER.lua</source>
+        <source main="main" file="ReaKit FX - Add a track with all seven.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Add%20a%20track%20with%20all%20seven.lua</source>
+        <source main="main" file="ReaKit FX - Dock following the selected track.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20following%20the%20selected%20track.lua</source>
+        <source main="main" file="ReaKit FX - Docker tabs off-on.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Docker%20tabs%20off-on.lua</source>
+        <source file="ReaKit FX - Dock icon picker.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20icon%20picker.lua</source>
+        <source main="main" file="ReaKit FX - Dock 3-Band EQ.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%203-Band%20EQ.lua</source>
+        <source main="main" file="ReaKit FX - Dock DDC.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20DDC.lua</source>
+        <source main="main" file="ReaKit FX - Dock De-Esser.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20De-Esser.lua</source>
+        <source main="main" file="ReaKit FX - Dock Filter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20Filter.lua</source>
+        <source main="main" file="ReaKit FX - Dock GainKit.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20GainKit.lua</source>
+        <source main="main" file="ReaKit FX - Dock Quezy.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20Quezy.lua</source>
+        <source main="main" file="ReaKit FX - Dock Saturation.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20Saturation.lua</source>
+        <source main="main" file="ReaKit FX - Dock Stereo Width.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/ReaKit%20FX%20-%20Dock%20Stereo%20Width.lua</source>
+        <source main="main" file="Quezy helper.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/GainKit%20Plus/Quezy%20helper.lua</source>
+      </version>
     </reapack>
   </category>
   <category name="EON Floatter">
@@ -1592,6 +1676,10 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
         <changelog><![CDATA[Start with REAPER: the line it writes into REAPER's startup script now runs the Floatter only when its file is still there, so a Floatter folder removed by hand no longer brings a "Can't load file" message at every REAPER start; every install writes that line afresh once.]]></changelog>
         <source main="main" file="EON_Floatter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/06cd691d8c33b33d445dbf6f103d90428713e7a9/Floatter/EON_Floatter.lua</source>
       </version>
+      <version name="1.0.10" author="Quaz (EON Studios)" time="2026-11-04T22:38:18Z">
+        <changelog><![CDATA[Quezy's designed size, and its tall strip copy. Unused code removed. From this version the Floatter is under the EON Free Licence 1.0 (LICENSE-EON-FREE.md in the ReaKit FX package).]]></changelog>
+        <source main="main" file="EON_Floatter.lua">https://raw.githubusercontent.com/mequaz-sudo/ReaKit-FX/8d590e8d8c0ed2374bbb28f3dc3a8e65e8a9ce82/Floatter/EON_Floatter.lua</source>
+      </version>
     </reapack>
   </category>
   <category name="Templates">
@@ -1628,7 +1716,7 @@ Needs js_ReaScriptAPI (ReaTeam Extensions). The panel needs ReaImGui; without it
   <category name="Track icons">
     <reapack name="ReaKit FX track icons" type="data" desc="ReaKit FX track icons - 104 instrument, mic, effect and bus icons in a folder of their own, the EON category in the dock's picker and in REAPER's icon dialog">
       <metadata>
-        <description><![CDATA[A hundred and four track icons of our own: drums piece by piece and drum overheads, percussion, keys, piano, organ and synths, guitar, electric guitar, bass and upright bass with their amps and a DI box, strings, brass and winds, a dynamic and a condenser mic, vocals and choir, headphones, a VU meter, a turntable, drum machines and a sampler, the common effect types, buses and marks, drawn in a light grey with a dark outline so they read on dark and light themes. They land in a folder of their own inside REAPER's track icon folder (Data/track_icons/EON), so they show as the EON category in the ReaKit FX dock's icon picker and in REAPER's own icon dialog, and never collide with REAPER's icons; a groups list beside them sorts them into the dock picker's groups. MIT licensed, as the rest of EON's own work in ReaKit FX.]]></description>
+        <description><![CDATA[A hundred and four track icons of our own: drums piece by piece and drum overheads, percussion, keys, piano, organ and synths, guitar, electric guitar, bass and upright bass with their amps and a DI box, strings, brass and winds, a dynamic and a condenser mic, vocals and choir, headphones, a VU meter, a turntable, drum machines and a sampler, the common effect types, buses and marks, drawn in a light grey with a dark outline so they read on dark and light themes. They land in a folder of their own inside REAPER's track icon folder (Data/track_icons/EON), so they show as the EON category in the ReaKit FX dock's icon picker and in REAPER's own icon dialog, and never collide with REAPER's icons; a groups list beside them sorts them into the dock picker's groups. Under the EON Free Licence 1.0, as the rest of EON's own work in ReaKit FX (versions released before 2026-11-04: MIT).]]></description>
         <link rel="repository">https://github.com/mequaz-sudo/ReaKit-FX</link>
       </metadata>
       <version name="1.0.0" author="Quaz (EON Studios)" time="2026-10-06T09:50:02Z">
