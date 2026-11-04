@@ -34,7 +34,9 @@
 // REAPER writes automation; the swap is done at the stop).
 
 @init
-RKHO_BASE = 31367680; RKHO_N = 16; RKHO_STRIDE = 96; RKHO_DATA = 16; RKHO_MAX = 80;
+// RKHO_STATE_LEN = the state cells per slot (+16..95), NOT a slot count (was RKHO_MAX, which the bundle's gmem audit
+// read as 80 slots: renamed 2026-10-30, unused in code)
+RKHO_BASE = 31367680; RKHO_N = 16; RKHO_STRIDE = 96; RKHO_DATA = 16; RKHO_STATE_LEN = 80;
 
 function rk_ho_init(kind) (
   rkho_kind = kind;

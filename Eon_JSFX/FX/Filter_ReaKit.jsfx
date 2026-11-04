@@ -1,5 +1,7 @@
 // Filter (ReaKit)
 // (C) 2026 EON Studios
+// Licence: EON Free Licence 1.0: free to use in any work; not for sale, redistribution or reuse of its code (the
+// licence file beside this release, LICENSE-EON-FREE.md).
 // A high-pass and a low-pass, Butterworth at 12 or 24 dB/oct, on Andrew Simper's trapezoidal state-variable filter,
 // with a CURVE drawer (the response, two nodes to drag)
 // Version: 1.1.2   (1.1.2: a change on the face reaches the sound -- the knobs, LEDs, SLOPE key and CURVE nodes only
@@ -23,6 +25,9 @@ desc:EON: Filter
 
 import ../../ReaKit/utils_kbsg.jsfx-inc
 import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p2.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p3.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p4.jsfx-inc
 import ../../ReaKit/buttons_kbsg.jsfx-inc
 import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc

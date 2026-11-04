@@ -1,7 +1,7 @@
 -- GainKit Plus -- bypass every GainKit (the master's too, and GainKits inside FX containers); run
 -- it again, with all of them bypassed, and it enables them all: hear the session with and without
 -- its gain staging. Some on and some bypassed counts as on, so from a mix it bypasses them all.
--- One undo step. MIT, EON Studios, 2026.
+-- One undo step. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with

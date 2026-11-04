@@ -1,5 +1,7 @@
 // Stereo Width (ReaKit)
 // (C) 2026 EON Studios
+// Licence: EON Free Licence 1.0: free to use in any work; not for sale, redistribution or reuse of its code (the
+// licence file beside this release, LICENSE-EON-FREE.md).
 // Mid/side stereo width control with correlation meter, and a STEREO FIELD drawer (a live scope)
 // Version: 1.2.2   (1.2.2: the track's name after the title, REAPER 7.81+, rk_theme rkth_track_name)
 //
@@ -10,6 +12,9 @@ desc:EON: Stereo Width
 
 import ../../ReaKit/utils_kbsg.jsfx-inc
 import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p2.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p3.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p4.jsfx-inc
 import ../../ReaKit/buttons_kbsg.jsfx-inc
 import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc

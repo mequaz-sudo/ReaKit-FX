@@ -1,7 +1,7 @@
 -- GainKit Plus -- move the GainKit of every SELECTED track (the master too, when it is selected)
 -- to the FIRST slot of its chain; "GainKit first in every chain" does the whole project. Tracks
 -- without one are left alone, and so is a GainKit inside an FX container: it stays where the
--- container puts it. One undo step. MIT, EON Studios, 2026.
+-- container puts it. One undo step. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with

@@ -7,7 +7,7 @@
 -- only the ReaKit FX dock, and it stays as set after a restart. The ReaKit FX dock's TABS button does the same
 -- (the two share their notes, in "EON_ReaKitDock"). On a toolbar the button lights while the tabs are off.
 -- Measured 2026-10-03 (tabs2_probe.lua): a script cannot set dockcompactsingle (set_config_var_string returns 0),
--- so the option is flipped with REAPER's action and only read here. MIT, EON Studios, 2026.
+-- so the option is flipped with REAPER's action and only read here. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local EXT = "EON_ReaKitDock"
 

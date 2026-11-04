@@ -10,7 +10,9 @@
 // to decide whether to push or pull. Play-state still uses a
 // counter since it is UI-driven and not a REAPER slider.
 //
-// GMem layout (per-group, base = (g-1)*64, g = 1..16):
+// GMem layout (per-group, base = (g-1)*B, g = 1..16; B = the block, 64 unless the
+// plugin asks rk_link_init_blk for a larger one; the cells below are at B = 64, and in
+// a larger block the seed count and the heartbeat sit at its last two cells, B-2 / B-1):
 //   [base+1 .. base+32]  — slider values 1..32 (slot = slider index)
 //   [base+33]            — used flag (1 = a member has written here since this
 //                          gmem was created; never cleared, so it does NOT mean
@@ -51,8 +53,16 @@
 //   [0..35]  — rk_link_prev : previous slider values (push/pull detector)
 //   [36..63] — rk_link_excl : exclusion flags (1 = don't sync slider i)
 // Caps: sync covers sliders 1..35 (prev[] partition); rk_link_exclude
-// covers sliders 1..27 (excl[] partition). Widen the partitions (and the
-// callers' freemem += 64) before adding a plugin that exceeds either.
+// covers sliders 1..27 (excl[] partition). A plugin past either calls
+// rk_link_init_blk instead (below): its own block size and partitions.
+//
+// LARGE PLUGINS (2026-10-30, Quezy's 218 linked sliders): rk_link_init_blk(group_slider,
+// num_sliders, mem_base, blk) = rk_link_init with a group block of blk cells (64 or more)
+// and partitions sized from the slider count: prev[0..n], excl[0..n], so the caller
+// reserves freemem += rk_link_mem_n(num_sliders) instead of 64. Sync covers sliders
+// 1..min(n, blk - 8) (slots i + 5 past 32 must stay under the seed count at blk - 2);
+// exclude covers 1..n. Its gmem region is 16 * blk cells (+4 reserved) from the base.
+// A plugin that keeps rk_link_init is unchanged: blk 64, the same cells, the same caps.
 //
 // REQUIREMENTS:
 //   Plugin header : options:gmem=ReaKitYourPluginName
@@ -93,6 +103,8 @@ function rk_link_init(group_slider_, num_sliders_, mem_base)
   rk_link_num_sliders  = num_sliders_;
   rk_link_base         = 0;   // gmem offset for group blocks; rk_link_set_base() relocates
   rk_link_group        = 0;
+  rk_link_blk          = 64;  // cells per group block (rk_link_init_blk sets a larger one)
+  rk_link_excl_max     = 27;  // rk_link_exclude's cap (the excl[] partition)
 
   // Local memory: 64 slots from mem_base (caller does freemem += 64 after)
   rk_link_prev = mem_base;       // [0..35]  previous slider values
@@ -135,11 +147,32 @@ function rk_link_init(group_slider_, num_sliders_, mem_base)
 );
 
 
+// rk_link_init for a plugin past the 64-cell block's caps (see LARGE PLUGINS): blk cells
+// a group (64 or more), the local partitions sized from num_sliders. The caller reserves
+// freemem += rk_link_mem_n(num_sliders).
+function rk_link_mem_n(num_sliders_) ( max(64, 2 * (num_sliders_ + 1)); );
+function rk_link_init_blk(group_slider_, num_sliders_, mem_base, blk)
+  local(i)
+(
+  rk_link_init(group_slider_, num_sliders_, mem_base);
+  rk_link_blk = max(64, blk | 0);
+  rk_link_prev = mem_base;                       // [0..n]       previous slider values
+  rk_link_excl = mem_base + num_sliders_ + 1;    // [n+1..2n+1]  exclusion flags (sliders 1..n)
+  memset(mem_base, 0, rk_link_mem_n(num_sliders_));
+  rk_link_sync_max = min(rk_link_num_sliders, rk_link_blk - 8);
+  rk_link_excl_max = num_sliders_;
+  i = 1;
+  loop(rk_link_sync_max,
+    rk_link_prev[i] = slider(i);
+    i += 1;
+  );
+);
+
 // Exclude a slider from group sync (call after rk_link_init)
 // Cap 27 = excl[] partition of the 64-slot local block (see header).
 function rk_link_exclude(slider_num)
 (
-  slider_num >= 1 && slider_num <= 27 ? (
+  slider_num >= 1 && slider_num <= rk_link_excl_max ? (
     rk_link_excl[slider_num] = 1;
   );
 );
@@ -218,7 +251,8 @@ function rk_link_fill_rrect(x, y, w, h, r)
 // Relocate the group-block gmem region (call after rk_link_init). Lets a plugin
 // share a host gmem namespace (e.g. Swing_Media_Transfer, for the One-Rack
 // theme) without colliding with that namespace's reserved low slots. The region
-// spans [gmem_base .. gmem_base+1027]. Default base = 0 (legacy / own namespace).
+// spans [gmem_base .. gmem_base+1027] (16 * rk_link_blk + 3 with rk_link_init_blk).
+// Default base = 0 (legacy / own namespace).
 function rk_link_set_base(gmem_base)
 (
   rk_link_base = gmem_base;
@@ -244,9 +278,9 @@ function _rk_link_seed(g, base)
   );
   gmem[base + 34] = rk_ps_en_play; gmem[base + 35] = rk_ps_en_rec; gmem[base + 36] = rk_ps_en_stop;
   gmem[base + 37] = 0; rk_link_last_ps_counter = 0;
-  gmem[base + 62] += 1; rk_link_seeds = gmem[base + 62];
+  gmem[base + rk_link_blk - 2] += 1; rk_link_seeds = gmem[base + rk_link_blk - 2];
   gmem[base + 33] = 1;
-  gmem[base + 63] = time_precise();   // a member now: the next joiner's watch sees it at once
+  gmem[base + rk_link_blk - 1] = time_precise();   // a member now: the next joiner's watch sees it at once
   rk_link_in = g; rk_link_watch_g = 0;
 );
 
@@ -270,7 +304,7 @@ function _rk_link_adopt(g, base)
   );
   rk_ps_en_play = gmem[base + 34]; rk_ps_en_rec = gmem[base + 35]; rk_ps_en_stop = gmem[base + 36];
   rk_link_last_ps_counter = gmem[base + 37];
-  rk_link_seeds = gmem[base + 62];
+  rk_link_seeds = gmem[base + rk_link_blk - 2];
   rk_link_in = g; rk_link_watch_g = 0;
   changed;
 );
@@ -285,8 +319,8 @@ function _rk_link_push()
 (
   g = slider(rk_link_group_slider) | 0;
   g >= 1 && g <= 16 && g == rk_link_in ? (
-    base = rk_link_base + (g - 1) * 64;
-    gmem[base + 62] == rk_link_seeds ? (
+    base = rk_link_base + (g - 1) * rk_link_blk;
+    gmem[base + rk_link_blk - 2] == rk_link_seeds ? (
       i = 1;
       loop(rk_link_sync_max,
         i != rk_link_group_slider && !rk_link_excl[i] ? (
@@ -338,10 +372,10 @@ function rk_link_pull()
   updated = 0;
 
   g >= 1 && g <= 16 ? (
-    base = rk_link_base + (g - 1) * 64;
+    base = rk_link_base + (g - 1) * rk_link_blk;
     // in g, but another instance has seeded it since (a project in another tab,
     // while ours did not run): watch it again before trusting it
-    g == rk_link_in && gmem[base + 62] != rk_link_seeds ? rk_link_in = 0;
+    g == rk_link_in && gmem[base + rk_link_blk - 2] != rk_link_seeds ? rk_link_in = 0;
   );
 
   g >= 1 && g <= 16 && g != rk_link_in ? (
@@ -364,15 +398,15 @@ function rk_link_pull()
     rk_link_watch_g != g || now - rk_link_watch_last > max(0.5, 4 * samplesblock / max(srate, 1)) ? (
       rk_link_watch_g = g;
       rk_link_watch_t = now;
-      rk_link_watch_hb = gmem[base + 63];
+      rk_link_watch_hb = gmem[base + rk_link_blk - 1];
       rk_link_watch_n = 0;
       rk_link_watch_a = 0;
-    ) : gmem[base + 63] != rk_link_watch_hb ? (
+    ) : gmem[base + rk_link_blk - 1] != rk_link_watch_hb ? (
       updated = _rk_link_adopt(g, base);   // a member is running: take the group's values
     ) : (
       rk_link_watch_n += 1;
       rk_link_watch_n >= 4 && ((time_precise() - rk_link_watch_t >= rk_link_watch_s) ||
-                               (rk_link_watch_a >= rk_link_watch_s && now - gmem[base + 63] > 0.25)) ?
+                               (rk_link_watch_a >= rk_link_watch_s && now - gmem[base + rk_link_blk - 1] > 0.25)) ?
         _rk_link_seed(g, base);            // nobody: the group starts from ours
     );
     rk_link_watch_a += samplesblock / max(srate, 1);
@@ -387,7 +421,7 @@ function rk_link_pull()
   ) : g >= 1 && g <= 16 ? (
     rk_link_watch_g = 0;  // back in its own group: a watch of another one is over
     gmem[base + 33] = 1;  // used (old builds read it)
-    gmem[base + 63] = time_precise();  // member heartbeat (menu dots, joiners' watch)
+    gmem[base + rk_link_blk - 1] = time_precise();  // member heartbeat (menu dots, joiners' watch)
 
     // ── Slider sync (old-value) ──────────────────────────────
     i = 1;
@@ -809,7 +843,7 @@ function rk_link_draw_menu(menu_x, menu_y, sc, ar, ag, ab, _mx, _my, _lmb)
       gfx_drawstr(#rk_cell_num);
 
       // Occupancy dot: a member GUI stamped this group's heartbeat recently
-      stamp = gmem[rk_link_base + (i - 1) * 64 + 63];
+      stamp = gmem[rk_link_base + (i - 1) * rk_link_blk + rk_link_blk - 1];
       stamp > 0 && time_precise() - stamp < 1.5 ? (
         gfx_set(rk_gc_r, rk_gc_g, rk_gc_b, 0.9 * a);
         gfx_circle(cell_x + cell_w - dot_r - 3, cell_y + dot_r + 3, dot_r, 1, 1);
@@ -864,7 +898,7 @@ function rk_link_draw_menu(menu_x, menu_y, sc, ar, ag, ab, _mx, _my, _lmb)
       rk_ps_en_play = !rk_ps_en_play;
       g = slider(rk_link_group_slider) | 0;
       g >= 1 && g <= 16 ? (
-        base = rk_link_base + (g - 1) * 64;
+        base = rk_link_base + (g - 1) * rk_link_blk;
         gmem[base + 34] = rk_ps_en_play;
         gmem[base + 37] += 1;
         rk_link_last_ps_counter = gmem[base + 37];
@@ -893,7 +927,7 @@ function rk_link_draw_menu(menu_x, menu_y, sc, ar, ag, ab, _mx, _my, _lmb)
       rk_ps_en_rec = !rk_ps_en_rec;
       g = slider(rk_link_group_slider) | 0;
       g >= 1 && g <= 16 ? (
-        base = rk_link_base + (g - 1) * 64;
+        base = rk_link_base + (g - 1) * rk_link_blk;
         gmem[base + 35] = rk_ps_en_rec;
         gmem[base + 37] += 1;
         rk_link_last_ps_counter = gmem[base + 37];
@@ -922,7 +956,7 @@ function rk_link_draw_menu(menu_x, menu_y, sc, ar, ag, ab, _mx, _my, _lmb)
       rk_ps_en_stop = !rk_ps_en_stop;
       g = slider(rk_link_group_slider) | 0;
       g >= 1 && g <= 16 ? (
-        base = rk_link_base + (g - 1) * 64;
+        base = rk_link_base + (g - 1) * rk_link_blk;
         gmem[base + 36] = rk_ps_en_stop;
         gmem[base + 37] += 1;
         rk_link_last_ps_counter = gmem[base + 37];

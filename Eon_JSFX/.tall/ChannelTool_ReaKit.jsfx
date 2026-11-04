@@ -1,5 +1,8 @@
 desc:EON: GainKit
 // EON Studios ReaKit — GainKit: gain staging on a VU
+// (C) 2026 EON Studios
+// Licence: EON Free Licence 1.0: free to use in any work; not for sale, redistribution or reuse of its code (the
+// licence file beside this release, LICENSE-EON-FREE.md).
 // DSP: HP/LP 4th-order Butterworth, L/R trim, gain, mono/MS format
 // VU: rk_vu fed both sides (rk_vu_sample2): one needle reading the louder side, or two meters,
 //   left and right (the THEME panel's METERS row)
@@ -70,6 +73,9 @@ options:want_all_kb
 
 import ../../ReaKit/utils_kbsg.jsfx-inc
 import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p2.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p3.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p4.jsfx-inc
 import ../../ReaKit/buttons_kbsg.jsfx-inc
 import ../../ReaKit/sliders_kbsg.jsfx-inc
 import ../../ReaKit/meters_kbsg.jsfx-inc

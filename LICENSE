@@ -1,8 +1,17 @@
 This repository holds code under more than one licence.
 
-The MIT licence below covers EON Studios' own work here: GainKit, Stereo Width, Filter,
-the GainKit Plus scripts, EON Floatter, the ReaKit/ includes, the templates and the track
-icons.
+From ReaKit FX 1.6.0, GainKit Plus 1.0.30 and EON Floatter 1.0.10 (2026-11-04), EON
+Studios' own effects and scripts are under the EON Free Licence 1.0 (LICENSE-EON-FREE.md
+beside this file): free to use in any work, not for sale or redistribution. That covers
+GainKit, Stereo Width, Filter, Quezy (its plugin file, qz_face and qz_engine), the GainKit
+Plus and ReaKit FX scripts, EON Floatter, the templates and the track icons. Versions
+released before that date keep the MIT licence they were released under.
+
+The MIT licence below covers the ReaKit/ includes (the ReaKit library: knobs, buttons,
+sliders, meters, rk_* and the other shared files), apart from qz_face and qz_engine.
+Parts ported from other authors' MIT code (Quezy's engine after Justin Johnson's ReEQ,
+rk_svf, rk_spectrum, rk_svf_match after Yuriy Ivantsov) keep those authors' MIT notices,
+in the files themselves.
 
 It does NOT cover the four effects built on other authors' DSP. Saturation, 3-Band EQ
 and DDC keep Michael Gruhn's (LOSER) terms; the De-Esser keeps Lubomir I. Ivanov's

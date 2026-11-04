@@ -34,11 +34,17 @@
 -- strip, one float and one surface per effect. Every way out hands a surface back to a float, at its exact place,
 -- BEFORE anything else: a REAPER window moved outside its tree is never taken back by REAPER (EON Swing Dock's
 -- lesson, 2026-08-25). The same mechanism as EON Swing Dock, written for the seven. Windows only; needs
--- js_ReaScriptAPI (ReaPack). MIT, EON Studios, 2026.
+-- js_ReaScriptAPI (ReaPack). EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local DIR = debug.getinfo(1, "S").source:match("^@(.*[\\/])") or ""   -- this script's folder (the picker lives beside it)
-local TITLE = "ReaKit FX Dock"         -- the docker tab's label; also how the script finds its own window
-local EXT = "EON_ReaKitDock"
+-- A dock of ONE plugin (2026-10-31, the user: "I definitely want each plugin to have its own separate dock tab"): a
+-- wrapper action ("ReaKit FX - Dock <name>.lua") sets REAKIT_DOCK_ONLY = { key = <its KINDS key>, title = <its name> }
+-- and runs this file. Its own docker tab (labelled with the plugin's name), its own saved settings (its own EXT), that
+-- plugin alone: no STRIP, no SLOT, no chips for the others. Any number of them can be open beside the full dock; a
+-- plugin another open dock holds is left to it (held_elsewhere).
+local ONLY = type(REAKIT_DOCK_ONLY) == "table" and REAKIT_DOCK_ONLY or nil
+local TITLE = ONLY and ONLY.title or "ReaKit FX Dock"   -- the docker tab's label; also how the script finds its own window
+local EXT = ONLY and ("EON_ReaKitDock_" .. ONLY.key) or "EON_ReaKitDock"
 local C = {                            -- the dock's fixed numbers (one table, not eleven locals: the 200-local limit)
   W0 = 350, H0 = 572,                  -- the size when not docked: GainKit's window and the bar
   WAIT_TICKS = 30,                     -- how long to wait for REAPER to make a float and its surface
@@ -80,12 +86,24 @@ local KINDS = {
   { key = "des", name = "De-Esser",     long = "DE-ESSER", short = "DE",  file = "deesser_reakit.jsfx",     w = 540, minw = 240, h = 376, minh = 150, src = "DeEsser_ReaKit.jsfx" },
   { key = "sat", name = "Saturation",   long = "SAT",      short = "SAT", file = "saturation_reakit.jsfx",  w = 280, minw = 260, h = 506, minh = 140, src = "Saturation_ReaKit.jsfx" },
   { key = "eq3", name = "3-Band EQ",    long = "3-BAND",   short = "EQ",  file = "3bandeq_reakit.jsfx",     w = 460, minw = 250, h = 228, minh = 140, src = "3BandEQ_ReaKit.jsfx" },
+  -- Quezy (the eighth, the free EQ, 2026-10-30): its window's design size and its smallest (the face folds its
+  -- editor below 534 and fits down to 489 x 260, Quezy's own size rig); with the EQs in the chain's order
+  { key = "qzy", name = "Quezy",        long = "QUEZY",    short = "QZ",  file = "quezy_reakit.jsfx",       w = 648, minw = 489, h = 534, minh = 260, src = "Quezy_ReaKit.jsfx" },
   { key = "ddc", name = "DDC",          long = "DDC",      short = "DDC", file = "ddc_reakit.jsfx",         w = 600, minw = 260, h = 319, minh = 140, src = "DDC_ReaKit.jsfx" },
   { key = "wid", name = "Stereo Width", long = "WIDTH",    short = "W",   file = "stereowidth_reakit.jsfx", w = 300, minw = 280, h = 364, minh = 140, src = "StereoWidth_ReaKit.jsfx" },
 }
+-- Gumbo (the SFZ player, 2026-11-01; the owner: "i want gumbo to dock all its own"): only in its own tab ("Gumbo -
+-- Dock", Gumbo's package carries a copy of this file), never a chip in the effects' bar
+if ONLY and ONLY.key == "gmb" then
+  KINDS[#KINDS + 1] = { key = "gmb", name = "Gumbo", long = "GUMBO", short = "GB", file = "gumbo_reakit.jsfx", w = 1000, minw = 700, h = 640, minh = 420, src = "Gumbo_ReaKit.jsfx" }
+end
 local kind = 1
 for i, k in ipairs(KINDS) do if k.key == r.GetExtState(EXT, "kind") then kind = i end end
 local strip = r.GetExtState(EXT, "strip") == "1"
+if ONLY then
+  for i, k in ipairs(KINDS) do if k.key == ONLY.key then kind = i end end
+  strip = false
+end
 
 local function basename(p) return (p:gsub("^.*[/\\]", "")) end
 local function kind_of(tr, f)
@@ -120,13 +138,29 @@ end
 -- effect, or the copy last asked for on that track by a double-click on its name (prefer, by track GUID). STRIP
 -- on: every one of the seven. The track's own chain only: an effect inside a container is not shown.
 local prefer = {}
+-- A plugin another open dock holds (the full dock or a one-plugin tab: its "held" list, while its "alive" stamp is
+-- fresh) is never taken here too: two docks pulling one surface would leave it in neither. wanted_skipped tells the
+-- empty dock's note why.
+local wanted_skipped = false
+local function held_elsewhere(fg)
+  local now = r.time_precise()
+  local function in_ext(x)
+    if x == EXT or now - (tonumber(r.GetExtState(x, "alive")) or 0) > 1.0 then return false end
+    return (("," .. r.GetExtState(x, "held") .. ","):find("|" .. fg .. ",", 1, true)) ~= nil
+  end
+  if in_ext("EON_ReaKitDock") then return true end
+  for _, k in ipairs(KINDS) do if in_ext("EON_ReaKitDock_" .. k.key) then return true end end
+  return false
+end
 local function wanted(tr)
   local out = {}
+  wanted_skipped = false
   if not tr then return out end
   local pick
   local want_fg = not strip and prefer[r.GetTrackGUID(tr)]
   for f = 0, r.TrackFX_GetCount(tr) - 1 do
     local k = kind_of(tr, f)
+    if k and (strip or k == kind) and held_elsewhere(r.TrackFX_GetFXGUID(tr, f)) then wanted_skipped = true; k = nil end
     if k and (strip or k == kind) then
       local e = { fg = r.TrackFX_GetFXGUID(tr, f), fx = f, kind = k }
       if strip then out[#out + 1] = e
@@ -210,9 +244,11 @@ local OPT_DEF = { trackno = "1", color = "stripe", icon = "1", labels = "long", 
                                                                -- 2026-10-07: "the tooltips get in the way")
 local function opt_set(k, v) opt[k] = v; r.SetExtState(EXT, "opt_" .. k, v, true) end
 for k, d in pairs(OPT_DEF) do local v = r.GetExtState(EXT, "opt_" .. k); opt[k] = v ~= "" and v or d end
-local fold_open = true                 -- FOLD on: the bar is open (the start), or folded to its handle; a click on the
-                                       -- handle opens it, the bar's chevron folds it; nothing folds or opens it on its
-                                       -- own (the user, 2026-10-05: "i just wanted it to drop down not auto close")
+local fold_open = r.GetExtState(EXT, "fold_open") ~= "0"   -- FOLD on: the bar is open, or folded to its handle; a
+                                       -- click on the handle opens it, the bar's chevron folds it; nothing folds or
+                                       -- opens it on its own (the user, 2026-10-05: "i just wanted it to drop down not
+                                       -- auto close"). Remembered per dock (its EXT) from one start to the next (the
+                                       -- owner, 2026-11-01: "can it remember the top bar open and close?")
 local hover_act, hover_t = nil, 0      -- the tooltip: what is under the pointer, since when (C.TIP_DELAY)
 local want_close = false               -- the X: the dock closes at the end of this tick
 local pub = { tip = nil, drw = nil, beat = -1 }   -- what was last published for tests (ExtState tip / held / view / bar / hover / menu / picker / name_edit / name_hit / ticon_hit, the C.DRW gmem beat): one table, not twelve locals (the 200-local limit)
@@ -588,7 +624,8 @@ local function show_track(tr, list)
 end
 local function none_note(tr)
   release_all(); cur = nil
-  note = string.format("No %s on %s.", strip and "ReaKit FX" or KINDS[kind].name, tr and track_name(tr) or "the selected track")
+  note = wanted_skipped and string.format("%s is shown in another dock tab.", strip and "ReaKit FX" or KINDS[kind].name)
+         or string.format("No %s on %s.", strip and "ReaKit FX" or KINDS[kind].name, tr and track_name(tr) or "the selected track")
 end
 
 -- force: the effect or the pin changed, so look again even when the followed track did not change
@@ -684,7 +721,12 @@ local function show_req(req)
   if not k then dbg("show_req: not in this project"); return end
   for _, s in ipairs(slots) do
     if s.fg == fg and s.canvas then
-      if opt.dblclick == "1" then pop_out(s) else dbg("show_req: pop-out off (the gear)") end
+      if opt.dblclick == "1" then
+        pop_out(s)
+        -- a one-plugin tab that asks for it (Gumbo's: ONLY.close_on_pop; the owner, 2026-11-01: "when you float it,
+        -- the dock is still there") closes with the pop-out: the bar's X, at the end of this tick
+        if ONLY and ONLY.close_on_pop and s.away then want_close = true end
+      else dbg("show_req: pop-out off (the gear)") end
       return
     end
   end
@@ -1079,7 +1121,8 @@ local function draw_bar()
   local bc = bar_chain(tr)
   local chips, count = {}, {}
   for _, e in ipairs(bc.list) do
-    if e.kind then
+    if ONLY and e.kind ~= kind then                      -- a one-plugin tab: its own chips alone
+    elseif e.kind then
       count[e.kind] = (count[e.kind] or 0) + 1
       local n = count[e.kind]
       chips[#chips + 1] = { kind = e.kind, fg = e.fg, long = KINDS[e.kind].long .. (n > 1 and " " .. n or ""),
@@ -1106,7 +1149,7 @@ local function draw_bar()
   end
   local n_chain = #chips                                 -- the chain's chips; the dim ones follow a divider
   for k = 1, #KINDS do
-    if not bc.has[k] then chips[#chips + 1] = { kind = k, long = KINDS[k].long, short = KINDS[k].short } end
+    if not bc.has[k] and (not ONLY or k == kind) then chips[#chips + 1] = { kind = k, long = KINDS[k].long, short = KINDS[k].short } end
   end
   bar_chips = chips
   local div_w = (n_chain > 0 and #chips > n_chain) and math.floor(7 * sc) or 0   -- the divider's room
@@ -1131,8 +1174,10 @@ local function draw_bar()
     end
     t[#t + 1] = { ICON.ctrack, "closetrack", false, false }
     t[#t + 1] = { ICON.call, "closeall", false, false }
-    t[#t + 1] = { "STRIP", "strip", strip, false }
-    t[#t + 1] = { "SLOT", "slot", false, false }          -- the same effect row on every mixer strip (SLOT below)
+    if not ONLY then                                     -- a one-plugin tab: no STRIP, no SLOT
+      t[#t + 1] = { "STRIP", "strip", strip, false }
+      t[#t + 1] = { "SLOT", "slot", false, false }        -- the same effect row on every mixer strip (SLOT below)
+    end
     t[#t + 1] = { ICON.pin, "pin", pinned, false }
     t[#t + 1] = { tabs_label, "tabs", false, false }
     t[#t + 1] = { ICON.gear, "gear", false, false }
@@ -1423,6 +1468,7 @@ local function scroll_to(k)
   end
 end
 local function set_kind(k)
+  if ONLY and k ~= kind then return end   -- a one-plugin tab keeps its plugin
   if strip then
     if k ~= kind then kind = k; r.SetExtState(EXT, "kind", KINDS[k].key, true) end
     scroll_to(k)
@@ -1439,7 +1485,7 @@ end
 -- dock kept the last) steps onto its first or last (the user, 2026-10-12: "supposed to scroll when only one plugin
 -- shows right?").
 local function scroll(d)
-  if not cur or d == 0 then return end
+  if not cur or d == 0 or ONLY then return end
   if strip then
     if d < 0 and more_left then first = first - 1 elseif d > 0 and more_right then first = first + 1 end
     return
@@ -1456,7 +1502,7 @@ local function scroll(d)
 end
 -- STRIP on or off: the same track, the other way
 local function set_strip(on)
-  if on == strip then return end
+  if on == strip or ONLY then return end
   strip = on
   r.SetExtState(EXT, "strip", on and "1" or "0", true)
   first = 1
@@ -2391,21 +2437,36 @@ end
 -- (os.time, the clock a JSFX time() reads; 0 = closed), +9 how many, +16.. (track: 0-based, -1 = the master;
 -- chain position) pairs, 64 at most, the count written last.
 r.gmem_attach("Swing_Media_Transfer")
-local function publish_drawer()
+-- Several docks can be open (the full one and one-plugin tabs): each keeps its own pairs in its ExtState "drwl" and
+-- writes the UNION of every open dock's into the band (the Codex review, 2026-11-04: each overwrote the others').
+-- closing: this dock's own pairs are left out, and the heartbeat stops only when no other dock is open.
+local function publish_drawer(closing)
   local t = {}
-  for _, s in ipairs(slots) do
+  for _, s in ipairs(closing and {} or slots) do
     if s.canvas and s.tr and s.fx and #t < C.DRW_MAX * 2 and r.ValidatePtr2(0, s.tr, "MediaTrack*") then
       local n = r.GetMediaTrackInfo_Value(s.tr, "IP_TRACKNUMBER")   -- 1-based, -1 = the master, 0 = not found
       if n ~= 0 then t[#t + 1] = n < 0 and -1 or n - 1; t[#t + 1] = s.fx end
     end
   end
+  local own = table.concat(t, " ")
+  if own ~= pub.own then pub.own = own; r.SetExtState(EXT, "drwl", own, false) end
+  local now_p, any = r.time_precise(), not closing
+  local function add(x)
+    if x == EXT or now_p - (tonumber(r.GetExtState(x, "alive")) or 0) > 1.0 then return end
+    any = true
+    for a, b in r.GetExtState(x, "drwl"):gmatch("(%-?%d+) (%-?%d+)") do
+      if #t < C.DRW_MAX * 2 then t[#t + 1] = tonumber(a); t[#t + 1] = tonumber(b) end
+    end
+  end
+  add("EON_ReaKitDock")
+  for _, k in ipairs(KINDS) do add("EON_ReaKitDock_" .. k.key) end
   local v = table.concat(t, " ")
   if v ~= pub.drw then
     pub.drw = v
     for i, x in ipairs(t) do r.gmem_write(C.DRW + 16 + i - 1, x) end
     r.gmem_write(C.DRW + 9, #t // 2)
   end
-  local now = os.time()
+  local now = any and os.time() or 0
   if now ~= pub.beat then pub.beat = now; r.gmem_write(C.DRW + 8, now) end
 end
 
@@ -2476,8 +2537,8 @@ local function quit()
   PICK.on, PICK.ctx = false, nil
   NAME.on = false
   for _, k in ipairs({ "menu", "menu_rows", "picker", "picker_cells", "picker_cats", "picker_sel", "colp", "hover", "tip", "name_edit", "name_hit", "ticon_hit" }) do r.SetExtState(EXT, k, "", false) end
-  r.gmem_write(C.DRW + 9, 0)                                         -- holds nothing now (the drawer band)
-  r.gmem_write(C.DRW + 8, 0)
+  r.SetExtState(EXT, "drwl", "", false)                             -- holds nothing now: the band keeps the other docks'
+  pub.own = nil; publish_drawer(true)
   pcall(function() r.set_action_options(8) end)                    -- the toolbar button goes dark
 end
 local function closed_by_user()
@@ -2658,6 +2719,9 @@ local function loop()
   if req ~= "" then
     r.SetExtState(EXT, "fold_req", "", false)
     fold_open = req == "open"
+  end
+  if fold_open ~= C.fold_saved then                                  -- the bar opened or folded: kept for the next start
+    C.fold_saved = fold_open; r.SetExtState(EXT, "fold_open", fold_open and "1" or "0", true)
   end
   req = r.GetExtState(EXT, "slot_req")                             -- tests: the SLOT button, "<n>" | "step:<d>" | "menu:<pick>"
   if req ~= "" then

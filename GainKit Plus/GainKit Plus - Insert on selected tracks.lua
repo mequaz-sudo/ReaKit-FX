@@ -1,6 +1,6 @@
 -- GainKit Plus -- put GainKit first in the chain of every selected track that has none (a GainKit
--- inside an FX container counts as one), embedded in the mixer strip. One undo step. MIT, EON
--- Studios, 2026.
+-- inside an FX container counts as one), embedded in the mixer strip. One undo step. EON Free Licence 1.0,
+-- EON Studios, 2026.
 local r = reaper
 local NAMES = { "JS: EON: GainKit",                                  -- by its listed name, any install
                 "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx",   -- the ReaPack package's path

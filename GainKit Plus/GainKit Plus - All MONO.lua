@@ -1,5 +1,5 @@
 -- GainKit Plus -- every GainKit's key to MONO (Format = Mono; GainKits inside FX containers too),
--- one undo step. MIT, EON Studios, 2026.
+-- one undo step. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with

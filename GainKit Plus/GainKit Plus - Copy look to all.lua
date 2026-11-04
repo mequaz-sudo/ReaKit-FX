@@ -6,7 +6,7 @@
 -- each plugin's own saved state, out of a script's reach), not the knob style (it follows the suite theme)
 -- and not whether a window's filter drawer is open: that is shut where FILTERS stops being DRAWER, as
 -- GainKit does itself, but before its window next opens. Gains, keys and names stay as they are. One undo
--- step. MIT, EON Studios, 2026.
+-- step. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local LOOK = { ["Strip view"] = true, ["Strip numbers"] = true, ["Name style"] = true, ["Name font"] = true,
                ["Meter colour"] = true, ["Gain number"] = true, ["VU meters"] = true, ["VU drag"] = true,

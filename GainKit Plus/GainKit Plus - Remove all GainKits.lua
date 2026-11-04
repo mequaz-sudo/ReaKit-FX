@@ -1,5 +1,5 @@
 -- GainKit Plus -- take GainKit off every track and the master, FX containers included, after
--- asking once. One undo step: Undo puts every one of them back. MIT, EON Studios, 2026.
+-- asking once. One undo step: Undo puts every one of them back. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with

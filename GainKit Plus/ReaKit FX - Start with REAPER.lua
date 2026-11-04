@@ -7,7 +7,7 @@
 -- 120 a second, so the plugin faces in the mixer strips answer quicker (next start).
 -- One small window in the ReaKit look says what was done and carries that offer as a switch
 -- (the plain message box without ReaImGui), with two more one-time switches: a track with all
--- seven, and the 16 track board opened in a new project tab (off to start). MIT, EON Studios, 2026.
+-- seven, and the 16 track board opened in a new project tab (off to start). EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local _, own = r.get_action_context()
 local sep = own:find("\\", 1, true) and "\\" or "/"

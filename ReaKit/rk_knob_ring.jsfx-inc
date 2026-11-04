@@ -1,0 +1,50 @@
+// rk_knob_ring.jsfx-inc -- the knob ring ("Saturn"): a second control around any ReaKit knob (EON Studios, 2026-10-30;
+// MIT, as the ReaKit library). The user, 2026-10-30: the API dual knob's ring was "dope", "can we add that functionality
+// to other knobs", then one house knob everywhere with the ring on the knobs that have a second control.
+//
+// A ring drawn around a knob of any style (rk_knob_draw at a radius inside r_in): a band from r_in to r_out a step off
+// the plate, a rim in the accent, and n_steps dots along the knob's own 260-degree sweep. STEPPED: the current step's
+// dot is lit in the accent (a switch, as the API 550's frequency collar). Not stepped: the dots are a dim scale and a lit
+// marker sits at the exact position (a sweep). The caller owns the value and the input (typically the wheel over the
+// ring = the second control, a drag on the knob = the first); this only draws. Generalises api_ring_draw
+// (knobs_kbsg_p2), whose fixed greys suit only the API knob, to any plate (light or dark: bgr / bgg / bgb).
+//
+//   rk_knob_ring_draw(cx, cy, r_in, r_out, pos, n_steps, stepped, hover_t, rr, rg, rb, bgr, bgg, bgb)
+//     pos 0..1 along the sweep (stepped: rounded to the nearest of n_steps); hover_t 0..1; rr/rg/rb the accent.
+//     n_steps 0 = an empty ring (no dots, no marker): the same outline round a knob with no second control, so a
+//     row of knobs reads as one family (the user, 2026-10-30: "I want it to have a more uniform look").
+//   Draw the knob AFTER the ring, at a radius about 0.9 x r_in, so the knob's own face covers the ring's hole.
+
+@init
+
+function rk_knob_ring_draw(cx, cy, r_in, r_out, pos, n_steps, stepped, hover_t, rr, rg, rb, bgr, bgg, bgb)
+local(ht, lt, i, a, rm, dr, act, n, k, br, bg_, bb)
+(
+  ht = hover_t * hover_t;
+  n = n_steps | 0;
+  pos = max(0, min(1, pos));
+  lt = bgr * 0.2126 + bgg * 0.7152 + bgb * 0.0722 > 0.5;   // a light plate: the band a step darker, else lighter
+  k = lt ? -0.16 - 0.06 * ht : 0.10 + 0.06 * ht;
+  br = max(0, min(1, bgr + k)); bg_ = max(0, min(1, bgg + k)); bb = max(0, min(1, bgb + k));
+  gfx_set(0.05, 0.05, 0.07, 1); gfx_circle(cx, cy, r_out + 1, 1, 1);    // a dark edge: it reads on any plate
+  gfx_set(br, bg_, bb, 1);      gfx_circle(cx, cy, r_out, 1, 1);
+  gfx_set(0.05, 0.05, 0.07, 1); gfx_circle(cx, cy, r_in + 1, 1, 1);     // the gap round the knob
+  gfx_set(rr, rg, rb, 0.30 + 0.30 * ht); gfx_circle(cx, cy, r_out, 0, 1);  // the rim in the accent
+  rm = (r_in + r_out) * 0.5; dr = max(1, (r_out - r_in) * 0.17);
+  act = floor(pos * max(1, n - 1) + 0.5);
+  i = 0;
+  n >= 2 ? loop(n,
+    a = (-130 + i * 260 / (n - 1)) * $pi / 180;
+    stepped && i == act ? (
+      gfx_set(rr, rg, rb, 1); gfx_circle(cx + sin(a) * rm, cy - cos(a) * rm, dr * 1.8, 1, 1);
+    ) : (
+      lt ? gfx_set(0.25, 0.25, 0.28, 0.55 + 0.25 * ht) : gfx_set(0.62, 0.62, 0.66, 0.45 + 0.30 * ht);
+      gfx_circle(cx + sin(a) * rm, cy - cos(a) * rm, dr, 1, 1);
+    );
+    i += 1;
+  );
+  n >= 2 && !stepped ? (          // a sweep: the lit marker at the exact place
+    a = (-130 + pos * 260) * $pi / 180;
+    gfx_set(rr, rg, rb, 1); gfx_circle(cx + sin(a) * rm, cy - cos(a) * rm, dr * 1.8, 1, 1);
+  );
+);

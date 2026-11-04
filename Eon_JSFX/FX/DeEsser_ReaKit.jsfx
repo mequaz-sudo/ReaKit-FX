@@ -52,6 +52,9 @@ options:gmem=Swing_Media_Transfer
 
 import ../../ReaKit/utils_kbsg.jsfx-inc
 import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p2.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p3.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p4.jsfx-inc
 import ../../ReaKit/buttons_kbsg.jsfx-inc
 import ../../ReaKit/meters_kbsg.jsfx-inc
 import ../../ReaKit/rk_playstate.jsfx-inc

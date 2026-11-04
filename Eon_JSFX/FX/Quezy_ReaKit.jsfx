@@ -1,0 +1,942 @@
+desc:EON: Quezy
+// Quezy -- a free EQ that matches ReEQ everywhere (EON Studios). Spec: .docs/specs/Spec_Quezy_Free_EQ_2026-10-10.md
+// BUILD STEPS 1 + 4a + 4b + 4c + 1b + 2 + 3 (2026-10-20/22): 16 bands, all 17 shapes, slopes 6..120 dB/oct, per-band placement
+// (stereo / mid / side / left / right), the output section (gains, mid-side or left-right, polarities, Scale,
+// Limit), and the window (qz_face.jsfx-inc): the curve graph with ReEQ's gestures, the band bar, the band
+// editor and the output bar. 4b: listen (Shift at the pointer, a headphones button per band) and the house theme
+// (the whole window follows the suite theme, the graph too; NATIVE = Quezy's own Midnight look). 4c: a strip shows
+// the curve and its dots drag. 1b: the filters keep their analogue shape up to the top of the range (matched
+// coefficients; ReEQ's bilinear ones squash the top octave). 0.6.0: the window's lines grow with it; narrow bands are drawn to
+// their real depth (each band with a Q adds points where its curve turns fastest); ReEQ's own habits the port had missed
+// (a cut made by double-click takes its Q from the click height, frequency reset to 500 Hz, ctrl-drag of a selected dot,
+// the box selecting live, the editor moving on after a delete, shape changes resetting the slope, a Bypassed band's
+// outline, stems from dots to their curves, dots hidden while the pointer is away, cents in the readouts, the version
+// in the graph menu, placement marks on the dots, a total curve per placement); a line pattern per placement; the
+// strip draws each band's fill. 0.7.0: auto gain (step 2: ReEQ's, over a steadier 2 s window, and its SET bake).
+// 0.8.0 (step 3): nothing steps the sound any more: a change of shape, slope, placement, Mode or stereo mode glides
+// or crossfades (ReEQ clicks on all of them); there is no HQ (2x) mode, the matched filters already match ReEQ's HQ with
+// no latency (the user: "Drop it"). 0.8.1: the looks: the graph menu's Window look and Strip look pick the bands'
+// fill / lines / both and the dots' numbered ring / plain / numbered badge, each saved with the instance; the dots are
+// drawn by the library (rk_curve), whose Badge is Quezy's dot now. 0.9.0 (step 5): the analyser (ReEQ's spectrum
+// library as rk_spectrum, its source / display / range / tilt / window / FFT size / pre-EQ trace / peaks / piano
+// options in the graph menu, plus a decay speed, a freeze and the phase curve; the listen trace while a listen plays;
+// the strips show it too, switchable; nothing is analysed while no window or strip is on screen). 0.9.1 (step 6, part 1): the native looks Carbon, Aurora,
+// Ember, Paper (warm off-white) and White beside Midnight (the graph menu's Native look). 0.9.2 (step 6, part 2): link
+// groups (the house gear, badge and group grid, sliders 1-218) and the grid's ACTIVE pills. 0.9.3 (step 7): the locked
+// drag, Split L/R, Copy / Paste, undo / redo, A / B, typed values, hover help, the level-matched BYPASS and the factory
+// presets (Quezy_ReaKit.jsfx.rpl). Not yet: the release checks (step 8); dynamics are release 2
+// (their controls exist, hidden and inert, so release 2 never moves a saved value).
+// DSP: Simper SVF via rk_svf.jsfx-inc (ReEQ's svf_filter) + rk_svf_match.jsfx-inc (magnitude-matched coefficients,
+//      Ivantsov's maps, MIT) + qz_engine.jsfx-inc (band objects, ReEQ's shape dispatch and per-band mid/side
+//      placement, Quezy's own Flat Tilt / Flat Gain / Bell Prop Q).
+// Version: 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
+// window's lines, narrow bands and ReEQ's missing habits + auto gain 2 + click-free switching 3 + the looks + the
+// analyser 5 + the native looks and link groups 6 + the extras 7; 1.0.0 at release). Keep #qz_ver in @init in step.
+//tags: equalizer filter parametric shelf mid-side
+//author: EON Studios; SVF engine and band design: Justin Johnson (ReEQ, MIT); matched coefficients after Yuriy Ivantsov (MIT)
+// (C) 2026 EON Studios. Quezy's own code (this file, qz_face.jsfx-inc, qz_engine.jsfx-inc): EON Free Licence 1.0: free
+// to use in any work; not for sale, redistribution or reuse of its code (LICENSE-EON-FREE.md; the user, 2026-10-30,
+// over MIT: "that means someone could sell it"). The parts after Justin Johnson's and Yuriy Ivantsov's work keep their
+// MIT licences, whose notices follow.
+//
+// ---- Justin Johnson, ReEQ 1.2.0 (engine, shape dispatch, per-band placement) ----
+// MIT License
+//
+// Copyright (c) Justin Johnson
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+import ../../ReaKit/rk_svf.jsfx-inc
+import ../../ReaKit/rk_svf_match.jsfx-inc
+import ../../ReaKit/qz_engine.jsfx-inc
+import ../../ReaKit/rk_srf.jsfx-inc
+import ../../ReaKit/rk_theme.jsfx-inc
+import ../../ReaKit/rk_menu.jsfx-inc
+import ../../ReaKit/rk_curve.jsfx-inc
+import ../../ReaKit/rk_spectrum.jsfx-inc
+import ../../ReaKit/rk_gmem_link.jsfx-inc
+import ../../ReaKit/rk_playstate.jsfx-inc
+// the house knobs (ReaKit's knob library, as the 3-Band and GainKit draw theirs): simple mode's deck (the user, 2026-10-30:
+// "they get ReaKit knobs, not just some random new knobs")
+import ../../ReaKit/utils_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p2.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p3.jsfx-inc
+import ../../ReaKit/knobs_kbsg_p4.jsfx-inc
+// the ring ("Saturn") round the strip's four bells
+import ../../ReaKit/rk_knob_ring.jsfx-inc
+import ../../ReaKit/qz_face.jsfx-inc
+
+// ---- Controls (spec §5; the layout locks at release 1: add only after slider 221, never between) ----
+// Band b = sliders 13(b-1)+1 .. 13b: Mode, Place, Shape, Freq, Gain, Q, Slope, then the release-2 dynamics
+// (Threshold, Ratio, Range, Attack, Release, Release sync), inert in release 1. EVERY control is hidden ('-'):
+// the house shows no REAPER slider panel over a face (wiki 4.5 rule 6); the window edits them. 209-218 output section,
+// 219 Link Group, 220-221 the theme panel's rows (a Quality slot was dropped with HQ, 2026-10-22: never released). Written by .dev_tests/quezy_gen_sliders.py: edit the table
+// there and re-generate, never by hand.
+// @@QZ_SLIDERS BEGIN (generated by .dev_tests/quezy_gen_sliders.py; do not edit by hand)
+slider1:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B1 Mode
+slider2:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B1 Place
+slider3:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B1 Shape
+slider4:40<10,22050,0.01:log>-B1 Freq (Hz)
+slider5:0<-30,30,0.01>-B1 Gain (dB)
+slider6:0.7071<0.1,40,0.0001:log>-B1 Q
+slider7:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B1 Slope (dB/oct)
+slider8:-24<-80,0,0.1>-B1 Threshold (dB)
+slider9:4<1,20,0.01:log>-B1 Ratio
+slider10:-6<-30,30,0.01>-B1 Range (dB)
+slider11:10<0.1,500,0.01:log>-B1 Attack (ms)
+slider12:100<5,2000,0.1:log>-B1 Release (ms)
+slider13:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B1 Release sync
+slider14:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B2 Mode
+slider15:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B2 Place
+slider16:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B2 Shape
+slider17:59.6<10,22050,0.01:log>-B2 Freq (Hz)
+slider18:0<-30,30,0.01>-B2 Gain (dB)
+slider19:0.7071<0.1,40,0.0001:log>-B2 Q
+slider20:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B2 Slope (dB/oct)
+slider21:-24<-80,0,0.1>-B2 Threshold (dB)
+slider22:4<1,20,0.01:log>-B2 Ratio
+slider23:-6<-30,30,0.01>-B2 Range (dB)
+slider24:10<0.1,500,0.01:log>-B2 Attack (ms)
+slider25:100<5,2000,0.1:log>-B2 Release (ms)
+slider26:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B2 Release sync
+slider27:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B3 Mode
+slider28:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B3 Place
+slider29:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B3 Shape
+slider30:88.9<10,22050,0.01:log>-B3 Freq (Hz)
+slider31:0<-30,30,0.01>-B3 Gain (dB)
+slider32:0.7071<0.1,40,0.0001:log>-B3 Q
+slider33:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B3 Slope (dB/oct)
+slider34:-24<-80,0,0.1>-B3 Threshold (dB)
+slider35:4<1,20,0.01:log>-B3 Ratio
+slider36:-6<-30,30,0.01>-B3 Range (dB)
+slider37:10<0.1,500,0.01:log>-B3 Attack (ms)
+slider38:100<5,2000,0.1:log>-B3 Release (ms)
+slider39:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B3 Release sync
+slider40:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B4 Mode
+slider41:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B4 Place
+slider42:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B4 Shape
+slider43:133<10,22050,0.01:log>-B4 Freq (Hz)
+slider44:0<-30,30,0.01>-B4 Gain (dB)
+slider45:0.7071<0.1,40,0.0001:log>-B4 Q
+slider46:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B4 Slope (dB/oct)
+slider47:-24<-80,0,0.1>-B4 Threshold (dB)
+slider48:4<1,20,0.01:log>-B4 Ratio
+slider49:-6<-30,30,0.01>-B4 Range (dB)
+slider50:10<0.1,500,0.01:log>-B4 Attack (ms)
+slider51:100<5,2000,0.1:log>-B4 Release (ms)
+slider52:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B4 Release sync
+slider53:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B5 Mode
+slider54:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B5 Place
+slider55:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B5 Shape
+slider56:198<10,22050,0.01:log>-B5 Freq (Hz)
+slider57:0<-30,30,0.01>-B5 Gain (dB)
+slider58:0.7071<0.1,40,0.0001:log>-B5 Q
+slider59:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B5 Slope (dB/oct)
+slider60:-24<-80,0,0.1>-B5 Threshold (dB)
+slider61:4<1,20,0.01:log>-B5 Ratio
+slider62:-6<-30,30,0.01>-B5 Range (dB)
+slider63:10<0.1,500,0.01:log>-B5 Attack (ms)
+slider64:100<5,2000,0.1:log>-B5 Release (ms)
+slider65:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B5 Release sync
+slider66:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B6 Mode
+slider67:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B6 Place
+slider68:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B6 Shape
+slider69:295<10,22050,0.01:log>-B6 Freq (Hz)
+slider70:0<-30,30,0.01>-B6 Gain (dB)
+slider71:0.7071<0.1,40,0.0001:log>-B6 Q
+slider72:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B6 Slope (dB/oct)
+slider73:-24<-80,0,0.1>-B6 Threshold (dB)
+slider74:4<1,20,0.01:log>-B6 Ratio
+slider75:-6<-30,30,0.01>-B6 Range (dB)
+slider76:10<0.1,500,0.01:log>-B6 Attack (ms)
+slider77:100<5,2000,0.1:log>-B6 Release (ms)
+slider78:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B6 Release sync
+slider79:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B7 Mode
+slider80:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B7 Place
+slider81:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B7 Shape
+slider82:439<10,22050,0.01:log>-B7 Freq (Hz)
+slider83:0<-30,30,0.01>-B7 Gain (dB)
+slider84:0.7071<0.1,40,0.0001:log>-B7 Q
+slider85:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B7 Slope (dB/oct)
+slider86:-24<-80,0,0.1>-B7 Threshold (dB)
+slider87:4<1,20,0.01:log>-B7 Ratio
+slider88:-6<-30,30,0.01>-B7 Range (dB)
+slider89:10<0.1,500,0.01:log>-B7 Attack (ms)
+slider90:100<5,2000,0.1:log>-B7 Release (ms)
+slider91:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B7 Release sync
+slider92:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B8 Mode
+slider93:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B8 Place
+slider94:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B8 Shape
+slider95:655<10,22050,0.01:log>-B8 Freq (Hz)
+slider96:0<-30,30,0.01>-B8 Gain (dB)
+slider97:0.7071<0.1,40,0.0001:log>-B8 Q
+slider98:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B8 Slope (dB/oct)
+slider99:-24<-80,0,0.1>-B8 Threshold (dB)
+slider100:4<1,20,0.01:log>-B8 Ratio
+slider101:-6<-30,30,0.01>-B8 Range (dB)
+slider102:10<0.1,500,0.01:log>-B8 Attack (ms)
+slider103:100<5,2000,0.1:log>-B8 Release (ms)
+slider104:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B8 Release sync
+slider105:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B9 Mode
+slider106:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B9 Place
+slider107:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B9 Shape
+slider108:977<10,22050,0.01:log>-B9 Freq (Hz)
+slider109:0<-30,30,0.01>-B9 Gain (dB)
+slider110:0.7071<0.1,40,0.0001:log>-B9 Q
+slider111:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B9 Slope (dB/oct)
+slider112:-24<-80,0,0.1>-B9 Threshold (dB)
+slider113:4<1,20,0.01:log>-B9 Ratio
+slider114:-6<-30,30,0.01>-B9 Range (dB)
+slider115:10<0.1,500,0.01:log>-B9 Attack (ms)
+slider116:100<5,2000,0.1:log>-B9 Release (ms)
+slider117:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B9 Release sync
+slider118:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B10 Mode
+slider119:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B10 Place
+slider120:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B10 Shape
+slider121:1456<10,22050,0.01:log>-B10 Freq (Hz)
+slider122:0<-30,30,0.01>-B10 Gain (dB)
+slider123:0.7071<0.1,40,0.0001:log>-B10 Q
+slider124:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B10 Slope (dB/oct)
+slider125:-24<-80,0,0.1>-B10 Threshold (dB)
+slider126:4<1,20,0.01:log>-B10 Ratio
+slider127:-6<-30,30,0.01>-B10 Range (dB)
+slider128:10<0.1,500,0.01:log>-B10 Attack (ms)
+slider129:100<5,2000,0.1:log>-B10 Release (ms)
+slider130:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B10 Release sync
+slider131:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B11 Mode
+slider132:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B11 Place
+slider133:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B11 Shape
+slider134:2172<10,22050,0.01:log>-B11 Freq (Hz)
+slider135:0<-30,30,0.01>-B11 Gain (dB)
+slider136:0.7071<0.1,40,0.0001:log>-B11 Q
+slider137:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B11 Slope (dB/oct)
+slider138:-24<-80,0,0.1>-B11 Threshold (dB)
+slider139:4<1,20,0.01:log>-B11 Ratio
+slider140:-6<-30,30,0.01>-B11 Range (dB)
+slider141:10<0.1,500,0.01:log>-B11 Attack (ms)
+slider142:100<5,2000,0.1:log>-B11 Release (ms)
+slider143:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B11 Release sync
+slider144:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B12 Mode
+slider145:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B12 Place
+slider146:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B12 Shape
+slider147:3238<10,22050,0.01:log>-B12 Freq (Hz)
+slider148:0<-30,30,0.01>-B12 Gain (dB)
+slider149:0.7071<0.1,40,0.0001:log>-B12 Q
+slider150:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B12 Slope (dB/oct)
+slider151:-24<-80,0,0.1>-B12 Threshold (dB)
+slider152:4<1,20,0.01:log>-B12 Ratio
+slider153:-6<-30,30,0.01>-B12 Range (dB)
+slider154:10<0.1,500,0.01:log>-B12 Attack (ms)
+slider155:100<5,2000,0.1:log>-B12 Release (ms)
+slider156:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B12 Release sync
+slider157:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B13 Mode
+slider158:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B13 Place
+slider159:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B13 Shape
+slider160:4827<10,22050,0.01:log>-B13 Freq (Hz)
+slider161:0<-30,30,0.01>-B13 Gain (dB)
+slider162:0.7071<0.1,40,0.0001:log>-B13 Q
+slider163:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B13 Slope (dB/oct)
+slider164:-24<-80,0,0.1>-B13 Threshold (dB)
+slider165:4<1,20,0.01:log>-B13 Ratio
+slider166:-6<-30,30,0.01>-B13 Range (dB)
+slider167:10<0.1,500,0.01:log>-B13 Attack (ms)
+slider168:100<5,2000,0.1:log>-B13 Release (ms)
+slider169:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B13 Release sync
+slider170:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B14 Mode
+slider171:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B14 Place
+slider172:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B14 Shape
+slider173:7197<10,22050,0.01:log>-B14 Freq (Hz)
+slider174:0<-30,30,0.01>-B14 Gain (dB)
+slider175:0.7071<0.1,40,0.0001:log>-B14 Q
+slider176:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B14 Slope (dB/oct)
+slider177:-24<-80,0,0.1>-B14 Threshold (dB)
+slider178:4<1,20,0.01:log>-B14 Ratio
+slider179:-6<-30,30,0.01>-B14 Range (dB)
+slider180:10<0.1,500,0.01:log>-B14 Attack (ms)
+slider181:100<5,2000,0.1:log>-B14 Release (ms)
+slider182:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B14 Release sync
+slider183:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B15 Mode
+slider184:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B15 Place
+slider185:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B15 Shape
+slider186:10731<10,22050,0.01:log>-B15 Freq (Hz)
+slider187:0<-30,30,0.01>-B15 Gain (dB)
+slider188:0.7071<0.1,40,0.0001:log>-B15 Q
+slider189:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B15 Slope (dB/oct)
+slider190:-24<-80,0,0.1>-B15 Threshold (dB)
+slider191:4<1,20,0.01:log>-B15 Ratio
+slider192:-6<-30,30,0.01>-B15 Range (dB)
+slider193:10<0.1,500,0.01:log>-B15 Attack (ms)
+slider194:100<5,2000,0.1:log>-B15 Release (ms)
+slider195:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B15 Release sync
+slider196:0<0,4,1{Off,Bypassed,On,Dyn above,Dyn below}>-B16 Mode
+slider197:0<0,4,1{Stereo,Mid,Side,Left,Right}>-B16 Place
+slider198:0<0,16,1{Peak,Low Cut,Low Cut Butterworth,Low Shelf,High Shelf,High Cut,High Cut Butterworth,Notch,Band Pass,Tilt Shelf,Pultec LS,All Pass,Low Channel (Analog),High Channel (Analog),Bell Prop Q,Flat Tilt,Flat Gain}>-B16 Shape
+slider199:16000<10,22050,0.01:log>-B16 Freq (Hz)
+slider200:0<-30,30,0.01>-B16 Gain (dB)
+slider201:0.7071<0.1,40,0.0001:log>-B16 Q
+slider202:1<0,19,1{6,12,18,24,30,36,42,48,54,60,66,72,78,84,90,96,102,108,114,120}>-B16 Slope (dB/oct)
+slider203:-24<-80,0,0.1>-B16 Threshold (dB)
+slider204:4<1,20,0.01:log>-B16 Ratio
+slider205:-6<-30,30,0.01>-B16 Range (dB)
+slider206:10<0.1,500,0.01:log>-B16 Attack (ms)
+slider207:100<5,2000,0.1:log>-B16 Release (ms)
+slider208:0<0,21,1{Off,1/64T,1/64,1/32T,1/64.,1/32,1/16T,1/32.,1/16,1/8T,1/16.,1/8,1/4T,1/8.,1/4,1/2T,1/4.,1/2,1/1T,1/2.,1/1,1/1.}>-B16 Release sync
+slider209:qz_out_db=0<-136,30,0.01>-Output (dB)
+slider210:qz_ml_db=0<-136,30,0.01>-Mid/Left gain (dB)
+slider211:qz_sr_db=0<-136,30,0.01>-Side/Right gain (dB)
+slider212:qz_st_mode=0<0,1,1{Mid/Side,Left/Right}>-Stereo mode
+slider213:qz_ml_pol=0<0,1,1{Normal,Inverted}>-Mid/Left polarity
+slider214:qz_sr_pol=0<0,1,1{Normal,Inverted}>-Side/Right polarity
+slider215:qz_scale=100<0,200,0.1>-Scale (%)
+slider216:qz_agc=0<0,1,1{Off,On}>-Auto gain
+slider217:qz_limit=0<0,1,1{Off,On}>-Limit
+slider218:qz_dyn_listen=0<0,1,1{Own,Sidechain}>-Dynamics listen (release 2)
+slider219:qz_link=0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
+slider220:qz_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; arrives with the face)
+slider221:qz_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row; arrives with the face)
+slider222:qz_in_db=0<-30,30,0.01>-Input (dB)
+slider223:qz_look=0<0,3,1{Off,1 ms,5 ms,10 ms}>-Dynamics lookahead
+slider224:qz_dydirty=0<0,1000000,1>-Dynamics extras changed (internal; tells REAPER to save AUTO / LINK / DET / WID)
+// @@QZ_SLIDERS END
+
+in_pin:left input
+in_pin:right input
+in_pin:sidechain left input
+in_pin:sidechain right input
+out_pin:left output
+out_pin:right output
+options:gfx_hz=60 no_meter
+options:gmem=Swing_Media_Transfer
+
+@init
+// once, at load (REAPER would re-run it on every play start and reset the bands); a rate change is caught in @block
+ext_noinit = 1;
+ext_nodenorm = 1;                  // the engine adds its own tiny DC instead (below), as ReEQ does
+ext_tail_size = -1;
+
+qz_dc = 10 ^ -24;                  // keeps the filter states out of denormals; about -480 dBFS
+qz_sr_seen = srate;
+
+// Output section: per-sample one-pole gain smoothing (5 ms). The first @block lands every gain on its target
+// (qz_first), so a load never fades whatever order REAPER restores the sliders and runs @init in.
+qz_first = 1;
+qz_gain_coef = 1 - exp(-1 / (0.005 * max(srate, 8000)));
+qz_out_c = qz_out_t = 10 ^ (qz_out_db / 20);
+qz_in_c = qz_in_t = 10 ^ (qz_in_db / 20);   // the input trim before the bands (2026-10-31, ReEQ 2's Input Gain)
+qz_ml_t = 10 ^ (qz_ml_db / 20);
+qz_sr_t = 10 ^ (qz_sr_db / 20);
+qz_mlp_t = qz_ml_pol >= 0.5 ? -1 : 1;              // polarity as a gain that glides through zero (no click)
+qz_srp_t = qz_sr_pol >= 0.5 ? -1 : 1;
+qz_ma_c = qz_ma_t = qz_md_c = qz_md_t = 1;         // the stereo matrix (build step 3), set from the above in @block
+qz_mb_c = qz_mb_t = 0;
+qz_gscale = qz_scale / 100;
+
+// The audio bank: sixteen band objects, each with a crossfade partner (qz_engine's step-3 machinery)
+a_b1.qz_aud_init();  a_b2.qz_aud_init();  a_b3.qz_aud_init();  a_b4.qz_aud_init();
+a_b5.qz_aud_init();  a_b6.qz_aud_init();  a_b7.qz_aud_init();  a_b8.qz_aud_init();
+a_b9.qz_aud_init();  a_b10.qz_aud_init(); a_b11.qz_aud_init(); a_b12.qz_aud_init();
+a_b13.qz_aud_init(); a_b14.qz_aud_init(); a_b15.qz_aud_init(); a_b16.qz_aud_init();
+a_lsn1.qz_band_init(); a_lsn2.qz_band_init();     // the listen's two audio-only objects (crossfaded on a new structure)
+a_lsn1.op_i = a_lsn2.op_i = 1;                     // their one-pole glides rest until a listen starts (qz_listen_fresh)
+
+// Listen (build step 4b). The window posts a request in the qzm_* mailbox (written only by @gfx window passes, read only
+// here in @block; 0 = off, so a fresh load and the offline harness, which never runs @gfx, are off with no seed):
+//   qzm_src 0 off, 1..16 a band slot, 17 the free listen at the pointer (posted last, atomic_set)
+//   qzm_f / qzm_w / qzm_lg   the free listen's centre (Hz), half-width (fraction of the axis), boost (dB)
+//   qzm_hb   time_precise() of the window's last pass: older than 0.5 s = the window closed, the listen stops
+// @block copies the request into qza_* once per block; @sample reads only qza_* and the objects. Start, stop and a new
+// structure (another band, shape, slope or placement) crossfade over 10 ms; parameter moves glide (rk_svf's 30 ms).
+// The 16 bands keep running throughout (unlike ReEQ, which skips them while listening).
+qz_lx = qz_lx_t = 0;          // the EQ <-> listen mix
+qz_lab = qz_lab_t = 0;        // object A (a_lsn1) <-> B (a_lsn2)
+qz_l_act = 0;                 // the object that carries the current structure
+qz_l_key = -1;                // that structure: src, shape, slope, placement
+qz_lg1_c = qz_lg1_t = 1;      // the free listen's boost, linear, one per object: a switch between a boosted free
+qz_lg2_c = qz_lg2_t = 1;      // listen and a band must never boost the other object's sound
+qz_l_run = 0;
+qz_l_step = 1 / (0.010 * max(srate, 8000));
+
+// The analyser (build step 5; ReEQ.jsfx 1039-1046, 1530-1545: its spectrum.jsfx-inc as rk_spectrum). The sample rings
+// are fed here, the FFT and the picture are the face's (@gfx). The face posts what to feed in the qzm_an mailbox
+// (written by every @gfx pass of this instance, window and strip alike, from the instance's one view state):
+//   bits 0..2 the source (ReEQ's Spectrum_Mode: 0 Full, 1 Mid, 2 Side, 3 Mid + Side, 4 Left, 5 Right, 6 Left +
+//   Right), 8 the pre-EQ trace wanted, 16 the display is not None, 32 the strips show the analyser
+//   qzm_hbs  time_precise() of the last STRIP pass (the window's is qzm_hb)
+//   qzm_byp  the window's BYPASS (1 = on; step 7): heard only while the window's heartbeat is fresh, so a closed window
+//            never leaves Quezy bypassed
+// @block derives qza_an_on (a window, or a strip with the strips' analyser on, drew within 0.5 s, and the display is
+// not None), so a closed Quezy feeds nothing (ReEQ feeds always); the offline harness never runs @gfx, so it feeds
+// nothing either. The main trace is what leaves the plugin (after OUT, auto gain and Limit: what is heard; ReEQ's
+// is before its AGC); while a listen runs the main trace is the input without the bands and the listen trace is what
+// leaves (ReEQ 1530-1547). qz_an_last: when audio last fed the rings with sound (@block writes, the face reads).
+qzm_an = 0; qzm_hbs = 0;
+qza_an_on = 0; qza_an_mode = 0; qza_an_pre = 0; qza_an_i0 = qza_an_i1 = 0;
+qz_an_pw = 0; qz_an_last = -10;
+// one pair of rings (b = 0 the main, 2 the pre-EQ, 4 the listen trace) fed as the source asks
+function qz_an_feed(b, l, r) local(m) (
+  m = qza_an_mode;
+  b == 0 ? (
+    m == 0 ? rk_spectrum.sample0(l + r) :
+    m == 1 ? rk_spectrum.sample0((l + r) * 0.5) :
+    m == 2 ? rk_spectrum.sample0((l - r) * 0.5) :
+    m == 3 ? ( rk_spectrum.sample0((l + r) * 0.5); rk_spectrum.sample1((l - r) * 0.5); ) :
+    m == 4 ? rk_spectrum.sample0(l) :
+    m == 5 ? rk_spectrum.sample0(r) :
+             ( rk_spectrum.sample0(l); rk_spectrum.sample1(r); );
+  ) : b == 2 ? (
+    m == 0 ? rk_spectrum.sample2(l + r) :
+    m == 1 ? rk_spectrum.sample2((l + r) * 0.5) :
+    m == 2 ? rk_spectrum.sample2((l - r) * 0.5) :
+    m == 3 ? ( rk_spectrum.sample2((l + r) * 0.5); rk_spectrum.sample3((l - r) * 0.5); ) :
+    m == 4 ? rk_spectrum.sample2(l) :
+    m == 5 ? rk_spectrum.sample2(r) :
+             ( rk_spectrum.sample2(l); rk_spectrum.sample3(r); );
+  ) : (
+    m == 0 ? rk_spectrum.sample4(l + r) :
+    m == 1 ? rk_spectrum.sample4((l + r) * 0.5) :
+    m == 2 ? rk_spectrum.sample4((l - r) * 0.5) :
+    m == 3 ? ( rk_spectrum.sample4((l + r) * 0.5); rk_spectrum.sample5((l - r) * 0.5); ) :
+    m == 4 ? rk_spectrum.sample4(l) :
+    m == 5 ? rk_spectrum.sample4(r) :
+             ( rk_spectrum.sample4(l); rk_spectrum.sample5(r); );
+  );
+);
+
+// Auto gain (build step 2; ReEQ.jsfx 1550-1576, its RMS 148-200): the loudness going in against the loudness after the
+// output gain, at ReEQ's two points (the output gains and the stereo mode count, so the whole plugin comes out as loud
+// as it went in; the user, 2026-10-21: "Everything, like ReEQ"), the gain = the difference, applied before Limit.
+// Quezy's own: a 2 s window (the user, 2026-10-21, "Steady, ~2 s": ReEQ's 0.3 s pumped 2-6 dB on a kick under a bass
+// move, 2 s stays under 1 dB); it measures while playing AND recording (ReEQ: playing only) and holds when stopped,
+// during a listen and through silence (ReEQ's window fills with silence, the gain drifts to 0 dB and swells back at the
+// next note); the correction stays inside +-24 dB (ReEQ's has no bound: a cut that leaves almost nothing asks for
+// +100 dB); on, off and the bake glide (ReEQ steps). The window holds power sums of 64-sample chunks, emptied at every
+// switch-on (ReEQ's kept old audio); @block turns its two running sums into the target, @sample glides to it (100 ms).
+// The tall twin (2026-10-31, the user: simple mode's strip as tall as the 4-Band's): Eon_JSFX/.tall/Quezy_ReaKit.jsfx,
+// GENERATED by the bundle's .dev_tests/gk_tall_sync.py (@gfx 648 1944, QZ_TALL = 1; never edit it), which GainKit Plus
+// swaps in when simple mode turns on in a strip and back when it turns off (qzg_long_tick; wiki 6.17)
+QZ_TALL = 0;                          // 1 in the tall copy
+qzg_lv_t = time_precise();            // no swap asked in an instance's first 2 s: its saved state is not back yet
+QZ_AG_CH = 64;                                   // samples per chunk
+QZ_AG_NMAX = 24000;                              // chunks per window: 2 s up to 768 kHz (a faster rate gets a shorter one)
+qz_ag_gate = 2 * QZ_AG_CH * 10 ^ -8;             // a chunk under -80 dBFS (both channels) is silence: not measured
+qz_ag_on = 0;                                    // the engine's copy of the switch (its rising edge empties the window)
+qz_ag_c = qz_ag_t = 1;                           // the applied gain, current and target (linear)
+qz_ag_db = 0;                                    // the applied gain in dB, for the window's readout (written in @block)
+qz_ag_bk = qzm_bake;                             // the last bake request seen (qzm_bake: the window's SET counts them);
+                                                 // taken from the counter, so an @init re-run never sees an old request
+qz_ag_feed = qz_ag_run = 0;
+qz_ag_coef = 1 - exp(-1 / (0.1 * max(srate, 8000)));
+function qz_ag_reset() (
+  qz_ag_len = max(1, min(QZ_AG_NMAX, ceil(2 * max(srate, 8000) / QZ_AG_CH)));
+  qz_ag_fill = qz_ag_i = qz_ag_k = 0;
+  qz_ag_a = qz_ag_b = qz_ag_sa = qz_ag_sb = qz_ag_ra = qz_ag_rb = 0;
+);
+qz_ag_reset();
+
+// one block of listen control: src 0..17 (validated), the free listen's ff (Hz), w (fraction), lg (dB)
+function qz_listen_block(src, ff, w, lg)
+  local(o, sh, f, q, g, sl, pl, on, fmax, key, lgt)
+(
+  fmax = 0.49 * srate;
+  sh = -1; f = ff; q = 0.7071; g = 0; sl = 0; pl = 0; on = 1;
+  src >= 1 && src <= 16 ? (
+    o = 13 * src - 12;
+    sh = max(0, min(16, slider(o + 2) | 0));
+    pl = max(0, min(4, slider(o + 1) | 0));
+    f = slider(o + 3); g = slider(o + 4) * qz_gscale; q = slider(o + 5);
+    sl = max(0, min(19, slider(o + 6) | 0));
+    on = slider(o) >= 2;
+  );
+  src > 0 ? (
+    key = src * 100000 + (sh + 2) * 1000 + sl * 10 + pl;
+    lgt = src == 17 ? 10 ^ (max(-30, min(30, lg)) / 20) : 1;
+    qz_lx <= 0 ? (
+      // from silence: the active object starts clean on the new recipe, its boost snapped (it is silent now)
+      qz_l_act = 0; qz_lab = qz_lab_t = 0; qz_l_key = key; qz_l_pl1 = pl; qz_lg1_c = qz_lg1_t = lgt;
+      a_lsn1.qz_listen_shape(sh, f, q, g, sl, on, w, fmax); a_lsn1.qz_listen_fresh();
+      qz_lc_f = f; qz_lc_q = q; qz_lc_g = g; qz_lc_w = w; qz_lc_on = on; qz_lc_fx = fmax;
+    ) : key !== qz_l_key ? (
+      // a new structure while audible: the idle object starts clean on it, then A <-> B crossfades (a structure that
+      // arrives during a crossfade waits for the next block)
+      qz_lab === qz_lab_t ? (
+        qz_l_act = 1 - qz_l_act; qz_l_key = key; qz_lab_t = qz_l_act;
+        qz_l_act ? ( qz_l_pl2 = pl; qz_lg2_c = qz_lg2_t = lgt; a_lsn2.qz_listen_shape(sh, f, q, g, sl, on, w, fmax); a_lsn2.qz_listen_fresh(); )
+                 : ( qz_l_pl1 = pl; qz_lg1_c = qz_lg1_t = lgt; a_lsn1.qz_listen_shape(sh, f, q, g, sl, on, w, fmax); a_lsn1.qz_listen_fresh(); );
+        qz_lc_f = f; qz_lc_q = q; qz_lc_g = g; qz_lc_w = w; qz_lc_on = on; qz_lc_fx = fmax;
+      );
+    ) : (f !== qz_lc_f || q !== qz_lc_q || g !== qz_lc_g || w !== qz_lc_w || on !== qz_lc_on || fmax !== qz_lc_fx) ? (
+      // the same structure, new values: the active object glides there (its one-pole too, since step 3)
+      qz_l_act ? a_lsn2.qz_listen_glide(sh, f, q, g, sl, on, w, fmax) : a_lsn1.qz_listen_glide(sh, f, q, g, sl, on, w, fmax);
+      qz_lc_f = f; qz_lc_q = q; qz_lc_g = g; qz_lc_w = w; qz_lc_on = on; qz_lc_fx = fmax;
+    );
+    // the boost moves only the object that plays this source (a structure still waiting leaves it alone)
+    key === qz_l_key ? ( qz_l_act ? ( qz_lg2_t = lgt; ) : ( qz_lg1_t = lgt; ); );
+    qz_lx_t = 1;
+  ) : (
+    qz_lx_t = 0;
+  );
+  qz_l_run = qz_lx_t > 0 || qz_lx > 0;
+);
+
+// The window (qz_face.jsfx-inc; everything it owns is @gfx-only: qzg_*, qzv_*). No REAPER frame; the grey name
+// bar off unless the Name bar row is on (the house's inverted sense: row on = 0x100 cleared).
+gfx_ext_retina = 1;
+gfx_ext_flags |= 0x400;
+qz_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
+#qz_ver = "1.0.0";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
+freemem = 0;
+freemem = qzg_setup(freemem);
+freemem = rkm_setup(freemem);      // the drawn menu's row tables (rk_menu.jsfx-inc)
+qzg_menu_icons();                  // and its copy of the shape icons (the node menu's Shape rows)
+qz_ag_pre = freemem;               // auto gain's window: the input's chunk powers, then the output's
+qz_ag_post = qz_ag_pre + QZ_AG_NMAX;
+freemem = qz_ag_post + QZ_AG_NMAX;
+qz_xscr = freemem;                 // the bands' crossfade hand-back copies through here (@block only)
+freemem += QZ_XSCR_N;
+// The analyser's memory (rk_spectrum: six sample rings and their bins, about 870k words, as ReEQ's), its rings sized
+// for the largest FFT; the axis is the graph's own (10 Hz .. 22050, qz_face's QZG_FMIN / QZG_FMAX); 8192 points and
+// Blackman-Harris are ReEQ's defaults, the face applies the saved choices every pass (rk_spectrum.set_fft_size /
+// set_type, both @gfx-safe: no ring is reset after this)
+rk_spectrum.init_memory(freemem);
+rk_spectrum.init();
+freemem = rk_spectrum.get_memory_index();
+rk_spectrum.min_freq = 10; rk_spectrum.max_freq = 22050; rk_spectrum.freq_log_max = log(22050 / 10);
+rk_spectrum.set_block_size(8192);
+rk_spectrum.set_type(2);
+// Link groups (spec §6, build step 6): sliders 1-218 and the input trim (222) follow the group in slider 219; the group
+// slider and the theme rows (220-221) never follow. rk_gmem_link with a 256-cell group block (its 64-cell block syncs 35 sliders at most),
+// in the free set's Swing_Media_Transfer at EON_QUEZY_LINK (31370000, 16 x 256 + 4 cells, .refs/gmem_regions_supplement.tsv).
+rk_link_init_blk(219, 222, freemem, 256);
+rk_link_exclude(220); rk_link_exclude(221);
+freemem += rk_link_mem_n(222);
+rk_link_set_base(31370000);
+// ACTIVE on play / rec / stop (rk_playstate; the link grid's three pills, as every linked EON plugin): -1 = no tail, the
+// caller fades. Quezy fades its output to the dry input over 10 ms (qz_ps_x, @sample) when the transport's state is one
+// switched off; the EQ keeps running underneath, so switching back is click-free too. All on by default (the library's
+// first-load seed; @serialize gate 7 restores them).
+rk_ps_init(-1);
+qz_ps_x = 1; qz_dm = 1; qz_mi = qz_mo = 0;
+qz_mc = 1 - exp(-1 / (3 * max(srate, 8000)));
+// Undo / redo (QZG_HN snapshots of sliders 1-218, in memory only) and A / B (the other slot, then a scratch copy; the
+// other slot is saved in @serialize gate 8), qz_face.jsfx-inc
+// release 2's per-band extras (ReEQ 2's, not sliders: saved in @serialize gate 12): Auto 0..15, detector linked
+// 16..31, its frequency 32..47 and width (octaves) 48..63; the lookahead's ring (10 ms at up to 384 kHz, two channels)
+qz_dyp = freemem; freemem += 64;
+qz_dyng = freemem; freemem += 16;   // each band's live movement (dB), @block for the face
+QZ_LA_MAX = 4096; qz_la_buf = freemem; freemem += 2 * QZ_LA_MAX;
+QZ_SN = 219;                          // a snapshot's cells: sliders 1-218 and the input trim (222), qzg_sn_n
+qz_abm = freemem; freemem += 2 * QZ_SN;
+qzg_hist = freemem; freemem += QZG_HN * QZ_SN;
+// The house theme (rk_theme.jsfx-inc, the free set's rules): the picker lists NATIVE + EON / Dark / Light; a new
+// instance starts in the suite's current NATIVE mode (rk_theme's own @init seeded rkth_local_off), a saved one is
+// restored over it in @slider. NATIVE on = Quezy's own Midnight look; off = the window's chrome follows the suite.
+rkth_free_only = 1;
+qz_native = rkth_local_off;
+// View state, saved in @serialize (gate 2): the dB range, the editor's fold, a spare (was the drawer). Seeded once: an older save
+// (gate 1) stops before these and keeps the seed; a re-run of @init must not reset what a save restored.
+!qzv_seeded ? ( qzv_range = 24; qzv_fold = 0; qzv_drawer = 0; qzv_renum = 0; qzv_seeded = 1;
+                // the looks (gate 4; rk_curve's numbers: bands 0 Fill / 1 Lines / 2 Both, nodes 0 Ring / 1 Dot /
+                // 2 Badge), seeded to the looks Quezy had before they were offered: the window filled bands and
+                // numbered badges, the strip filled bands with an edge and plain dots
+                qzv_wb = 0; qzv_wn = 2; qzv_sb = 2; qzv_sn = 1;
+                // the analyser (gate 5), ReEQ's defaults (its sliders 7-16): Mid + Side, Fill, ceiling 0 dB, floor
+                // -90, tilt 4.5 dB/oct, Blackman-Harris, 8192 points, no pre-EQ trace, peaks and piano off; Quezy's
+                // own: a medium decay (ReEQ's one speed) and the strips showing it (as ReEQ's do)
+                qzv_an_mode = 3; qzv_an_disp = 0; qzv_an_ceil = 0; qzv_an_floor = 0; qzv_an_tilt = 3; qzv_an_win = 1;
+                qzv_an_fft = 2; qzv_an_pre = 0; qzv_an_peaks = 0; qzv_an_piano = 0; qzv_an_decay = 1; qzv_an_strip = 1;
+                qzv_an_phase = 0;
+                // the native look (gate 6): 0 Midnight, 1 Carbon, 2 Aurora, 3 Ember, 4 Paper, 5 White (shown while NATIVE is on)
+                qzv_nlook = 0;
+                // A / B (gate 8): A shows, the other slot not set yet (a first switch copies the live settings)
+                qzv_ab = 0; qzv_abset = 0;
+                // the strip's view (gate 9, spec §10b): 0 the curve with its dots, 1 four dual knobs; their wheel
+                // 0 steps, 1 sweep
+                qzv_sview = 0; qzv_swheel = 0;
+                // simple mode (gate 10, spec §10b): new Quezys open in FULL (the user)
+                qzv_simple = 0;
+                // gate 11 (2026-10-31): the analyser's smoothing off, the other A / B slot's input trim 0 dB
+                qzv_an_smooth = 0; qz_abm[218] = 0;
+                // gate 12 (2026-11-02): Auto off, the detector linked, a free detector at 1 kHz two octaves wide
+                memset(qz_dyp, 0, 16); memset(qz_dyp + 16, 1, 16); memset(qz_dyp + 32, 1000, 16); memset(qz_dyp + 48, 2, 16); );
+qz_dlsn = -1;                         // the band whose detector plays (-1 none; the face's DYN headphones)
+qz_dlb = -1;                          // the band whose detector is heard: qz_dlsn, kept while its fade runs out
+qzg_skd = qzg_skh = -1;
+// The display bank: the curve's own sixteen band objects, retargeted and snapped in @gfx, never read by audio.
+// @init only: qz_band_init writes rk_svf's plugin-wide SAMPLE_RATE (a rate change reaches it via @block's re-init
+// of the audio bank and qz_band_apply's fmax compare).
+qzg_b1.qz_band_init();  qzg_b2.qz_band_init();  qzg_b3.qz_band_init();  qzg_b4.qz_band_init();
+qzg_b5.qz_band_init();  qzg_b6.qz_band_init();  qzg_b7.qz_band_init();  qzg_b8.qz_band_init();
+qzg_b9.qz_band_init();  qzg_b10.qz_band_init(); qzg_b11.qz_band_init(); qzg_b12.qz_band_init();
+qzg_b13.qz_band_init(); qzg_b14.qz_band_init(); qzg_b15.qz_band_init(); qzg_b16.qz_band_init();
+qzg_bx.qz_band_init();                // the face's spare: a reacting band's resting curve, drawn dotted (ReEQ 2's)
+qz_ghost = -1;                        // the band whose detector input the analyser shows as a ghost (-1 none)
+
+@slider
+// No sound here: @block derives every value each block, so a change reaches the sound however it was made
+// (REAPER does not run @slider after a slider_automate from @gfx: wiki 00-rules, the Filter 1.1.2 lesson).
+// One look line: NATIVE restored on load, preset and undo (rk_theme TH:22-25; the 3-Band's 3B:582).
+rkth_local_off = qz_native;
+rk_link_on_slider();               // a slider moved here (automation, a preset, the host): the group takes it
+
+@block
+// The link group first, so a value another member set reaches this block's sound (@block derives everything below
+// from the sliders, so no recalc is needed). rk_link_pull watches a group it joins before trusting it (its LIVENESS).
+rk_link_pull();
+rk_ps_update_block();              // the transport's state against the ACTIVE pills (block rate)
+qza_ps_t = rk_ps_want_active ? 1 : 0;
+srate != qz_sr_seen ? (
+  qz_sr_seen = srate;
+  qz_gain_coef = 1 - exp(-1 / (0.005 * max(srate, 8000)));
+  a_b1.qz_aud_init();  a_b2.qz_aud_init();  a_b3.qz_aud_init();  a_b4.qz_aud_init();
+  a_b5.qz_aud_init();  a_b6.qz_aud_init();  a_b7.qz_aud_init();  a_b8.qz_aud_init();
+  a_b9.qz_aud_init();  a_b10.qz_aud_init(); a_b11.qz_aud_init(); a_b12.qz_aud_init();
+  a_b13.qz_aud_init(); a_b14.qz_aud_init(); a_b15.qz_aud_init(); a_b16.qz_aud_init();
+  a_lsn1.qz_band_init(); a_lsn2.qz_band_init();
+  qz_l_step = 1 / (0.010 * max(srate, 8000));
+  qz_lx = qz_lx_t = 0; qz_l_run = 0;      // a rate change drops any listen (the objects start clean)
+  qz_ag_coef = 1 - exp(-1 / (0.1 * max(srate, 8000)));
+  qz_ag_reset();                           // and auto gain measures afresh (its window is counted in samples)
+  qz_mc = 1 - exp(-1 / (3 * max(srate, 8000)));   // the matched bypass's level meters: 3 s
+);
+
+qz_gscale = qz_scale / 100;
+a_b1.qz_band_step(1, qz_gscale);    a_b2.qz_band_step(14, qz_gscale);   a_b3.qz_band_step(27, qz_gscale);
+a_b4.qz_band_step(40, qz_gscale);   a_b5.qz_band_step(53, qz_gscale);   a_b6.qz_band_step(66, qz_gscale);
+a_b7.qz_band_step(79, qz_gscale);   a_b8.qz_band_step(92, qz_gscale);   a_b9.qz_band_step(105, qz_gscale);
+a_b10.qz_band_step(118, qz_gscale); a_b11.qz_band_step(131, qz_gscale); a_b12.qz_band_step(144, qz_gscale);
+a_b13.qz_band_step(157, qz_gscale); a_b14.qz_band_step(170, qz_gscale); a_b15.qz_band_step(183, qz_gscale);
+a_b16.qz_band_step(196, qz_gscale);
+// each band's live dynamic movement in dB (0 when not reacting), for the face's moving dot
+qz_dyng[0] = a_b1.dlive ? a_b1.dg : 0; qz_dyng[1] = a_b2.dlive ? a_b2.dg : 0; qz_dyng[2] = a_b3.dlive ? a_b3.dg : 0; qz_dyng[3] = a_b4.dlive ? a_b4.dg : 0;
+qz_dyng[4] = a_b5.dlive ? a_b5.dg : 0; qz_dyng[5] = a_b6.dlive ? a_b6.dg : 0; qz_dyng[6] = a_b7.dlive ? a_b7.dg : 0; qz_dyng[7] = a_b8.dlive ? a_b8.dg : 0;
+qz_dyng[8] = a_b9.dlive ? a_b9.dg : 0; qz_dyng[9] = a_b10.dlive ? a_b10.dg : 0; qz_dyng[10] = a_b11.dlive ? a_b11.dg : 0; qz_dyng[11] = a_b12.dlive ? a_b12.dg : 0;
+qz_dyng[12] = a_b13.dlive ? a_b13.dg : 0; qz_dyng[13] = a_b14.dlive ? a_b14.dg : 0; qz_dyng[14] = a_b15.dlive ? a_b15.dg : 0; qz_dyng[15] = a_b16.dlive ? a_b16.dg : 0;
+
+// Listen: the window's request (the heartbeat, the selector, then its payload: the reverse of the window's writes);
+// a stale heartbeat or a band switched Off ends it
+qza_hb = qzm_hb;
+qza_src = atomic_get(qzm_src) | 0;
+qza_f = qzm_f; qza_w = qzm_w; qza_lg = qzm_lg;
+time_precise() - qza_hb >= 0.5 ? qza_src = 0;
+qza_src < 0 || qza_src > 17 ? qza_src = 0;
+qza_src >= 1 && qza_src <= 16 ? ( slider(13 * qza_src - 12) < 1 ? qza_src = 0; );
+qza_f = max(10, min(22050, qza_f)); qza_w = max(0.01, min(0.3, qza_w));
+qz_listen_block(qza_src, qza_f, qza_w, qza_lg);
+
+// The analyser's feed for this block (the mailbox's bits, the surfaces' heartbeats); the sound fed in the last block
+// stamps qz_an_last for the face's redraws
+qza_an = max(0, qzm_an | 0);
+qza_an_on = (qza_an & 16) && (time_precise() - qza_hb < 0.5 || ((qza_an & 32) && time_precise() - qzm_hbs < 0.5)) ? 1 : 0;
+qza_an_mode = qza_an & 7; qza_an_pre = (qza_an & 8) > 0;
+// The level-matched bypass (E2, step 7): while the window is open and the EQ is heard during playback, two 3 s meters
+// follow the input's and the output's power; BYPASS plays the dry input scaled by their ratio (within +-24 dB), so the
+// EQ comes in and out at the same loudness. The meters hold while bypassed. The dry path is ACTIVE's (qz_ps_x), with
+// the dry's gain (qz_dm) changed only where the dry is silent in the mix (see @sample), so nothing steps either way.
+qza_byp = qzm_byp > 0 && time_precise() - qza_hb < 0.5;
+// (the Codex review, 2026-10-30: the meters must hear only what is heard: not while ACTIVE has the EQ off)
+qza_mon = !qza_byp && rk_ps_want_active && time_precise() - qza_hb < 0.5 && (play_state == 1 || play_state == 5);
+qza_bm = qz_mo > 0.0000000001 && qz_mi > 0.0000000001 ? max(0.0631, min(15.849, sqrt(qz_mo / qz_mi))) : 1;
+qz_byp_db = 20 * log10(qza_bm);    // the face shows it
+qza_ps_t = rk_ps_want_active && !qza_byp ? 1 : 0;
+qz_an_pw > 0.000000001 ? qz_an_last = time_precise();
+qz_an_pw = 0;
+
+// Auto gain. A bake (the window's SET; qzm_bake counts requests and is written only by @gfx window passes) moves the
+// applied correction into the output gain and switches auto gain off; the output gain's glide takes the applied value
+// over in this block's first sample (qz_out_c *= qz_ag_c), so nothing steps: only the slider's 0.01 dB rounding (or
+// its ends) is left for the 5 ms glide. ReEQ ran its window another 10000 samples first and stepped at the hand-off.
+qza_bk = atomic_get(qzm_bake);
+qza_bk !== qz_ag_bk && qz_agc >= 0.5 ? (
+  qza_nd = max(-136, min(30, floor((qz_out_db + 20 * log10(qz_ag_c)) * 100 + 0.5) / 100));
+  qza_nd !== qz_out_db ? ( qz_out_db = qza_nd; slider_automate(qz_out_db); );
+  qz_out_c *= qz_ag_c;
+  qz_ag_c = qz_ag_t = 1;
+  qz_agc = 0; slider_automate(qz_agc);
+);
+qz_ag_bk = qza_bk;
+qza_on = qz_agc >= 0.5;
+qza_on && !qz_ag_on ? qz_ag_reset();
+qz_ag_on = qza_on;
+// the target: a quarter second measured first (a fresh window's first chunks swing with the beat), then the ratio
+// of the two sums, inside +-24 dB; off = 1. It holds whatever the window last said while nothing is measured.
+qz_ag_on ? (
+  qz_ag_fill >= qz_ag_len / 8 ? qz_ag_t = sqrt(max(10 ^ -2.4, min(10 ^ 2.4, qz_ag_sa / max(qz_ag_sb, 10 ^ -30))));
+) : qz_ag_t = 1;
+qz_ag_feed = qz_ag_on && (play_state == 1 || play_state == 5) && !qz_l_run;
+qz_ag_run = qz_ag_on || qz_ag_c !== 1;
+qz_ag_db = 20 * log10(qz_ag_c);
+
+qz_out_t = 10 ^ (qz_out_db / 20);
+qz_in_t = 10 ^ (qz_in_db / 20);
+qz_ml_t = 10 ^ (qz_ml_db / 20);
+qz_sr_t = 10 ^ (qz_sr_db / 20);
+qz_mlp_t = qz_ml_pol >= 0.5 ? -1 : 1;
+qz_srp_t = qz_sr_pol >= 0.5 ? -1 : 1;
+qz_ms = qz_st_mode < 0.5;          // 1 = the output gains and polarities act on mid / side
+// The stereo matrix (build step 3): encode, the two gains with their polarities, decode, as one 2 x 2 that glides, so
+// the stereo mode switches without a step (it switched at once: 450-2400x the tone's step with unequal gains or a
+// polarity set). M/S: L' = a L + b R, R' = b L + a R with a = (gl + gr) / 2, b = (gl - gr) / 2; L/R: a = gl, d = gr.
+qza_gl = qz_ml_t * qz_mlp_t;
+qza_gr = qz_sr_t * qz_srp_t;
+qz_ms ? ( qz_ma_t = qz_md_t = (qza_gl + qza_gr) * 0.5; qz_mb_t = (qza_gl - qza_gr) * 0.5; )
+      : ( qz_ma_t = qza_gl; qz_md_t = qza_gr; qz_mb_t = 0; );
+qz_first ? (
+  qz_out_c = qz_out_t; qz_in_c = qz_in_t; qz_ma_c = qz_ma_t; qz_mb_c = qz_mb_t; qz_md_c = qz_md_t;
+  qz_first = 0;
+);
+qz_lim = qz_limit >= 0.5;
+qz_dlstep = 1 / (0.010 * max(srate, 8000));   // the detector listen's fade
+// the dynamics' lookahead (ReEQ 2's): the main path waits qz_la samples, the detectors hear the input at once, REAPER
+// compensates the delay
+qz_la_t = qz_look < 0.5 ? 0 : min(floor(srate * (qz_look < 1.5 ? 0.001 : qz_look < 2.5 ? 0.005 : 0.01) + 0.5), QZ_LA_MAX - 1);
+qz_la_t !== qz_la ? ( qz_la = qz_la_t;   // the ring always holds the last samples: a change reads real history
+                      pdc_delay = qz_la; pdc_bot_ch = 0; pdc_top_ch = 2; );
+// The house NATIVE tick: an instance off screen follows a NATIVE pick made on another one (rk_theme TH:234-250, as the
+// 3-Band at 3B:628-631). The values are 0 / 1, so `!=` is exact enough here.
+rkth_native_tick();
+qz_native != rkth_local_off ? ( qz_native = rkth_local_off; slider_automate(qz_native); );
+
+@sample
+// lookahead: the detectors take the input (after the trim) now, the main path continues qz_la samples late
+// (the ring is written every sample, lookahead or not: switching it on or changing it while playing reads real history,
+// the Codex review 2026-11-04)
+qz_la > 0 ? ( qz_dyn_listen >= 0.5 ? ( qz_di0 = spl2; qz_di1 = spl3; ) : ( qz_di0 = spl0 * qz_in_c; qz_di1 = spl1 * qz_in_c; ); );
+qz_la_buf[2 * qz_la_w] = spl0; qz_la_buf[2 * qz_la_w + 1] = spl1;
+qz_la > 0 ? (
+  qz_la_r = qz_la_w - qz_la; qz_la_r < 0 ? qz_la_r += QZ_LA_MAX;
+  spl0 = qz_la_buf[2 * qz_la_r]; spl1 = qz_la_buf[2 * qz_la_r + 1];
+);
+qz_la_w = (qz_la_w + 1) % QZ_LA_MAX;
+qz_ps_x < 1 || qza_ps_t < 1 || qza_mon ? ( qz_d0 = spl0; qz_d1 = spl1; );   // the dry input (ACTIVE, BYPASS and its meters)
+// the input trim (gliding as OUT does), before everything the EQ hears: the bands, listen, the pre-EQ trace, auto gain
+qz_in_c !== qz_in_t ? ( qz_in_c += (qz_in_t - qz_in_c) * qz_gain_coef; abs(qz_in_t - qz_in_c) < 0.000000001 ? qz_in_c = qz_in_t; );
+qz_in_c !== 1 ? ( spl0 *= qz_in_c; spl1 *= qz_in_c; );
+spl0 += qz_dc;
+spl1 += qz_dc;
+qz_l_run ? ( qza_i0 = spl0; qza_i1 = spl1; );     // the listen hears the pre-EQ input, as ReEQ's does
+qza_an_on && (qza_an_pre || qz_l_run) ? ( qza_an_i0 = spl0; qza_an_i1 = spl1; );   // the analyser's pre-EQ trace
+// the ghost (ReEQ 2's): the selected reacting band's detector signal (a sample late) in place of the pre-EQ trace
+qza_an_on && qza_an_pre && qz_ghost >= 0 ? ( qza_an_i0 = qz_ghx0; qza_an_i1 = qz_ghx1; );
+qz_ag_feed ? qz_ag_a += spl0 * spl0 + spl1 * spl1;   // auto gain: the input's power into the open chunk
+// what the reacting bands listen to (release 2's dynamics, qz_dyn_tick): the input after the trim, or inputs 3/4
+qz_la == 0 ? ( qz_dyn_listen >= 0.5 ? ( qz_di0 = spl2; qz_di1 = spl3; ) : ( qz_di0 = spl0; qz_di1 = spl1; ); );
+
+qz_dlsn >= 0 ? qz_dlb = qz_dlsn : qz_dlm <= 0 ? qz_dlb = -1;   // LISTEN off: the band stays heard while it fades out
+a_b1.qz_band_run();  a_b2.qz_band_run();  a_b3.qz_band_run();  a_b4.qz_band_run();
+a_b5.qz_band_run();  a_b6.qz_band_run();  a_b7.qz_band_run();  a_b8.qz_band_run();
+a_b9.qz_band_run();  a_b10.qz_band_run(); a_b11.qz_band_run(); a_b12.qz_band_run();
+a_b13.qz_band_run(); a_b14.qz_band_run(); a_b15.qz_band_run(); a_b16.qz_band_run();
+// a band's detector listened to (the DYN listen chip): what it hears replaces the EQ'd sound, faded in and out over
+// 10 ms; only while that band's detector runs this sample (a band that stops reacting fades out from silence, never
+// from its last value)
+qz_dlm_t = qz_dlsn >= 0 && qz_dlhit;
+!qz_dlhit ? qz_dlx0 = qz_dlx1 = 0;
+qz_dlm !== qz_dlm_t ? qz_dlm = qz_dlm_t > qz_dlm ? min(1, qz_dlm + qz_dlstep) : max(0, qz_dlm - qz_dlstep);
+qz_dlm > 0 ? ( spl0 += (qz_dlx0 - spl0) * qz_dlm; spl1 += (qz_dlx1 - spl1) * qz_dlm; );
+qz_dlhit = 0;
+
+// Listen: linear 10 ms ramps that land exactly; only the objects in use run; the mix replaces the EQ'd signal at
+// qz_lx = 1. The output section and Limit below then act on it, as in ReEQ.
+qz_l_run ? (
+  qz_lx !== qz_lx_t ? qz_lx = qz_lx_t > qz_lx ? min(qz_lx_t, qz_lx + qz_l_step) : max(qz_lx_t, qz_lx - qz_l_step);
+  qz_lab !== qz_lab_t ? qz_lab = qz_lab_t > qz_lab ? min(qz_lab_t, qz_lab + qz_l_step) : max(qz_lab_t, qz_lab - qz_l_step);
+  qz_lg1_c !== qz_lg1_t ? ( qz_lg1_c += (qz_lg1_t - qz_lg1_c) * qz_gain_coef; abs(qz_lg1_t - qz_lg1_c) < 0.000000001 ? qz_lg1_c = qz_lg1_t; );
+  qz_lg2_c !== qz_lg2_t ? ( qz_lg2_c += (qz_lg2_t - qz_lg2_c) * qz_gain_coef; abs(qz_lg2_t - qz_lg2_c) < 0.000000001 ? qz_lg2_c = qz_lg2_t; );
+  qz_lab < 1 ? a_lsn1.qz_listen_run(qza_i0, qza_i1, qz_l_pl1);
+  qz_lab > 0 ? a_lsn2.qz_listen_run(qza_i0, qza_i1, qz_l_pl2);
+  qza_l0 = (qz_lab < 1 ? a_lsn1.o0 * (1 - qz_lab) * qz_lg1_c : 0) + (qz_lab > 0 ? a_lsn2.o0 * qz_lab * qz_lg2_c : 0);
+  qza_l1 = (qz_lab < 1 ? a_lsn1.o1 * (1 - qz_lab) * qz_lg1_c : 0) + (qz_lab > 0 ? a_lsn2.o1 * qz_lab * qz_lg2_c : 0);
+  spl0 += (qza_l0 - spl0) * qz_lx;
+  spl1 += (qza_l1 - spl1) * qz_lx;
+  qz_lx <= 0 && qz_lx_t <= 0 ? qz_l_run = 0;      // faded out: the path stops (the next start begins clean)
+);
+
+// Output section, in ReEQ's order (ReEQ.jsfx 1494-1508): encode, mid/left and side/right gains and polarities,
+// decode (one gliding matrix since step 3, set in @block), output gain. Gains are true dB (ReEQ's are 2^(x/6)) and
+// glide, so automation is smooth; a polarity flip or a stereo-mode switch glides over the same 5 ms (ReEQ steps both).
+// Each glide stops exactly on its target (`!==`: `!=` has a 0.00001 dead zone and would stop short).
+qz_out_c !== qz_out_t ? ( qz_out_c += (qz_out_t - qz_out_c) * qz_gain_coef; abs(qz_out_t - qz_out_c) < 0.000000001 ? qz_out_c = qz_out_t; );
+qz_ma_c !== qz_ma_t ? ( qz_ma_c += (qz_ma_t - qz_ma_c) * qz_gain_coef; abs(qz_ma_t - qz_ma_c) < 0.000000001 ? qz_ma_c = qz_ma_t; );
+qz_mb_c !== qz_mb_t ? ( qz_mb_c += (qz_mb_t - qz_mb_c) * qz_gain_coef; abs(qz_mb_t - qz_mb_c) < 0.000000001 ? qz_mb_c = qz_mb_t; );
+qz_md_c !== qz_md_t ? ( qz_md_c += (qz_md_t - qz_md_c) * qz_gain_coef; abs(qz_md_t - qz_md_c) < 0.000000001 ? qz_md_c = qz_md_t; );
+qza_l = spl0;
+spl0 = qz_ma_c * qza_l + qz_mb_c * spl1;
+spl1 = qz_mb_c * qza_l + qz_md_c * spl1;
+spl0 *= qz_out_c;
+spl1 *= qz_out_c;
+// Auto gain: the output's power into the open chunk; a full chunk joins the window unless it is silence; then the gain
+qz_ag_feed ? (
+  qz_ag_b += spl0 * spl0 + spl1 * spl1;
+  qz_ag_k += 1;
+  qz_ag_k >= QZ_AG_CH ? (
+    qz_ag_a > qz_ag_gate ? (
+      qz_ag_fill >= qz_ag_len ? ( qz_ag_sa -= qz_ag_pre[qz_ag_i]; qz_ag_sb -= qz_ag_post[qz_ag_i]; ) : qz_ag_fill += 1;
+      qz_ag_pre[qz_ag_i] = qz_ag_a; qz_ag_post[qz_ag_i] = qz_ag_b;
+      qz_ag_sa += qz_ag_a; qz_ag_sb += qz_ag_b;
+      qz_ag_ra += qz_ag_a; qz_ag_rb += qz_ag_b;
+      qz_ag_i += 1;
+      qz_ag_i >= qz_ag_len ? (
+        // a full lap: the window now holds exactly the chunks summed since the last lap, so the running sums restart
+        // from that total (no drift from hours of add / subtract pairs)
+        qz_ag_i = 0; qz_ag_sa = qz_ag_ra; qz_ag_sb = qz_ag_rb; qz_ag_ra = qz_ag_rb = 0;
+      );
+    );
+    qz_ag_a = qz_ag_b = 0; qz_ag_k = 0;
+  );
+);
+qz_ag_run ? (
+  qz_ag_c !== qz_ag_t ? ( qz_ag_c += (qz_ag_t - qz_ag_c) * qz_ag_coef; abs(qz_ag_t - qz_ag_c) < 0.000000001 ? qz_ag_c = qz_ag_t; );
+  spl0 *= qz_ag_c;
+  spl1 *= qz_ag_c;
+);
+qz_lim ? (
+  spl0 = max(-1, min(1, spl0));
+  spl1 = max(-1, min(1, spl1));
+);
+// the matched bypass's meters: the input and what leaves, while the EQ is heard
+qza_mon && qz_ps_x >= 1 ? (
+  qz_mi += (qz_d0 * qz_d0 + qz_d1 * qz_d1 - qz_mi) * qz_mc;
+  qz_mo += (spl0 * spl0 + spl1 * spl1 - qz_mo) * qz_mc;
+);
+// ACTIVE (play / rec / stop) and BYPASS: toward the dry input over 10 ms (the listen's step), exactly 1 = untouched;
+// BYPASS's dry carries the matched gain (qz_dm). It is set while the mix holds no dry (qz_ps_x = 1): entering BYPASS
+// it is the matched gain before the fade starts, leaving it stays matched until the fade has ended, so the dry and
+// the EQ'd sound always meet at the same level (the Codex review, 2026-10-30: a 5 ms glide of the dry's gain under the
+// 10 ms fade dipped 3.2 dB on the way out, even for a pure gain)
+qza_byp ? ( qz_ps_x >= 1 ? qz_dm = qza_bm; ) : qz_ps_x >= 1 ? qz_dm = 1;
+qz_ps_x !== qza_ps_t ? qz_ps_x = qza_ps_t > qz_ps_x ? min(1, qz_ps_x + qz_l_step) : max(0, qz_ps_x - qz_l_step);
+qz_ps_x < 1 ? (
+  spl0 = qz_d0 * qz_dm + (spl0 - qz_d0 * qz_dm) * qz_ps_x;
+  spl1 = qz_d1 * qz_dm + (spl1 - qz_d1 * qz_dm) * qz_ps_x;
+);
+// The analyser's rings, last: the main trace is what leaves (while a listen runs, the input without the bands, and the
+// listen trace is what leaves), the pre-EQ trace the input
+qza_an_on ? (
+  qz_l_run ? ( qz_an_feed(0, qza_an_i0, qza_an_i1); qz_an_feed(4, spl0, spl1); ) : qz_an_feed(0, spl0, spl1);
+  qza_an_pre ? qz_an_feed(2, qza_an_i0, qza_an_i1);
+  qz_an_pw += spl0 * spl0 + spl1 * spl1 + (qza_an_pre ? qza_an_i0 * qza_an_i0 + qza_an_i1 * qza_an_i1 : 0);   // what was fed
+);
+
+@serialize
+// The version field from day one (wiki 3.4): each later batch of fields gets its own new gate, never this one.
+// Gate 2 (build step 4a): the window's view state. Older saves stop after the version and keep @init's defaults.
+qz_ser_ver = 13;
+file_var(0, qz_ser_ver);
+qz_ser_ver >= 2 ? (
+  file_var(0, qzv_range);
+  file_var(0, qzv_fold);
+  file_var(0, qzv_drawer);         // unused since the output bar replaced the drawer; kept: gate 2 ran in REAPER (wiki 3.4)
+);
+// The theme this instance painted itself (rk_theme TH:202-211; guarded by file_avail, so a step-4a save that ends
+// above reads nothing here). The library promises its block never grows (TH:212-218), so newer fields follow it, each
+// batch behind its own version gate.
+rkth_self_serialize();
+// Gate 3 (build step 4b): "Number bands left to right" (qzv_renum). Older saves keep @init's 0.
+qz_ser_ver >= 3 ? (
+  file_var(0, qzv_renum);
+);
+// Gate 4 (the looks, 2026-10-26): the window's and the strip's band and node looks. Older saves keep @init's seeds
+// (the looks Quezy had before). The face clamps them as it reads them.
+qz_ser_ver >= 4 ? (
+  file_var(0, qzv_wb);
+  file_var(0, qzv_wn);
+  file_var(0, qzv_sb);
+  file_var(0, qzv_sn);
+);
+// Gate 5 (the analyser, build step 5): its source, display, ceiling, floor, tilt, window, FFT size, pre-EQ trace,
+// peaks, piano, decay, the strips' switch and the phase curve (ReEQ keeps its ten as sliders 7-16; Quezy's are view
+// state, spec §5).
+// Older saves keep @init's seeds. Freeze is not saved (a frozen picture from a fresh load would be blank).
+qz_ser_ver >= 5 ? (
+  file_var(0, qzv_an_mode); file_var(0, qzv_an_disp); file_var(0, qzv_an_ceil); file_var(0, qzv_an_floor);
+  file_var(0, qzv_an_tilt); file_var(0, qzv_an_win); file_var(0, qzv_an_fft); file_var(0, qzv_an_pre);
+  file_var(0, qzv_an_peaks); file_var(0, qzv_an_piano); file_var(0, qzv_an_decay); file_var(0, qzv_an_strip);
+  file_var(0, qzv_an_phase);
+);
+// Gate 6 (the native looks, build step 6): Midnight, Carbon, Aurora, Ember, Paper or White. Older saves keep @init's Midnight.
+qz_ser_ver >= 6 ? (
+  file_var(0, qzv_nlook);
+);
+// Gate 7 (link groups, build step 6): the ACTIVE pills (rk_playstate's three toggles and its first-load flag, as the
+// other linked plugins save them). Older saves keep the library's seed: all on.
+qz_ser_ver >= 7 ? (
+  file_var(0, rk_ps_en_play); file_var(0, rk_ps_en_rec); file_var(0, rk_ps_en_stop); file_var(0, rk_ps_inited);
+);
+// Gate 8 (A / B, build step 7): which slot shows, whether the other is set, and the other slot's 218 controls. Older
+// saves keep A with no B. The undo history is not saved (memory only, spec §8).
+qz_ser_ver >= 8 ? (
+  file_var(0, qzv_ab); file_var(0, qzv_abset);
+  file_mem(0, qz_abm, 218);
+);
+// Gate 9 (the strip's knob view, spec §10b): the strip's view and its wheel. Older saves keep the curve and steps.
+qz_ser_ver >= 9 ? (
+  file_var(0, qzv_sview); file_var(0, qzv_swheel);
+);
+// Gate 10 (simple mode, spec §10b): which face the window shows. Older saves keep FULL.
+qz_ser_ver >= 10 ? (
+  file_var(0, qzv_simple);
+);
+// Gate 11 (2026-10-31, after ReEQ 2): the analyser's smoothing, and the other A / B slot's input trim (its 219th cell;
+// gate 8 holds the first 218). Older saves keep no smoothing and a 0 dB trim.
+qz_ser_ver >= 11 ? (
+  file_var(0, qzv_an_smooth); file_var(0, qz_abm[218]);
+);
+// Gate 12 (2026-11-02, after ReEQ 2): the bands' Auto, detector link, free detector frequency and width.
+qz_ser_ver >= 12 ? (
+  file_mem(0, qz_dyp, 64);
+);
+// Gate 13 (2026-11-03): SHOW DOTS (0 always, 1 on hover) and the window's TEXT size (0 normal, 1 large, 2 larger).
+// Older saves keep 0: dots always, normal text.
+qz_ser_ver >= 13 ? (
+  file_var(0, qzv_dots); file_var(0, qzv_txt);
+);
+
+@gfx 648 534
+gfx_clear = -1;                    // REAPER never clears: a drawn pass paints every pixel, a skipped one keeps the picture
+// The house theme, EVERY pass, strip or window, before any skip: its self-paint counts calls, it runs the NATIVE tick
+// and sets RK_DBLCLICK_T (0.3 s window / 0.6 s strip). It paints nothing and never touches gfx_clear.
+rk_theme_apply();
+qz_native != rkth_local_off ? ( qz_native = rkth_local_off; slider_automate(qz_native); );
+// The house frame head (rk_srf caller contract): the real mouse, then the per-surface load; modifiers from _srf_cap.
+mx = mouse_x; my = mouse_y; LMB = mouse_cap & 1; RMB = mouse_cap & 2;
+is_embedded = gfx_ext_flags & 1;
+rk_srf_load();
+CTRL = (_srf_cap & 4) > 0; SHIFT = (_srf_cap & 8) > 0; ALT = (_srf_cap & 16) > 0;
+lmb_down = LMB && !prev_LMB; rmb_down = RMB && !prev_RMB;
+frame_wheel = rk_srf_wheel();
+qzg_ch = gfx_getchar();            // the pass's one key read (wiki 6.1): Esc for the menu; typed values take theirs here
+is_embedded ? (
+  // a strip: 0x200 only from the pass whose canvas holds the real pointer (rk_srf_in); cleared first, armed again (a
+  // click opens the window) only over the OPEN bar (qzg_eopen, set by qzg_embed on every pass). The one exception to
+  // house rule 2 (empty space opens): Quezy's strip takes a double-click on empty space to add a band, as ReEQ's does
+  // (the user, 2026-10-21), so its way into the window is the bar, as Swing's. A pass handed the other strip's press
+  // leaves the flag alone.
+  rk_srf_in() && (gfx_ext_flags & 0x200) ? gfx_ext_flags -= 0x200;
+  frame_wheel != 0 ? ( mx = _srf_hx; my = _srf_hy; );   // a wheel pass's pointer can be stale: this surface's last (rk_srf)
+  qzg_embed();
+  rk_srf_in() && !_srf_foreign && qzg_eopen ? gfx_ext_flags |= 0x200;
+  qzg_long_tick();                 // simple mode's tall strip: ask GainKit Plus for the other copy when it is due
+) : (
+  !(gfx_ext_flags & 2) ? gfx_ext_flags |= 0x200;   // house rule 3: a click on the strip closes the floating window
+  qzg_window();
+);
+!(gfx_ext_flags & 2) ? ( qz_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; ); );
+// @@QZ_GFX_TAIL (a staged test copy may insert lines here; the shipping file never carries a hook)
+rk_srf_store();

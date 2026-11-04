@@ -4,7 +4,7 @@
 -- is added or removed whole; a file that held only the block is deleted. At start-up the block
 -- registers GainKit Plus.lua as an action (a no-op when it already is one) and runs it by its
 -- command id, so it runs on the real action path: its toggle lights and running the action stops
--- it as usual. MIT, EON Studios, 2026.
+-- it as usual. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local _, own, sec, cmd = r.get_action_context()
 local sep = own:find("\\", 1, true) and "\\" or "/"

@@ -5,7 +5,7 @@
 -- 2026-10-03: "one track with all the plugins floating"). One undo step. The start action offers it
 -- once, at first setup (a switch in its summary window); run this any time for another one.
 -- EON Floatter, when it runs, sizes each window as it opens; this only places them. Without
--- js_ReaScriptAPI the windows open where REAPER puts them. MIT, EON Studios, 2026.
+-- js_ReaScriptAPI the windows open where REAPER puts them. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- each by its listed name first (any install), then the ReaPack package's path, then the EON install's

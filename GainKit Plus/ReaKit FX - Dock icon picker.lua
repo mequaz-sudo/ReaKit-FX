@@ -3,7 +3,7 @@
 -- (loadfile, the file beside it) and hands it one table with what it takes from the dock by name; it returns PICK
 -- (the picker's state, and the calls the dock makes) and sets the global TINT (the icons painted in the track's
 -- colour; TINT.pass runs from the dock's loop). ReaPack ships it as a source of the GainKit Plus package.
--- MIT, EON Studios, 2026.
+-- EON Free Licence 1.0, EON Studios, 2026.
 local D = ...                          -- from the dock: r, EXT, MENU, opt, opt_set, ticon, bar_h, dbg, shown_track,
                                        -- track_color, track_name; sc() and dock() live (they change after the load)
 local r, EXT, MENU, opt, opt_set, ticon = D.r, D.EXT, D.MENU, D.opt, D.opt_set, D.ticon

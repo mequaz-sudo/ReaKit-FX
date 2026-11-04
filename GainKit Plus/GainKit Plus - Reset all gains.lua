@@ -1,6 +1,6 @@
 -- GainKit Plus -- every GainKit's GAIN back to 0 dB (the master's too, and GainKits inside FX
 -- containers), one undo step. Only the GAIN: "Gain number" (the THEME panel's VALUE row) is left
--- alone. MIT, EON Studios, 2026.
+-- alone. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 
 -- GainKit by its FILE: a GainKit renamed in the FX chain still counts, and another plugin with

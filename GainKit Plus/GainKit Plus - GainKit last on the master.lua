@@ -2,7 +2,7 @@
 -- else: the master's GainKit is moved to the end (the last one, when it has two), or GainKit is
 -- added there when it has none at the top level. A GainKit inside an FX container stays where it
 -- is and does not count: it sits before whatever follows the container, so the mix gets a new one
--- at the end (outside audit, 2026-09-30). One undo step. MIT, EON Studios, 2026.
+-- at the end (outside audit, 2026-09-30). One undo step. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local NAMES = { "JS: EON: GainKit",                                  -- by its listed name, any install
                 "ReaKit FX/FX/Eon_JSFX/FX/ChannelTool_ReaKit.jsfx",   -- the ReaPack package's path

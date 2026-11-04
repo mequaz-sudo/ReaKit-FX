@@ -778,41 +778,50 @@ local(i, hov, mods, dx, dy, sens, now) (
 //   Ring   the 4-Band's: a disc in the band's colour, a dark centre, the band's
 //          name inside it. With no name, the centre is smaller and carries a dot.
 //   Dot    EON Tone's: a plain disc with a dark outline.
-//   Badge  a bigger solid disc with white rims, the name INSIDE it in dark
-//          type. (It came from Apex with the name underneath, because Apex
-//          fills the disc with a filter-shape picture. With nothing inside, the
-//          disc was an empty blob over the peak it marked and the name was a
-//          speck below it. Apex passes no name and draws its picture and its
-//          number itself, sized from RKCV_BADGE_K.)
-// `al` scales every alpha, for a band that is switched off.
+//   Badge  a bigger solid disc lifted off the curve by a soft shadow, a shine
+//          toward its top left, the name INSIDE it in dark type; a band that is
+//          off is hollow (a dark disc in a ring of its colour). Quezy's dot,
+//          made the library's (the user, 2026-10-26: "Library, upgraded"). It
+//          grows a little under the pointer instead of wearing a halo. (It came
+//          from Apex with the name underneath, because Apex fills the disc with
+//          a filter-shape picture. Apex passes no name and draws its picture and
+//          its number itself, sized from RKCV_BADGE_K.)
+// `al` scales every alpha, for a band that is switched off. Strokes are as wide
+// as the node is big (rad / 8, at least 1 px), so a 2x screen draws them 2 px.
 function rk_curve_node_paint_ex(nx, ny, rad, ht, on, al, r, g, b, lbl)
-local(tw, th, br, fs) (
+local(tw, th, br, fs, lw, i, ka) (
+  lw = max(1, floor(rad / 8 + 0.5));
   rkcv_sty_nodes == RKCV_DOT ? (
     ht > 0.01 ? ( gfx_set(r, g, b, 0.22 * ht * al); gfx_circle(nx, ny, rad * 1.7, 1, 1); );
     gfx_set(r, g, b, al);
     gfx_circle(nx, ny, rad * 0.85, 1, 1);
     gfx_set(0, 0, 0, 0.40 * al);
-    gfx_circle(nx, ny, rad * 0.85, 0, 1);
-    on ? ( gfx_set(1, 1, 1, 0.90 * al); gfx_circle(nx, ny, rad * 0.85 + 2, 0, 1); );
+    i = 0; loop(lw, gfx_circle(nx, ny, rad * 0.85 - i, 0, 1); i += 1; );
+    on ? ( gfx_set(1, 1, 1, 0.90 * al); i = 0; loop(lw, gfx_circle(nx, ny, rad * 0.85 + 2 * lw - i, 0, 1); i += 1; ); );
   ) : rkcv_sty_nodes == RKCV_BADGE ? (
-    br = rad * RKCV_BADGE_K;
-    ht > 0.01 ? ( gfx_set(r, g, b, 0.18 * ht * al); gfx_circle(nx, ny, br * 1.6, 1, 1); );
-    gfx_set(r, g, b, al);
-    gfx_circle(nx, ny, br, 1, 1);
-    gfx_set(1, 1, 1, 0.55 * al); gfx_circle(nx, ny, br, 0, 1);
-    gfx_set(1, 1, 1, 0.22 * al); gfx_circle(nx, ny, br - 1, 0, 1);
-    gfx_set(0, 0, 0, 0.85 * al); gfx_circle(nx, ny, br + 1, 0, 1);
-    on ? ( gfx_set(1, 1, 1, 0.80 * al); gfx_circle(nx, ny, br + 3, 0, 1); );
+    br = rad * RKCV_BADGE_K * (1 + 0.12 * ht);
+    // an off band at the usual 0.30 draws at 0.75 (hollow reads at full strength, a dimmed disc read as a stain)
+    ka = al < 0.6 ? min(1, 2.5 * al) : al;
+    gfx_set(0, 0, 0, 0.35 * ka); gfx_circle(nx, ny + br * 0.16, br * 1.26, 1, 1);
+    al < 0.6 ? (
+      gfx_set(0.10, 0.12, 0.16, ka); gfx_circle(nx, ny, br, 1, 1);
+      gfx_set(r, g, b, ka); i = 0; loop(max(1, floor(br * 0.18 + 0.5)), gfx_circle(nx, ny, br - i, 0, 1); i += 1; );
+    ) : (
+      gfx_set(r, g, b, al); gfx_circle(nx, ny, br, 1, 1);
+      // the shine: translucent, so its arcs a whole pixel apart (closer, their overlaps would brighten it)
+      gfx_set(1, 1, 1, 0.5 * al);
+      i = 0; loop(lw, gfx_arc(nx - br * 0.16, ny - br * 0.21, br * 0.58 - i, -1.32, 0.69, 1); i += 1; );
+    );
+    on ? ( gfx_set(1, 1, 1, 0.80 * ka); i = 0; loop(lw, gfx_circle(nx, ny, br + 3 * lw - i, 0, 1); i += 1; ); );
     lbl >= 0 ? (
-      // the name, dark on the band's colour
-      fs = max(7, floor(rad * 1.05));
+      // the name, as big as the resting disc lets it be (it keeps its size while the disc grows under the pointer;
+      // a two-letter name shrinks until it fits)
+      fs = max(7, floor(rad * RKCV_BADGE_K * 1.16));
       gfx_setfont(1, "Arial", fs, rk_curve_name_wt(fs, lbl));
       gfx_measurestr(lbl, tw, th);
-      // Dark on the band's colour -- unless the band is off, when the disc is
-      // dimmed almost to the plate and dark type on it vanishes ("HP" / "LP" on
-      // the 4-Band's switched-off filters). Then it is light.
-      // Light type still follows `al`: 0.69 at the 0.30 an off band uses, 0 at 0.
-      al < 0.6 ? gfx_set(0.92, 0.94, 0.98, min(1, 2.3 * al)) : gfx_set(0.04, 0.05, 0.07, 0.92 * al);
+      loop(8, tw > br * 1.7 && fs > 7 ? ( fs -= 1; gfx_setfont(1, "Arial", fs, rk_curve_name_wt(fs, lbl)); gfx_measurestr(lbl, tw, th); ); );
+      // Dark on the band's colour; light on an off band's dark centre.
+      al < 0.6 ? gfx_set(0.92, 0.94, 0.98, 0.9 * ka) : gfx_set(0.06, 0.07, 0.09, al);
       gfx_x = nx - tw * 0.5 + 0.5; gfx_y = ny - th * 0.5;
       gfx_drawstr(lbl);
     );
@@ -828,7 +837,7 @@ local(tw, th, br, fs) (
     gfx_set(0.04, 0.04, 0.06, 0.85 * al);
     gfx_circle(nx, ny, rad * (lbl >= 0 ? 0.74 : 0.55), 1, 1);
     gfx_set(1, 1, 1, (on ? 0.95 : 0.55) * al);
-    gfx_circle(nx, ny, rad, 0, 1);
+    i = 0; loop(lw, gfx_circle(nx, ny, rad - i, 0, 1); i += 1; );
     lbl >= 0 ? (
       // the name, where the centre dot would be
       fs = max(7, floor(rad * 0.95));

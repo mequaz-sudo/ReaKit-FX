@@ -1,8 +1,8 @@
 # ReaKit FX
 
-Seven free effects for REAPER that live right in your mixer strip: **GainKit**, **Filter**, **De-Esser**,
-**Saturation**, **3-Band EQ**, **DDC** and **Stereo Width**. Pick a theme or a knob style on one and all seven
-follow. Every face is drawn in code, so it stays sharp at any size and on HiDPI screens. **GainKit Plus** adds
+Eight free effects for REAPER that live right in your mixer strip: **GainKit**, **Filter**, **Quezy**,
+**De-Esser**, **Saturation**, **3-Band EQ**, **DDC** and **Stereo Width**. Pick a theme or a knob style on one and
+the rest follow. Every face is drawn in code, so it stays sharp at any size and on HiDPI screens. **GainKit Plus** adds
 actions and a dock that keeps the selected track's effects in view.
 
 The full guide, every knob explained: [eonaudio.pro/reakit-free-fx](https://eonaudio.pro/reakit-free-fx).
@@ -47,6 +47,18 @@ The CURVE drawer shows the response with a node per filter to drag. In the mixer
 
 ![The Filter with both filters off, then at 86 Hz and 9.9 kHz with the CURVE drawer open](screenshots/session/filter_curve.png)
 
+### Quezy
+
+A parametric EQ with up to sixteen bands. Click the graph to add a band, drag its dot, wheel for its width; each
+band picks one of seventeen shapes (bell, shelves, cuts with slopes up to 120 dB per octave, notch, band-pass,
+tilt and more) and works on both sides, the mid, the side, the left or the right. Any band can react to the music:
+**WHEN LOUD** pulls it down only when that part gets loud, **WHEN QUIET** lifts it, with threshold, ratio, range,
+attack and release beside the band's own settings, and lookahead. A live spectrum, auto gain,
+a LISTEN key to hear one band alone, and the **0** key (or the right-click menus) to set every band's gain to zero.
+**SIMPLE** turns it into a console strip of six bands: low cut, low shelf, two bells, high shelf and high cut.
+Dots always show by default, and the text comes in three sizes. Its own action **Quezy helper** lets it dock and
+float with a double-click on its name at the top, without GainKit Plus.
+
 ### De-Esser
 
 Built on Liteon's de-esser: threshold, frequency, bandwidth, ratio and lookahead, a time setting, a band-pass or
@@ -89,7 +101,10 @@ Install **GainKit Plus** from the same repository. Its actions are in the Action
   **GainKit last on the master**.
 - **Copy look to all**, **Reset all gains**, **All MONO**, **All STEREO**, **Bypass all**, **Remove all GainKits**.
 - **ReaKit FX - Add a track with all seven**: one track, their windows open side by side.
-- **ReaKit FX - Dock following the selected track**: [the dock](#the-reakit-fx-dock).
+- **ReaKit FX - Dock following the selected track**: [the dock](#the-reakit-fx-dock). **ReaKit FX - Dock
+  GainKit**, **- Dock Quezy** and one for each of the others: that effect alone in its own docker tab.
+- **Quezy helper**: a double-click on Quezy's name docks it in its own tab and floats it back out, GainKit Plus
+  running or not. Run it again to stop.
 - **ReaKit FX - Docker tabs off-on**: REAPER's tab bar off for every docker holding one window, and back.
 
 ![The same strips with GainKit Plus off, then on](screenshots/session/plus_off_on.png)
@@ -134,12 +149,12 @@ with. With EON Swing running, they also follow the theme picked in Swing (SSL, N
 
 ## Across the plugins
 
-- **Presets**: 80 factory presets in REAPER's preset menu, named for the job (Vocal Smooth, Kick Punch, Drum Bus
+- **Presets**: 89 factory presets in REAPER's preset menu, named for the job (Vocal Smooth, Kick Punch, Drum Bus
   Glue, Hi-Hat Tame, De-Mud...). A preset sets the sound and leaves the look alone; GainKit's six look presets set
   the look (Mono track and Stereo track also set MONO).
 - **Mixer strip or track panel**: the THEME panel's EMBED row moves a plugin between the two, with GainKit Plus
   running.
-- **Link groups**: six of the seven have sixteen link groups; turn a knob on one and its group follows.
+- **Link groups**: seven of the eight have sixteen link groups; turn a knob on one and its group follows.
 - **The mouse**: drag a knob, Ctrl for fine, Shift for finer (press or let go of either mid-drag and the knob carries
   on from where it is); the wheel steps the knob under the pointer; double-click resets it.
 - **The track's name** follows each plugin's title (REAPER 7.81 or newer).
@@ -162,8 +177,8 @@ with. With EON Swing running, they also follow the theme picked in Swing (SSL, N
    "ReaImGui: ReaScript binding for Dear ImGui"). Click **Apply** and restart REAPER.
 4. **Actions > Show action list**, type **ReaKit FX - Start**, pick it and click **Run/close**. Leave **Faster
    mixer strips** on in the window it shows, click **OK** and restart REAPER.
-5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit` (the other six are in the same
-   list). Or **Track > Insert track from template > ReaKit FX - All seven**, or start a mix from **File > New
+5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit` (the other seven, Quezy among
+   them, are in the same list). Or **Track > Insert track from template > ReaKit FX - All seven**, or start a mix from **File > New
    project from template > ReaKit FX - 16 track board**.
 
 To change the look, open a plugin's window and click **THEME**. Updates arrive through **Extensions > ReaPack >
@@ -179,9 +194,11 @@ scales them all with one dial. It needs js_ReaScriptAPI; its panel needs ReaImGu
 Saturation, 3-Band EQ and DDC keep their DSP author's terms, Michael Gruhn (LOSER); the De-Esser's crossover and
 detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it, with the GPL's full text beside it
 ([DeEsser_ReaKit.GPL-3.0.md](Eon_JSFX/FX/DeEsser_ReaKit.GPL-3.0.md)). Each plugin file carries its author's
-original header, word for word. GainKit, Stereo Width, Filter, the GainKit Plus scripts, EON Floatter, the
-templates, the track icons and the `ReaKit/` includes are EON Studios' own work, MIT. Details in
-[LICENSE.md](LICENSE.md).
+original header, word for word. GainKit, Stereo Width, Filter, Quezy, the GainKit Plus scripts, EON Floatter,
+the templates and the track icons are EON Studios' own work under the EON Free Licence 1.0
+([LICENSE-EON-FREE.md](LICENSE-EON-FREE.md)): free to use in any work, not for sale or redistribution. The
+`ReaKit/` includes stay MIT. Quezy follows Justin Johnson's ReEQ and Yuriy Ivantsov's filter maps, both MIT.
+Details in [LICENSE.md](LICENSE.md).
 
 ## Building on it
 

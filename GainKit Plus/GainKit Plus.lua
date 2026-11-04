@@ -15,7 +15,7 @@
 -- +1 colour (r*65536 + g*256 + b + 1; 0 = none), +2 name length, +3.. name (24 bytes, UTF-8),
 -- +27 icon path length, +28.. icon path (absolute, <= 259 bytes). GainKit reads its own slot by
 -- the track index REAPER gives it (get_host_placement()); the master, whose index is -1, reads
--- slot 512, after the tracks'. MIT, EON Studios, 2026.
+-- slot 512, after the tracks'. EON Free Licence 1.0, EON Studios, 2026.
 local r = reaper
 local BASE, STRIDE, MAXT = 31195136, 320, 512
 local MASTER = 512
@@ -67,21 +67,36 @@ local GEN0 = run * 1000000000
 -- clears its stamp; one turned off with its action stays shut unless REAPER closed within 10 s of that.
 local DOCK_EXT = "EON_ReaKitDock"
 local DOCK_FILE = "ReaKit FX - Dock following the selected track.lua"
+-- The one-plugin dock tabs (2026-11-02, the user's list: "your tabs reopen with REAPER", "double-click goes to the
+-- plugin's own tab"): each tab is "ReaKit FX - Dock <name>.lua" with its own EXT (DOCK_EXT_<key>), stamping its own
+-- wall clock, so the same rule reopens each one that was open; a double-click on a plugin's name goes to its own tab
+-- when that tab is up (else to the full dock, as before). { key, name, file } as the dock's KINDS.
+local DOCK = { tabs = {
+  { "gk", "GainKit", "channeltool_reakit.jsfx" }, { "flt", "Filter", "filter_reakit.jsfx" },
+  { "des", "De-Esser", "deesser_reakit.jsfx" }, { "sat", "Saturation", "saturation_reakit.jsfx" },
+  { "eq3", "3-Band EQ", "3bandeq_reakit.jsfx" }, { "qzy", "Quezy", "quezy_reakit.jsfx" },
+  { "ddc", "DDC", "ddc_reakit.jsfx" }, { "wid", "Stereo Width", "stereowidth_reakit.jsfx" } }, again = {} }
 local dock_reopen_at
 if run == 1 then
   local dw = tonumber(r.GetExtState(DOCK_EXT, "wall")) or 0
   local pw = tonumber(r.GetExtState(EXT, "wall")) or 0
-  if dw > 0 and pw > 0 and dw >= pw - 10 then dock_reopen_at = now0 + 3 end
+  if dw > 0 and pw > 0 and dw >= pw - 10 then dock_reopen_at = now0 + 3; DOCK.full = true end
+  for _, t in ipairs(DOCK.tabs) do
+    local tw = tonumber(r.GetExtState(DOCK_EXT .. "_" .. t[1], "wall")) or 0
+    if tw > 0 and pw > 0 and tw >= pw - 10 then DOCK.again[#DOCK.again + 1] = t; dock_reopen_at = now0 + 3 end
+  end
 end
-local function reopen_dock()
-  if r.time_precise() - (tonumber(r.GetExtState(DOCK_EXT, "alive")) or 0) < 1.0 then return end   -- already up
+-- run a dock script beside this one (file = its name in this folder; ext = its EXT, skipped when already up)
+function DOCK.run(file, ext)
+  if r.time_precise() - (tonumber(r.GetExtState(ext, "alive")) or 0) < 1.0 then return end   -- already up
   local _, me = r.get_action_context()
   local p = (me or ""):match("^(.*[/\\])")
-  p = p and (p .. DOCK_FILE)
+  p = p and (p .. file)
   if not (p and r.file_exists(p)) then return end
   local id = r.AddRemoveReaScript(true, 0, p, true)
   if id and id ~= 0 then r.Main_OnCommand(id, 0) end
 end
+local function reopen_dock() DOCK.run(DOCK_FILE, DOCK_EXT) end
 local wall_t = 0
 
 -- names and icon paths go as UTF-8 bytes, control bytes dropped. They were folded to printable ASCII,
@@ -218,7 +233,8 @@ end
 local EMB = 31365504
 local SEVEN = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
-                "Filter_ReaKit.jsfx" }                 -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
+                "Filter_ReaKit.jsfx",                  -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
+                "Quezy_ReaKit.jsfx" }                  -- the eighth, the free EQ (joining the set: Quezy step 8, 2026-10-30)
 local RES = r.GetResourcePath()
 local OPT = RES .. "/reaper-fxoptions.ini"
 local function slurp(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
@@ -439,7 +455,24 @@ local function dock_request(ti, pos, fl)
   if not tr or pos < 0 or pos >= r.TrackFX_GetCount(tr) then return end
   local fg = r.TrackFX_GetFXGUID(tr, pos)
   if not fg then return end
-  r.SetExtState(DOCK_EXT, "show_req", r.GetTrackGUID(tr) .. "|" .. fg .. "|" .. string.format("%.3f", r.time_precise()), false)
+  local req = r.GetTrackGUID(tr) .. "|" .. fg .. "|" .. string.format("%.3f", r.time_precise())
+  local ok, id = r.TrackFX_GetNamedConfigParm(tr, pos, "fx_ident")
+  local file = ok and (id:match("[^/\\]+$") or ""):lower() or ""
+  -- a plugin the full dock holds is the full dock's to float (the Codex review, 2026-11-04: a Quezy there went to an
+  -- empty Quezy tab)
+  local held = r.time_precise() - (tonumber(r.GetExtState(DOCK_EXT, "alive")) or 0) < 1.0 and
+               (("," .. r.GetExtState(DOCK_EXT, "held") .. ","):find("|" .. fg .. ",", 1, true)) ~= nil
+  for _, t in ipairs(DOCK.tabs) do              -- the plugin's own tab, when it is up
+    local x = DOCK_EXT .. "_" .. t[1]
+    if t[3] == file and not held and (t[1] == "qzy" or r.time_precise() - (tonumber(r.GetExtState(x, "alive")) or 0) < 1.0) then
+      -- Quezy docks in its own tab always, started first when it is closed (Gumbo's way, the user 2026-11-02);
+      -- the request is written first (the tab's start leaves one younger than 5 s alone)
+      r.SetExtState(x, "show_req", req, false)
+      DOCK.run("ReaKit FX - Dock " .. t[2] .. ".lua", x)
+      return
+    end
+  end
+  r.SetExtState(DOCK_EXT, "show_req", req, false)
   reopen_dock()                              -- returns at once when the dock is up
 end
 
@@ -459,8 +492,11 @@ local NL = "\n"
 -- copy's @gfx height over the short one's (FIT counts what a squeezed tall face lacks; the heights must match the
 -- bundle's .dev_tests/gk_tall_sync.py, which writes the tall copies, and EON Floatter's TALL_GFX_H), and the kind its
 -- hand-over publishes (rk_handoff.jsfx-inc: kind * 100 + its state layout's version, the plugin's rk_ho_init).
+-- Quezy (2026-10-31): its simple mode's strip is the tall copy; ho = 0, no hand-over (its state is far bigger than a
+-- slot), so stop = true holds its swap while the song plays (a copy starting from rest would click) and does it at the stop.
 local LONG = { ["channeltool_reakit.jsfx"] = { name = "GainKit", k = 900 / 540, ho = 102 },
-               ["filter_reakit.jsfx"]      = { name = "Filter",  k = 588 / 283, ho = 201 } }
+               ["filter_reakit.jsfx"]      = { name = "Filter",  k = 588 / 283, ho = 201 },
+               ["quezy_reakit.jsfx"]       = { name = "Quezy",   k = 1944 / 534, ho = 0, stop = true, self = true } }
 local function long_kind(tr, f)                 -- the file name whole (its folders cut off), case-folded, looked up
   local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
   return ok and LONG[(id:gsub("^.*[/\\]", "")):lower()] or nil
@@ -582,6 +618,10 @@ end
 -- REAPER is writing automation on this track: playing or recording (not paused) with the track, or the global
 -- override, in Touch, Write, Latch or Latch Preview. A swap then waits for the transport to stop: done while Write
 -- wrote, the gain's envelope kept the OLD values for ~0.3 s from the swap on (gk_long_run.py case H, 2026-10-08).
+local function playing()                     -- playing or recording, not paused
+  local ps = r.GetPlayState()
+  return ps & 5 ~= 0 and ps & 2 == 0
+end
 local function writing(tr)
   local ps = r.GetPlayState()
   if ps & 5 == 0 or ps & 2 == 2 then return false end
@@ -669,10 +709,20 @@ function FIT.set(tr, v) r.SetMediaTrackInfo_Value(tr, "F_MCP_FXSEND_SCALE", v); 
 -- after a long swap: grow the strip's area until the effects after effect k have the room they had (before = FIT.list
 -- then); the old and the set value kept in the track's P_EXT. tall_k: the tall copy's @gfx height over the short one's
 -- (LONG's k: GainKit 900 / 540, the Filter 588 / 283)
-function FIT.grow(tr, k, before, tall_k)
+-- self (Quezy, 2026-10-31): the tall face's OWN height counts too, so a strip with nothing under it grows as well (the
+-- user's mixer: Quezy alone on its strip, the swap done, the face squeezed back into the old room, no knobs); and the
+-- room it gets is kept even when the strip cannot give all of it (its knob column needs about 190 px, not all 258)
+function FIT.grow(tr, k, before, tall_k, self)
   local now = FIT.list(tr)
   if not now then return end
-  local need = FIT.under(before, k) - FIT.under(now, k)
+  local nat = math.floor((before.emb[k] or 0) * (tall_k or 900 / 540) + 0.5)
+  local function lacks(L) return math.max(0, nat - (L.emb[k] or 0) - 2) end
+  local function miss(L)
+    local m = FIT.under(before, k) - FIT.under(L, k)
+    if self then m = math.max(0, m) + lacks(L) end
+    return m
+  end
+  local need = miss(now)
   if need <= 1 then return end
   local s0 = r.GetMediaTrackInfo_Value(tr, "F_MCP_FXSEND_SCALE")
   local trial = math.min(1, s0 + 0.1)
@@ -683,21 +733,19 @@ function FIT.grow(tr, k, before, tall_k)
   if per < 20 then FIT.set(tr, s0); return end              -- this theme does not grow the list with it: as it was
   -- the tall face itself squeezed (another tall face above it on the strip) takes the first of any new room: its full
   -- height is the short face's times tall_k (the two copies' @gfx), so count what it lacks too (without it, two long
-  -- plugins on one strip stopped short and were put back)
-  local nat = math.floor((before.emb[k] or 0) * (tall_k or 900 / 540) + 0.5)
-  local function lacks(L) return math.max(0, nat - (L.emb[k] or 0) - 2) end
-  local want, cur, short = math.min(1, s0 + (need + lacks(now)) / per), s0, need
+  -- plugins on one strip stopped short and were put back); self has it in miss() already
+  local want, cur, short = math.min(1, s0 + (need + (self and 0 or lacks(now))) / per), s0, need
   for _ = 1, 3 do                                            -- set, read back, and up to two more steps if short
     FIT.set(tr, want); cur = want
     local t3 = FIT.list(tr)
     if not t3 then short = need; break end
-    short = FIT.under(before, k) - FIT.under(t3, k)
+    short = miss(t3)
     if short <= 1 or want >= 1 then break end
-    want = math.min(1, want + (short + lacks(t3)) / per)
+    want = math.min(1, want + (short + (self and 0 or lacks(t3))) / per)
   end
   -- all of the room or none: a strip that cannot grow that far (the master's, its meter keeps the height: 2026-10-08)
   -- keeps its fader and the squeeze, as it was
-  if short > 2 then FIT.set(tr, s0); return end
+  if short > 2 and not self then FIT.set(tr, s0); return end
   local old, set = FIT.rec(tr)                               -- grown already by another long plugin, and not changed
   if not (old and math.abs(s0 - set) < 1e-4) then old = s0 end   -- since: the strip's own value stays the one to restore
   r.GetSetMediaTrackInfo_String(tr, FIT.KEY, ("%.6f %.6f"):format(old, cur), true)
@@ -764,14 +812,14 @@ local function swap_length(ti, pos, fl, to_tall)
   local kind = tr and long_kind(tr, pos)                           -- GainKit or the Filter (LONG), by its file
   if not kind then return end
   local guid = r.TrackFX_GetFXGUID(tr, pos)
-  if guid and writing(tr) then                                     -- after the transport stops (pend_tick)
-    pend[guid] = { tg = r.GetTrackGUID(tr), to_tall = to_tall }
+  if guid and (writing(tr) or (kind.stop and playing())) then       -- after the transport stops (pend_tick)
+    pend[guid] = { tg = r.GetTrackGUID(tr), to_tall = to_tall, stop = kind.stop }
     HO.wait[guid] = nil
     r.gmem_write(EMB + 4, 1)
     return
   end
-  local hos = guid and HO.ready(ti, pos, kind.ho)                  -- the hand-over: its state published first (HO.tick)
-  if guid and not hos then
+  local hos = guid and kind.ho > 0 and HO.ready(ti, pos, kind.ho)  -- the hand-over: its state published first (HO.tick)
+  if guid and not hos and kind.ho > 0 then
     local w = HO.wait[guid]
     if not w then HO.wait[guid] = { tg = r.GetTrackGUID(tr), to_tall = to_tall, t0 = r.time_precise() }; return end
     if r.time_precise() - w.t0 < HO.WAIT then return end
@@ -814,7 +862,7 @@ local function swap_length(ti, pos, fl, to_tall)
   end
   if tmp then r.DeleteTrack(tmp) end
   r.PreventUIRefresh(-1)
-  if new and to_tall and before then FIT.grow(tr, new, before, kind.k)   -- the strip's room, in the same undo point
+  if new and to_tall and before then FIT.grow(tr, new, before, kind.k, kind.self)   -- the strip's room, in the same undo point
   elseif new and not to_tall then FIT.back(tr) end
   r.Undo_EndBlock(kind.name .. (to_tall and ": long view" or ": short view"), -1)
   if not new then return end
@@ -835,7 +883,7 @@ local function pend_tick()
       local t = i < 0 and r.GetMasterTrack(0) or r.GetTrack(0, i)
       if r.GetTrackGUID(t) == p.tg then tr = t; break end
     end
-    if not tr or not writing(tr) then
+    if not tr or not (writing(tr) or (p.stop and playing())) then
       pend[fg] = nil
       local pos = tr and find_fx(tr, fg)
       if pos then swap_length(tr == r.GetMasterTrack(0) and -1 or r.GetMediaTrackInfo_Value(tr, "IP_TRACKNUMBER") - 1, pos, 0, p.to_tall) end
@@ -910,7 +958,7 @@ local served = r.gmem_read(EMB + 12)       -- a request older than this run is n
 local hb_last, def_t, paths = 0, -10, nil
 local function embed_tick(now)
   local t = os.time()
-  if t ~= hb_last then hb_last = t; r.gmem_write(EMB, t); r.gmem_write(EMB + 3, 7) end   -- +3: the long view served (7: GainKit's and the Filter's)
+  if t ~= hb_last then hb_last = t; r.gmem_write(EMB, t); r.gmem_write(EMB + 3, 8) end   -- +3: the long view served (7: GainKit's and the Filter's; 8: Quezy's too)
   local g = r.gmem_read(EMB + 12)
   if g ~= served then
     served = g
@@ -973,7 +1021,11 @@ local function loop()
   r.SetExtState(EXT, "alive", tostring(now), false)          -- the heartbeat a relaunch reads
   local wall = os.time()
   if wall - wall_t >= 5 then wall_t = wall; r.SetExtState(EXT, "wall", tostring(wall), true) end   -- the dock's reopen
-  if dock_reopen_at and now >= dock_reopen_at then dock_reopen_at = nil; reopen_dock() end
+  if dock_reopen_at and now >= dock_reopen_at then
+    dock_reopen_at = nil
+    if DOCK.full then reopen_dock() end
+    for _, t in ipairs(DOCK.again) do DOCK.run("ReaKit FX - Dock " .. t[2] .. ".lua", DOCK_EXT .. "_" .. t[1]) end
+  end
   rename_tick()
   embed_tick(now)
   pend_tick()

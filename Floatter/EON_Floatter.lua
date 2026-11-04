@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.9
+-- @version 1.0.10
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -43,7 +43,7 @@
 
 local r = reaper
 
-local VERSION   = "1.0.8"   -- shown in the panel; keep with @version above
+local VERSION   = "1.0.10"   -- shown in the panel; keep with @version above (deploy_floatter.sh checks the two agree)
 local EXT_D     = "EON_FloatSize"      -- captures / scale / global (the keys the pair used)
 local EXT_F     = "EON_Floatter"       -- this script's own state
 -- ⚠ Mirrored in rk_lua_core.lua (core.ALIVE_FLOATTER_*) for the Kit Bridge,
@@ -334,6 +334,7 @@ local SIZES = {
   ["EON_Drum_Strip"] = { w = 504, h = 368, gfx_w = 300, gfx_h = 900 },
   ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 283 },
   ["Gate_ReaKit"] = { w = 512, h = 430, gfx_w = 560, gfx_h = 520 },
+  ["Quezy_ReaKit"] = { w = 648, h = 534, gfx_w = 648, gfx_h = 534 },
   ["Saturation_ReaKit"] = { w = 288, h = 306, gfx_w = 220, gfx_h = 320 },
   ["StereoWidth_ReaKit"] = { w = 291, h = 204, gfx_w = 200, gfx_h = 280 },
   -- EON SIZES END
@@ -893,7 +894,7 @@ local function apply(e, w, h, src)
   if not e.canvas then return false end
   local add, open = W.drawer_add(e, h)
   if not L.set_canvas(e.hwnd, e.canvas, w, h + add) then return false end
-  if DRAWERS[e.key] then e.dr_grown, e.dr_last, e.dr_same = add, open, 2 end
+  if DRAWERS[e.key] then e.dr_grown, e.dr_last = add, open end
   h = h + add
   e.src, e.applied, e.applied_t, e.adopted = src, { w = round(w), h = round(h) }, r.time_precise(), false
   W.unkeep(e)                                     -- sized by Floatter: the hand size is over
@@ -907,7 +908,7 @@ end
 -- declares a taller @gfx, and a fresh window of one opens at that: GainKit's at 450 x 900 (489 x 900 on the canvas,
 -- the float's minimum width), which against the short copy's 540 never read as fresh, so it kept that height. The
 -- Filter's long view (2026-10-09): its tall copy's @gfx is 260 x 588 (the bundle's .dev_tests/gk_tall_sync.py).
-local TALL_GFX_H = { ["ChannelTool_ReaKit"] = 900, ["Filter_ReaKit"] = 588 }
+local TALL_GFX_H = { ["ChannelTool_ReaKit"] = 900, ["Filter_ReaKit"] = 588, ["Quezy_ReaKit"] = 1944 }
 local function learn_scale(e, rc)
   local ship = SIZES[e.key]
   if not ship or not rc then return nil end
@@ -986,7 +987,6 @@ function W.first_sight(e)
   if not s then e.src = "kept"; W.rev = W.rev + 1; return true end
   local g = W.global() / 100
   if apply(e, ship.w * s * g, ship.h * s * g, "eon") then
-    e.scale_used = s
     S.say(("%s opened at %d x %d"):format(L.pretty(key), e.applied.w, e.applied.h))
   else
     e.src = "kept"
@@ -1046,7 +1046,7 @@ function W.poll(now)
     local e = W.win[a]
     if e and e.key ~= key then e = nil end   -- a recycled HWND address: not the same window
     if not e then
-      e = { hwnd = o.hwnd, tr = o.tr, fx = o.fx, key = key, tries = 0, settled = false, since = now }
+      e = { hwnd = o.hwnd, tr = o.tr, fx = o.fx, key = key, tries = 0, settled = false }
       if DRAWERS[key] then e.fg = r.TrackFX_GetFXGUID(o.tr, o.fx) end   -- the drawer service follows it by GUID
       W.win[a] = e
       W.rev = W.rev + 1
@@ -1118,11 +1118,10 @@ function W.drawer_serve(e, d, list)
   list[#list + 1] = e.fx
   -- e.dr_grown: the room Floatter last added (0 = the window is shut); only whether it is 0 is read here
   if e.dr_grown == nil then                                           -- first contact: taken as it is
-    e.dr_grown, e.dr_last, e.dr_same = open and room_in(d, c.h) or 0, open, 2
+    e.dr_grown, e.dr_last = open and room_in(d, c.h) or 0, open
     return
   end
-  if open ~= e.dr_last then e.dr_last, e.dr_same = open, 1; return end   -- read once: wait for the second
-  e.dr_same = 2
+  if open ~= e.dr_last then e.dr_last = open; return end   -- read once: wait for the second
   if open == (e.dr_grown > 0) then return end                         -- the window matches already
   if W.dr_tick - (e.dr_at or -1e9) < W.DRAWER_GAP then return end
   -- opening adds the room this face calls for; closing gives back the room the plugin shows now (a hand resize
@@ -1282,7 +1281,7 @@ function W.loud_pass()
       hwnd = r.TrackFX_GetFloatingWindow(it.tr, it.fx)
       if hwnd then
         local a = W.addr(hwnd)
-        W.win[a] = { hwnd = hwnd, tr = it.tr, fx = it.fx, key = it.key, tries = 0, settled = false, since = r.time_precise(), force = true }
+        W.win[a] = { hwnd = hwnd, tr = it.tr, fx = it.fx, key = it.key, tries = 0, settled = false, force = true }
       end
     end
     n = n + 1

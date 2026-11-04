@@ -34,7 +34,16 @@ meter in DSP", which is acknowledged here as the published reference for it.
 
 ## The effects
 
-GainKit, Stereo Width and Filter are EON Studios' own code (MIT). Filter's stages,
+GainKit, Stereo Width, Filter and Quezy are EON Studios' own code (EON Free Licence 1.0).
+
+**Quezy** follows **Justin Johnson's ReEQ** (MIT): its band shapes, its
+state-variable filter engine (`rk_svf`, a port of his svf_filter include), its
+spectrum analyser (`rk_spectrum`, a port of his spectrum include), its dynamics
+(after ReEQ 2) and its mouse gestures. Its magnitude-matched coefficients
+(`rk_svf_match`) follow **Yuriy Ivantsov's** filter maps (MIT). Their MIT notices
+are kept in those files and in `Quezy_ReaKit.jsfx`.
+
+Filter's stages,
 and the 3-Band EQ's SMOOTH voice, are the trapezoidal state-variable filter as
 Andrew Simper (Cytomic) derived it in his technical papers ("Solving the
 continuous SVF equations using trapezoidal integration and equivalent
