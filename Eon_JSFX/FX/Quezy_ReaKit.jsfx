@@ -29,7 +29,8 @@ desc:EON: Quezy
 // DSP: Simper SVF via rk_svf.jsfx-inc (ReEQ's svf_filter) + rk_svf_match.jsfx-inc (magnitude-matched coefficients,
 //      Ivantsov's maps, MIT) + qz_engine.jsfx-inc (band objects, ReEQ's shape dispatch and per-band mid/side
 //      placement, Quezy's own Flat Tilt / Flat Gain / Bell Prop Q).
-// Version: 1.0.2 (2026-11-04: a lookahead change fades over 10 ms; A / B and undo keep the lookahead and the
+// Version: 1.0.3 (2026-11-05: a link group carries the dynamics extras and the lookahead too; outside audit).
+// 1.0.2 (2026-11-04: a lookahead change fades over 10 ms; A / B and undo keep the lookahead and the
 // dynamics extras). 1.0.1 (2026-11-04: a Quezy shown in the track panel AND the mixer no longer blinks). 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
 // window's lines, narrow bands and ReEQ's missing habits + auto gain 2 + click-free switching 3 + the looks + the
 // analyser 5 + the native looks and link groups 6 + the extras 7; 1.0.0 at release). Keep #qz_ver in @init in step.
@@ -501,7 +502,7 @@ function qz_listen_block(src, ff, w, lg)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;
 qz_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
-#qz_ver = "1.0.2";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
+#qz_ver = "1.0.3";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
 freemem = 0;
 freemem = qzg_setup(freemem);
 freemem = rkm_setup(freemem);      // the drawn menu's row tables (rk_menu.jsfx-inc)
@@ -521,12 +522,15 @@ freemem = rk_spectrum.get_memory_index();
 rk_spectrum.min_freq = 10; rk_spectrum.max_freq = 22050; rk_spectrum.freq_log_max = log(22050 / 10);
 rk_spectrum.set_block_size(8192);
 rk_spectrum.set_type(2);
-// Link groups (spec §6, build step 6): sliders 1-218 and the input trim (222) follow the group in slider 219; the group
-// slider and the theme rows (220-221) never follow. rk_gmem_link with a 256-cell group block (its 64-cell block syncs 35 sliders at most),
+// Link groups (spec §6, build step 6): sliders 1-218, the input trim (222) and the dynamics lookahead (223, since 1.0.3)
+// follow the group in slider 219; the group slider and the theme rows (220-221) never follow, nor the save counter (224).
+// The 64 dynamics extras (qz_dyp) follow it too since 1.0.3, as the link library's EXTRAS (rk_link_xtra, below the
+// seed of qz_dyp) at EON_QUEZY_LINKX (31374400, 16 x 72 cells): the outside audit 2026-11-05 found two linked Quezys
+// with the same bands but different detectors. rk_gmem_link with a 256-cell group block (its 64-cell block syncs 35 sliders at most),
 // in the free set's Swing_Media_Transfer at EON_QUEZY_LINK (31370000, 16 x 256 + 4 cells, .refs/gmem_regions_supplement.tsv).
-rk_link_init_blk(219, 222, freemem, 256);
+rk_link_init_blk(219, 223, freemem, 256);
 rk_link_exclude(220); rk_link_exclude(221);
-freemem += rk_link_mem_n(222);
+freemem += rk_link_mem_n(223);
 rk_link_set_base(31370000);
 // ACTIVE on play / rec / stop (rk_playstate; the link grid's three pills, as every linked EON plugin): -1 = no tail, the
 // caller fades. Quezy fades its output to the dry input over 10 ms (qz_ps_x, @sample) when the transport's state is one
@@ -540,6 +544,7 @@ qz_mc = 1 - exp(-1 / (3 * max(srate, 8000)));
 // release 2's per-band extras (ReEQ 2's, not sliders: saved in @serialize gate 12): Auto 0..15, detector linked
 // 16..31, its frequency 32..47 and width (octaves) 48..63; the lookahead's ring (10 ms at up to 384 kHz, two channels)
 qz_dyp = freemem; freemem += 64;
+qz_dyx = freemem; freemem += 64;    // the link's copy of the extras as last agreed (rk_link_xtra's prev)
 qz_dyng = freemem; freemem += 16;   // each band's live movement (dB), @block for the face
 QZ_LA_MAX = 4096; qz_la_buf = freemem; freemem += 2 * QZ_LA_MAX;
 // a snapshot's cells (qzg_sn_get): sliders 1-218, the input trim (222), the lookahead (223) and the 64 dynamics extras
@@ -581,6 +586,7 @@ qz_native = rkth_local_off;
                 // gate 14 (2026-11-04): the other A / B slot's lookahead and extras not set (an older save's B shared
                 // the live ones: the first switch copies them in, so it sounds as it did)
                 qzv_abx = 0; );
+rk_link_xtra(qz_dyp, 64, qz_dyx, 31374400, 72);   // the extras follow the group (see Link groups above)
 qz_dlsn = -1;                         // the band whose detector plays (-1 none; the face's DYN headphones)
 qz_la_x = 1;                          // no lookahead fade running (a change starts one, @block)
 qz_dlb = -1;                          // the band whose detector is heard: qz_dlsn, kept while its fade runs out
@@ -606,6 +612,8 @@ rk_link_on_slider();               // a slider moved here (automation, a preset,
 // The link group first, so a value another member set reaches this block's sound (@block derives everything below
 // from the sliders, so no recalc is needed). rk_link_pull watches a group it joins before trusting it (its LIVENESS).
 rk_link_pull();
+// extras that came from the group: REAPER is told, as a face edit tells it (qzg_dyp_set), so the project saves them
+rk_link_xgot ? ( rk_link_xgot = 0; qz_dydirty = (qz_dydirty + 1) % 1000000; slider_automate(qz_dydirty); );
 rk_ps_update_block();              // the transport's state against the ACTIVE pills (block rate)
 qza_ps_t = rk_ps_want_active ? 1 : 0;
 srate != qz_sr_seen ? (

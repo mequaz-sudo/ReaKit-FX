@@ -64,6 +64,14 @@
 // exclude covers 1..n. Its gmem region is 16 * blk cells (+4 reserved) from the base.
 // A plugin that keeps rk_link_init is unchanged: blk 64, the same cells, the same caps.
 //
+// EXTRAS (2026-11-05, ReaKit FX 1.6.3; outside audit: two linked Quezys showed the same bands but their detectors
+// differed): rk_link_xtra(arr, n, mem, gbase, stride) lets a plugin link n values that are not sliders (Quezy's 64
+// dynamics extras). They follow the group exactly as the sliders do (seeded, adopted, old-value push / pull) in a
+// region of their own: group g at gbase + (g-1) * stride, cells 0..n-1 the values, cell n the seed count they were
+// written under (a member that seeded without extras -- an older build -- leaves it stale, so a joiner writes its own
+// instead of taking leftovers). A pulled or adopted value sets rk_link_xgot = 1 (the plugin clears it; it tells its
+// host to save). The caller reserves freemem += n for mem (their previous values). Not called: nothing changes.
+//
 // REQUIREMENTS:
 //   Plugin header : options:gmem=ReaKitYourPluginName
 //   One slider    : sliderN:0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>Link Group
@@ -105,6 +113,8 @@ function rk_link_init(group_slider_, num_sliders_, mem_base)
   rk_link_group        = 0;
   rk_link_blk          = 64;  // cells per group block (rk_link_init_blk sets a larger one)
   rk_link_excl_max     = 27;  // rk_link_exclude's cap (the excl[] partition)
+  rk_link_xn           = 0;   // no EXTRAS until rk_link_xtra (see EXTRAS)
+  rk_link_xgot         = 0;
 
   // Local memory: 64 slots from mem_base (caller does freemem += 64 after)
   rk_link_prev = mem_base;       // [0..35]  previous slider values
@@ -258,6 +268,27 @@ function rk_link_set_base(gmem_base)
   rk_link_base = gmem_base;
 );
 
+// EXTRAS (see the header): n values at arr follow the group too. Call after rk_link_init(_blk), once arr holds its
+// values; mem = n cells of the caller's (freemem += n).
+function rk_link_xtra(arr, n, mem, gbase, stride)
+(
+  rk_link_xa = arr; rk_link_xn = max(0, n | 0); rk_link_xp = mem;
+  rk_link_xb = gbase; rk_link_xs = max(rk_link_xn + 1, stride | 0);
+  memcpy(rk_link_xp, rk_link_xa, rk_link_xn);
+  rk_link_xgot = 0;
+);
+// the extras of group g: write ours (stamped with the group's seed count) / keep prev current
+function _rk_link_xseed(g) local(xb, i)
+(
+  rk_link_xn > 0 ? (
+    xb = rk_link_xb + (g - 1) * rk_link_xs;
+    i = 0; loop(rk_link_xn, gmem[xb + i] = rk_link_xa[i]; i += 1; );
+    memcpy(rk_link_xp, rk_link_xa, rk_link_xn);
+    gmem[xb + rk_link_xn] = rk_link_seeds;
+  );
+);
+function _rk_link_xkeep() ( rk_link_xn > 0 ? memcpy(rk_link_xp, rk_link_xa, rk_link_xn); );
+
 
 // ── SEED / ADOPT (internal): how an instance enters group g (see LIVENESS) ──
 // SEED: nobody runs the group, so it takes this instance's values whole. This is
@@ -279,6 +310,7 @@ function _rk_link_seed(g, base)
   gmem[base + 34] = rk_ps_en_play; gmem[base + 35] = rk_ps_en_rec; gmem[base + 36] = rk_ps_en_stop;
   gmem[base + 37] = 0; rk_link_last_ps_counter = 0;
   gmem[base + rk_link_blk - 2] += 1; rk_link_seeds = gmem[base + rk_link_blk - 2];
+  _rk_link_xseed(g);
   gmem[base + 33] = 1;
   gmem[base + rk_link_blk - 1] = time_precise();   // a member now: the next joiner's watch sees it at once
   rk_link_in = g; rk_link_watch_g = 0;
@@ -287,7 +319,7 @@ function _rk_link_seed(g, base)
 // ADOPT: a member is running, so this instance takes the group's values and
 // play-state. Returns 1 when a slider moved (the caller recalcs).
 function _rk_link_adopt(g, base)
-  local(i, changed)
+  local(i, changed, xb)
 (
   changed = 0;
   i = 1;
@@ -305,6 +337,18 @@ function _rk_link_adopt(g, base)
   rk_ps_en_play = gmem[base + 34]; rk_ps_en_rec = gmem[base + 35]; rk_ps_en_stop = gmem[base + 36];
   rk_link_last_ps_counter = gmem[base + 37];
   rk_link_seeds = gmem[base + rk_link_blk - 2];
+  // the extras: the group's when they were written under its current seed, else ours (a member without them)
+  rk_link_xn > 0 ? (
+    xb = rk_link_xb + (g - 1) * rk_link_xs;
+    gmem[xb + rk_link_xn] == rk_link_seeds ? (
+      i = 0;
+      loop(rk_link_xn,
+        rk_link_xa[i] != gmem[xb + i] ? ( rk_link_xa[i] = gmem[xb + i]; rk_link_xgot = 1; );
+        i += 1;
+      );
+      _rk_link_xkeep();
+    ) : _rk_link_xseed(g);
+  );
   rk_link_in = g; rk_link_watch_g = 0;
   changed;
 );
@@ -315,7 +359,7 @@ function _rk_link_adopt(g, base)
 // once this instance is in the group (watched, then seeded or adopted) and only
 // while nobody else has re-seeded it: until then the group is not ours to write.
 function _rk_link_push()
-  local(g, base, i)
+  local(g, base, i, xb)
 (
   g = slider(rk_link_group_slider) | 0;
   g >= 1 && g <= 16 && g == rk_link_in ? (
@@ -330,6 +374,14 @@ function _rk_link_push()
           );
         );
         i += 1;
+      );
+      rk_link_xn > 0 ? (
+        xb = rk_link_xb + (g - 1) * rk_link_xs;
+        i = 0;
+        loop(rk_link_xn,
+          rk_link_xa[i] != rk_link_xp[i] ? ( gmem[xb + i] = rk_link_xa[i]; rk_link_xp[i] = rk_link_xa[i]; );
+          i += 1;
+        );
       );
       gmem[base + 33] = 1;  // used (old builds read it)
     );
@@ -365,7 +417,7 @@ function rk_link_on_gfx_change()
 //   rk_link_prev[i] == slider(i) → we haven't touched it → pull if gmem differs
 //   rk_link_prev[i] != slider(i) → we changed it         → push to gmem
 function rk_link_pull()
-  local(g, base, i, updated, ps_counter, now)
+  local(g, base, i, updated, ps_counter, now, xb)
 (
   g = slider(rk_link_group_slider) | 0;
   rk_link_group = g;
@@ -417,6 +469,7 @@ function rk_link_pull()
         rk_link_prev[i] = slider(i);
         i += 1;
       );
+      _rk_link_xkeep();
     );
   ) : g >= 1 && g <= 16 ? (
     rk_link_watch_g = 0;  // back in its own group: a watch of another one is over
@@ -443,6 +496,19 @@ function rk_link_pull()
       );
       i += 1;
     );
+    // ── Extras (see EXTRAS): the same old-value rule ──
+    rk_link_xn > 0 ? (
+      xb = rk_link_xb + (g - 1) * rk_link_xs;
+      i = 0;
+      loop(rk_link_xn,
+        rk_link_xp[i] == rk_link_xa[i] ? (
+          gmem[xb + i] != rk_link_xa[i] ? ( rk_link_xa[i] = rk_link_xp[i] = gmem[xb + i]; rk_link_xgot = 1; );
+        ) : (
+          gmem[xb + i] = rk_link_xp[i] = rk_link_xa[i];
+        );
+        i += 1;
+      );
+    );
 
     // ── Play-state sync (counter-based, UI-driven only) ──────
     ps_counter = gmem[base + 37];
@@ -461,6 +527,7 @@ function rk_link_pull()
       rk_link_prev[i] = slider(i);
       i += 1;
     );
+    _rk_link_xkeep();
   );
 
   updated;

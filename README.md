@@ -8,14 +8,14 @@ actions and a dock that keeps the selected track's effects in view.
 The full guide, every knob explained: [eonaudio.pro/reakit-free-fx](https://eonaudio.pro/reakit-free-fx).
 To install, see [Install](#install-reapack).
 
-![All seven effects in every mixer strip of the 16 track board, on the EON theme](screenshots/session/board_mixer_full.png)
+![Seven effects in every mixer strip of the 16 track board, on the EON theme](screenshots/session/board_mixer_full.png)
 
 *The 16 track board from the templates package: GainKit, Filter, De-Esser, Saturation, 3-Band EQ, DDC and Stereo
 Width on every channel and bus. Click a strip's empty space to open a plugin's window, click again to close it.*
 
 ## The plugins
 
-![The seven windows on the EON theme](screenshots/session/seven_windows_eon.png)
+![The plugin windows on the EON theme](screenshots/session/seven_windows_eon.png)
 
 ### GainKit
 
@@ -96,13 +96,13 @@ Install **GainKit Plus** from the same repository. Its actions are in the Action
 
 - **GainKit Plus**: every GainKit shows its track's name, colour and icon; the master shows the project's name.
   It also runs the THEME panel's EMBED row and the long-view arrow. Run it again to stop.
-- **ReaKit FX - Start with REAPER**: GainKit Plus and EON Floatter on at every launch, the seven set to open in the
-  mixer strip; it offers a track with all seven, the 16 track board and a faster meter refresh.
+- **ReaKit FX - Start with REAPER**: GainKit Plus and EON Floatter on at every launch, the eight set to open in the
+  mixer strip; it offers a track with all eight, the 16 track board and a faster meter refresh.
 - **GainKit Plus - Start with REAPER**: starts only GainKit Plus with REAPER.
 - **Insert on selected tracks**, **GainKit first in every chain**, **GainKit first on selected tracks**,
   **GainKit last on the master**.
 - **Copy look to all**, **Reset all gains**, **All MONO**, **All STEREO**, **Bypass all**, **Remove all GainKits**.
-- **ReaKit FX - Add a track with all seven**: one track, their windows open side by side.
+- **ReaKit FX - Add a track with all eight**: one track, their windows open side by side.
 - **ReaKit FX - Dock following the selected track**: [the dock](#the-reakit-fx-dock). **ReaKit FX - Dock
   GainKit**, **- Dock Quezy** and one for each of the others: that effect alone in its own docker tab. Every effect
   lives in its own tab to start; the gear menu of any dock has a button per effect to move it into the full dock instead.
@@ -147,7 +147,7 @@ ReaImGui; without it the gear shows a plain menu and REAPER's own icon dialog op
 ## Themes
 
 Three themes are built in, **EON**, **Dark** and **Light**, plus **NATIVE**, each plugin in its own colours, and
-21 knob styles. Pick one on any of the seven and all seven follow; a project opens on the theme it was saved
+21 knob styles. Pick one on any of the eight and all eight follow; a project opens on the theme it was saved
 with. With EON Swing running, they also follow the theme picked in Swing (SSL, Neve, API and more).
 
 ![A 37-track session on the Dark theme, ReaKit FX in its mixer strips](screenshots/session/mix_dark.png)
@@ -185,7 +185,7 @@ with. With EON Swing running, they also follow the theme picked in Swing (SSL, N
 4. **Actions > Show action list**, type **ReaKit FX - Start**, pick it and click **Run/close**. Leave **Faster
    mixer strips** on in the window it shows, click **OK** and restart REAPER.
 5. Add a track, click its **FX** button, type **EON** and add `JS: EON: GainKit` (the other seven, Quezy among
-   them, are in the same list). Or **Track > Insert track from template > ReaKit FX - All seven**, or start a mix from **File > New
+   them, are in the same list). Or **Track > Insert track from template > ReaKit FX - All eight**, or start a mix from **File > New
    project from template > ReaKit FX - 16 track board**.
 
 To change the look, open a plugin's window and click **THEME**. Updates arrive through **Extensions > ReaPack >
@@ -204,7 +204,8 @@ detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it, with
 original header, word for word. GainKit, Stereo Width, Filter, Quezy, the GainKit Plus scripts, EON Floatter,
 the templates and the track icons are EON Studios' own work under the EON Free Licence 1.0
 ([LICENSE-EON-FREE.md](LICENSE-EON-FREE.md)): free to use in any work, not for sale or redistribution. The
-`ReaKit/` includes stay MIT. Quezy follows Justin Johnson's ReEQ and Yuriy Ivantsov's filter maps, both MIT.
+`ReaKit/` includes stay MIT, except Quezy's own two, `qz_face` and `qz_engine`, which are under the EON Free
+Licence like the rest of Quezy. Quezy follows Justin Johnson's ReEQ and Yuriy Ivantsov's filter maps, both MIT.
 Details in [LICENSE.md](LICENSE.md).
 
 ## Building on it

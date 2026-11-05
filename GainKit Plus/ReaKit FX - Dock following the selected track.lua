@@ -1710,7 +1710,7 @@ local function move_fx(fg, before)
 end
 
 -- Right-click a dim effect button (the shown track has none of it): add it to that track (the user, 2026-10-03:
--- "when the track does not have the fx can we right click add it"). Found as "Add a track with all seven" finds
+-- "when the track does not have the fx can we right click add it"). Found as "Add a track with all eight" finds
 -- them: by its listed name (any install), then the ReaPack package's path, then the EON install's; the right FILE
 -- only, a namesake is taken out again. GainKit goes first in the chain (where the GainKit Plus actions put it),
 -- the others at the end. Then it is the effect shown (STRIP off), or brought on view (STRIP on).
