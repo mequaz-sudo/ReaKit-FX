@@ -49,13 +49,15 @@ The CURVE drawer shows the response with a node per filter to drag. In the mixer
 
 ### Quezy
 
-A parametric EQ with up to sixteen bands. Click the graph to add a band, drag its dot, wheel for its width; each
+![Quezy on the master: four bands over the live spectrum](screenshots/web/quezy.jpg)
+
+A parametric EQ with up to sixteen bands. Double-click the graph to add a band, drag its dot, wheel for its width; each
 band picks one of seventeen shapes (bell, shelves, cuts with slopes up to 120 dB per octave, notch, band-pass,
 tilt and more) and works on both sides, the mid, the side, the left or the right. Any band can react to the music:
-**WHEN LOUD** pulls it down only when that part gets loud, **WHEN QUIET** lifts it, with threshold, ratio, range,
-attack and release beside the band's own settings, and lookahead. A live spectrum, auto gain,
+**WHEN LOUD** moves the band as that part gets loud, **WHEN QUIET** as it gets quiet (Range sets how far, and
+which way), with threshold, ratio, attack and release beside the band's own settings, and lookahead. A live spectrum, auto gain,
 a LISTEN key to hear one band alone, and the **0** key (or the right-click menus) to set every band's gain to zero.
-**SIMPLE** turns it into a console strip of six bands: low cut, low shelf, two bells, high shelf and high cut.
+**SIMPLE** turns it into a console strip of eight bands on knobs: low cut, low shelf, four bells, high shelf and high cut.
 Dots always show by default, and the text comes in three sizes. Its own action **Quezy helper** lets it dock and
 float with a double-click on its name at the top, without GainKit Plus.
 
