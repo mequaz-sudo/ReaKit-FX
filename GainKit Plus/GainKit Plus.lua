@@ -464,9 +464,16 @@ local function dock_request(ti, pos, fl)
                (("," .. r.GetExtState(DOCK_EXT, "held") .. ","):find("|" .. fg .. ",", 1, true)) ~= nil
   for _, t in ipairs(DOCK.tabs) do              -- the plugin's own tab, when it is up
     local x = DOCK_EXT .. "_" .. t[1]
-    if t[3] == file and not held and (t[1] == "qzy" or r.time_precise() - (tonumber(r.GetExtState(x, "alive")) or 0) < 1.0) then
-      -- Quezy docks in its own tab always, started first when it is closed (Gumbo's way, the user 2026-11-02);
-      -- the request is written first (the tab's start leaves one younger than 5 s alone)
+    -- where the effect lives (the dock's gear, 2026-11-05: "route_<key>" in the full dock's ExtState; Quezy's own tab
+    -- by default, every effect: the user 2026-11-05): its own tab, started first when it is closed (Gumbo's way); or
+    -- the tab when it is up anyway. The request is written first (the tab's start leaves one younger than 5 s alone)
+    -- (the self-audit, 2026-11-05) the full dock open with STRIP on gathers every effect whose tab is not pinned: the
+    -- double-click goes there, not to a tab that would stand empty
+    local route = r.GetExtState(DOCK_EXT, "route_" .. t[1])
+    local gathered = r.GetExtState(DOCK_EXT, "strip") == "1" and r.time_precise() - (tonumber(r.GetExtState(DOCK_EXT, "alive")) or 0) < 1.0
+                     and r.GetExtState(x, "pin") == ""
+    local own = route ~= "dock" and not gathered
+    if t[3] == file and not held and (own or (not gathered and r.time_precise() - (tonumber(r.GetExtState(x, "alive")) or 0) < 1.0)) then
       r.SetExtState(x, "show_req", req, false)
       DOCK.run("ReaKit FX - Dock " .. t[2] .. ".lua", x)
       return
@@ -1015,6 +1022,7 @@ local function tick()
 end
 
 local t_last = 0
+local auto_t = 0                                 -- the autoclosed docks' check (loop)
 local function loop()
   local now = r.time_precise()
   if (tonumber(r.GetExtState(EXT, "stop")) or 0) > now0 then return end   -- asked to stop: no stamp, atexit cleans up
@@ -1025,6 +1033,30 @@ local function loop()
     dock_reopen_at = nil
     if DOCK.full then reopen_dock() end
     for _, t in ipairs(DOCK.again) do DOCK.run("ReaKit FX - Dock " .. t[2] .. ".lua", DOCK_EXT .. "_" .. t[1]) end
+  end
+  -- a dock that closed itself for want of its effect (its "autoclosed" mark; the user, 2026-11-05) opens again once
+  -- the selected track has that effect (the full dock: any of the eight). Twice a second; the X clears the mark.
+  if now - auto_t >= 0.5 then
+    auto_t = now
+    local tr = r.GetSelectedTrack2(0, 0, true)
+    if tr then
+      local have = {}
+      for f = 0, r.TrackFX_GetCount(tr) - 1 do
+        local ok, id = r.TrackFX_GetNamedConfigParm(tr, f, "fx_ident")
+        if ok then have[(id:match("[^/\\]+$") or ""):lower()] = true end
+      end
+      local any = false
+      for _, t in ipairs(DOCK.tabs) do
+        if have[t[3]] then
+          any = true
+          if r.GetExtState(DOCK_EXT .. "_" .. t[1], "autoclosed") == "1" then
+            r.SetExtState(DOCK_EXT .. "_" .. t[1], "autoclosed", "", true)
+            DOCK.run("ReaKit FX - Dock " .. t[2] .. ".lua", DOCK_EXT .. "_" .. t[1])
+          end
+        end
+      end
+      if any and r.GetExtState(DOCK_EXT, "autoclosed") == "1" then r.SetExtState(DOCK_EXT, "autoclosed", "", true); reopen_dock() end
+    end
   end
   rename_tick()
   embed_tick(now)

@@ -104,7 +104,10 @@ Install **GainKit Plus** from the same repository. Its actions are in the Action
 - **Copy look to all**, **Reset all gains**, **All MONO**, **All STEREO**, **Bypass all**, **Remove all GainKits**.
 - **ReaKit FX - Add a track with all seven**: one track, their windows open side by side.
 - **ReaKit FX - Dock following the selected track**: [the dock](#the-reakit-fx-dock). **ReaKit FX - Dock
-  GainKit**, **- Dock Quezy** and one for each of the others: that effect alone in its own docker tab.
+  GainKit**, **- Dock Quezy** and one for each of the others: that effect alone in its own docker tab. Every effect
+  lives in its own tab to start; the gear menu of any dock has a button per effect to move it into the full dock instead.
+- **ReaKit FX - Mixer slot next**, **- previous**, **- top**: every mixer strip scrolls to the same effect row, for a
+  key or a toolbar button (the MIXER SLOT button on every dock's bar does the same).
 - **Quezy helper**: a double-click on Quezy's name docks it in its own tab and floats it back out, GainKit Plus
   running or not. Run it again to stop.
 - **ReaKit FX - Docker tabs off-on**: REAPER's tab bar off for every docker holding one window, and back.
@@ -115,7 +118,8 @@ Install **GainKit Plus** from the same repository. Its actions are in the Action
 
 ![The REAPER window with the dock under the tracks: Lead Vox selected, its four effects side by side](screenshots/session/dock_overview.png)
 
-Select a track and its ReaKit FX open in a docker, whole and working. **PIN** keeps the dock on one track.
+Select a track and its ReaKit FX open in a docker, whole and working. **PIN** keeps the dock on one track. A dock
+with none of its effect anywhere in the project closes itself; it opens again when you select a track that has one.
 **STRIP** shows every effect on the track side by side; with it off, the one you pick fills the dock, and the wheel
 over the bar steps to the track's next or previous effect. With GainKit Plus running, double-click a plugin's name
 at the top of its window to move it into the dock, and double-click it there to pop it back out.
@@ -126,7 +130,8 @@ The dock runs on Windows and needs js_ReaScriptAPI.
 The bar along the top shows the track's number, icon and name: click the number for a colour palette, the
 name to rename the track, the icon to pick a new one. There is a chip per effect in chain order. Drag a chip to
 move the effect, click it to bring it on view, and right-click a dim one to add that effect to the track.
-**SLOT** scrolls every mixer strip on screen to the same effect row at once.
+**MIXER SLOT** scrolls every mixer strip on screen to the same effect row at once. **STRIP** on gathers the
+effects from their own tabs (a pinned tab keeps its own); off hands them back.
 
 ![SLOT scrolling every mixer strip to Slot 3, to Slot 5, then back to the top](screenshots/session/dock_slot.gif)
 

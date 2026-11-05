@@ -51,11 +51,19 @@ local function dock_tick()
      (("," .. r.GetExtState("EON_ReaKitDock", "held") .. ","):find("|" .. fg .. ",", 1, true)) then
     r.SetExtState("EON_ReaKitDock", "show_req", req, false); return
   end
-  r.SetExtState(DX, "show_req", req, false)
-  if r.time_precise() - (tonumber(r.GetExtState(DX, "alive")) or 0) < 1.0 then return end   -- the tab is up: it takes it
+  -- set to live in the full dock (the dock's gear, "route_qzy" = dock) and its own tab not up: the full dock takes it
+  local tab_up = r.time_precise() - (tonumber(r.GetExtState(DX, "alive")) or 0) < 1.0
+  -- (the self-audit, 2026-11-05) or the full dock is open with STRIP on and Quezy's tab is not pinned: the strip gathers it
+  local gathered = r.GetExtState("EON_ReaKitDock", "strip") == "1" and r.GetExtState(DX, "pin") == ""
+                   and r.time_precise() - (tonumber(r.GetExtState("EON_ReaKitDock", "alive")) or 0) < 1.0
+  local full = (r.GetExtState("EON_ReaKitDock", "route_qzy") == "dock" and not tab_up) or gathered
+  local X = full and "EON_ReaKitDock" or DX
+  r.SetExtState(X, "show_req", req, false)
+  if r.time_precise() - (tonumber(r.GetExtState(X, "alive")) or 0) < 1.0 then return end   -- that dock is up: it takes it
   -- the released copy sits beside the ReaKit FX dock actions (GainKit Plus's folder), whose "Dock Quezy" is the same tab
-  local p = dir .. "/ReaKit FX - Dock Quezy.lua"
-  if not r.file_exists(p) then p = dir .. "/Quezy - Dock.lua" end
+  local p = full and (dir .. "/ReaKit FX - Dock following the selected track.lua") or (dir .. "/ReaKit FX - Dock Quezy.lua")
+  if full and not r.file_exists(p) then p = dir .. "/../GainKit Plus/ReaKit FX - Dock following the selected track.lua" end
+  if not full and not r.file_exists(p) then p = dir .. "/Quezy - Dock.lua" end
   if not r.file_exists(p) then return end
   local id = r.AddRemoveReaScript(true, 0, p, true)
   if id and id ~= 0 then r.Main_OnCommand(id, 0) end
