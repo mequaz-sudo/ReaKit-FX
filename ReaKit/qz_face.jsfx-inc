@@ -269,9 +269,10 @@ function qzg_v(k, c) ( slider(1 + 13 * k + c); );
 QZG_HN = 48;
 // cell i (0..218) of a snapshot is slider i + 1 for the bands and the output section, and the input trim (222) last
 // (2026-10-31: QZ_SN = 219 cells, set by the host)
-function qzg_sn_n(i) ( i < 218 ? i + 1 : 222; );
-function qzg_hist_snap(dst) local(i) ( i = 0; loop(QZ_SN, dst[i] = slider(qzg_sn_n(i)); i += 1; ); );
-function qzg_hist_same(src) local(i, d) ( d = 1; i = 0; loop(QZ_SN, slider(qzg_sn_n(i)) !== src[i] ? d = 0; i += 1; ); d; );
+// (2026-11-04: QZ_SN = 284; cell 219 the lookahead (223), cells 220..283 the dynamics extras qz_dyp[0..63])
+function qzg_sn_get(i) ( i < 218 ? slider(i + 1) : i == 218 ? slider(222) : i == 219 ? slider(223) : qz_dyp[i - 220]; );
+function qzg_hist_snap(dst) local(i) ( i = 0; loop(QZ_SN, dst[i] = qzg_sn_get(i); i += 1; ); );
+function qzg_hist_same(src) local(i, d) ( d = 1; i = 0; loop(QZ_SN, qzg_sn_get(i) !== src[i] ? d = 0; i += 1; ); d; );
 function qzg_hmark() (
   !qzg_hdirty ? (
     qzg_htop > 0 && !qzg_hist_same(qzg_hist + qzg_hcur * QZ_SN) ? qzg_hist_snap(qzg_hist + qzg_hcur * QZ_SN);
@@ -279,15 +280,19 @@ function qzg_hmark() (
   );
   qzg_hdt = time_precise();
 );
-function qzg_set(n, v) ( v !== slider(n) ? ( (n <= 218 || n == 222) && !qzg_hrest ? qzg_hmark(); slider(n) = v; slider_automate(slider(n)); ); );
+function qzg_set(n, v) ( v !== slider(n) ? ( (n <= 218 || n == 222 || n == 223) && !qzg_hrest ? qzg_hmark(); slider(n) = v; slider_automate(slider(n)); ); );
 // (the Codex review, 2026-10-30: writing the settings first let a band still On under its old Mode play a disabled
 // band's stored settings for a block, e.g. a +30 dB bell kept in an Off slot of B.) So: first every band whose Mode
 // goes down (On -> Bypassed / Off, Bypassed -> Off) takes its new Mode, then the settings, then the Modes that go up.
-function qzg_restore(src) local(i) (
+function qzg_restore(src) local(i, d) (
   qzg_hrest = 1;
   i = 1; loop(16, src[i - 1] < slider(i) ? qzg_set(i, src[i - 1]); i += 13; );
   i = 1; loop(218, !(i <= 208 && (i - 1) % 13 == 0) ? qzg_set(i, src[i - 1]); i += 1; );
   qzg_set(222, src[218]);
+  qzg_set(223, src[219]);
+  d = 0; i = 0; loop(64, qz_dyp[i] !== src[220 + i] ? d = 1; i += 1; );
+  d ? ( memcpy(qz_dyp, src + 220, 64);   // the extras, and REAPER told (as qzg_dyp_set)
+    qz_dydirty = (qz_dydirty + 1) % 1000000; slider_automate(qz_dydirty); );
   i = 1; loop(16, qzg_set(i, src[i - 1]); i += 13; );
   qzg_hrest = 0;
 );
@@ -320,6 +325,7 @@ function qzg_ab_switch(to) (
   to != (qzv_ab | 0) ? (
     qzg_hdirty ? qzg_hist_push();
     !qzv_abset ? qzg_hist_snap(qz_abm);
+    !qzv_abx ? ( qz_abm[219] = slider(223); memcpy(qz_abm + 220, qz_dyp, 64); qzv_abx = 1; );   // an older save's B
     qzg_hist_snap(qz_abm + QZ_SN);     // the live slot, kept aside
     qzg_restore(qz_abm);
     memcpy(qz_abm, qz_abm + QZ_SN, QZ_SN);
@@ -327,7 +333,7 @@ function qzg_ab_switch(to) (
     qzg_htop = 0;                      // the next pass snapshots the slot it now shows
   );
 );
-function qzg_ab_copy() ( qzg_hist_snap(qz_abm); qzv_abset = 1; );   // the live settings into the other slot
+function qzg_ab_copy() ( qzg_hist_snap(qz_abm); qzv_abset = 1; qzv_abx = 1; );   // the live settings into the other slot
 // round to a step, landing on the same double the slider's own text would parse to (7071 / 10000, not 7071 * 0.0001)
 function qzg_round(v, st) local(inv) ( inv = floor(1 / st + 0.5); floor(v * inv + 0.5) / inv; );
 function qzg_setf(k, f) ( qzg_set(qzg_n(k, 3), qzg_round(max(10, min(22050, f)), 0.01)); );
@@ -2437,6 +2443,7 @@ function qzg_dyn_field(k, i, x, y, w, h, lbl, sl) local(s, v, hot) (
 // a change here is no slider, so a hidden counter (slider 224) is bumped and automated: REAPER then reads the state
 // again and marks the project changed (wiki 6.10's gk_ne_commit way)
 function qzg_dyp_set(k, off, v) local(j) (
+  !qzg_hrest ? qzg_hmark();            // an undo step, as a slider edit (the outside audit 2026-11-04)
   j = 0; loop(16, qzg_targets(k, j) ? qz_dyp[off + j] = v; j += 1; );
   qz_dydirty = (qz_dydirty + 1) % 1000000; slider_automate(qz_dydirty);
 );

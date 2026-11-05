@@ -29,7 +29,8 @@ desc:EON: Quezy
 // DSP: Simper SVF via rk_svf.jsfx-inc (ReEQ's svf_filter) + rk_svf_match.jsfx-inc (magnitude-matched coefficients,
 //      Ivantsov's maps, MIT) + qz_engine.jsfx-inc (band objects, ReEQ's shape dispatch and per-band mid/side
 //      placement, Quezy's own Flat Tilt / Flat Gain / Bell Prop Q).
-// Version: 1.0.1 (2026-11-04: a Quezy shown in the track panel AND the mixer no longer blinks). 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
+// Version: 1.0.2 (2026-11-04: a lookahead change fades over 10 ms; A / B and undo keep the lookahead and the
+// dynamics extras). 1.0.1 (2026-11-04: a Quezy shown in the track panel AND the mixer no longer blinks). 1.0.0 (2026-11-04, the first release in ReaKit FX). Before it, 0.9.3 (skeleton + window 4a + listen and theme 4b + the strip's draggable dots 4c + matched filters 1b + the
 // window's lines, narrow bands and ReEQ's missing habits + auto gain 2 + click-free switching 3 + the looks + the
 // analyser 5 + the native looks and link groups 6 + the extras 7; 1.0.0 at release). Keep #qz_ver in @init in step.
 //tags: equalizer filter parametric shelf mid-side
@@ -307,7 +308,7 @@ slider214:qz_sr_pol=0<0,1,1{Normal,Inverted}>-Side/Right polarity
 slider215:qz_scale=100<0,200,0.1>-Scale (%)
 slider216:qz_agc=0<0,1,1{Off,On}>-Auto gain
 slider217:qz_limit=0<0,1,1{Off,On}>-Limit
-slider218:qz_dyn_listen=0<0,1,1{Own,Sidechain}>-Dynamics listen (release 2)
+slider218:qz_dyn_listen=0<0,1,1{Own,Sidechain}>-Dynamics listen
 slider219:qz_link=0<0,16,1{Off,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}>-Link Group
 slider220:qz_name_bar=0<0,1,1>-Name bar (internal; the THEME panel's NAME BAR row; arrives with the face)
 slider221:qz_native=0<0,1,1>-Native look (internal; the THEME panel's NATIVE row; arrives with the face)
@@ -500,7 +501,7 @@ function qz_listen_block(src, ff, w, lg)
 gfx_ext_retina = 1;
 gfx_ext_flags |= 0x400;
 qz_name_bar ? ( gfx_ext_flags = (gfx_ext_flags | 0x100) - 0x100; ) : ( gfx_ext_flags |= 0x100; );
-#qz_ver = "1.0.1";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
+#qz_ver = "1.0.2";                 // the graph menu's greyed Version line (ReEQ's); keep with the header's Version
 freemem = 0;
 freemem = qzg_setup(freemem);
 freemem = rkm_setup(freemem);      // the drawn menu's row tables (rk_menu.jsfx-inc)
@@ -541,7 +542,9 @@ qz_mc = 1 - exp(-1 / (3 * max(srate, 8000)));
 qz_dyp = freemem; freemem += 64;
 qz_dyng = freemem; freemem += 16;   // each band's live movement (dB), @block for the face
 QZ_LA_MAX = 4096; qz_la_buf = freemem; freemem += 2 * QZ_LA_MAX;
-QZ_SN = 219;                          // a snapshot's cells: sliders 1-218 and the input trim (222), qzg_sn_n
+// a snapshot's cells (qzg_sn_get): sliders 1-218, the input trim (222), the lookahead (223) and the 64 dynamics extras
+// (qz_dyp; the outside audit 2026-11-04: A / B and undo kept the bands but not the detector setup or the lookahead)
+QZ_SN = 284;
 qz_abm = freemem; freemem += 2 * QZ_SN;
 qzg_hist = freemem; freemem += QZG_HN * QZ_SN;
 // The house theme (rk_theme.jsfx-inc, the free set's rules): the picker lists NATIVE + EON / Dark / Light; a new
@@ -574,8 +577,12 @@ qz_native = rkth_local_off;
                 // gate 11 (2026-10-31): the analyser's smoothing off, the other A / B slot's input trim 0 dB
                 qzv_an_smooth = 0; qz_abm[218] = 0;
                 // gate 12 (2026-11-02): Auto off, the detector linked, a free detector at 1 kHz two octaves wide
-                memset(qz_dyp, 0, 16); memset(qz_dyp + 16, 1, 16); memset(qz_dyp + 32, 1000, 16); memset(qz_dyp + 48, 2, 16); );
+                memset(qz_dyp, 0, 16); memset(qz_dyp + 16, 1, 16); memset(qz_dyp + 32, 1000, 16); memset(qz_dyp + 48, 2, 16);
+                // gate 14 (2026-11-04): the other A / B slot's lookahead and extras not set (an older save's B shared
+                // the live ones: the first switch copies them in, so it sounds as it did)
+                qzv_abx = 0; );
 qz_dlsn = -1;                         // the band whose detector plays (-1 none; the face's DYN headphones)
+qz_la_x = 1;                          // no lookahead fade running (a change starts one, @block)
 qz_dlb = -1;                          // the band whose detector is heard: qz_dlsn, kept while its fade runs out
 qzg_skd = qzg_skh = -1;
 // The display bank: the curve's own sixteen band objects, retargeted and snapped in @gfx, never read by audio.
@@ -706,8 +713,12 @@ qz_dlstep = 1 / (0.010 * max(srate, 8000));   // the detector listen's fade
 // the dynamics' lookahead (ReEQ 2's): the main path waits qz_la samples, the detectors hear the input at once, REAPER
 // compensates the delay
 qz_la_t = qz_look < 0.5 ? 0 : min(floor(srate * (qz_look < 1.5 ? 0.001 : qz_look < 2.5 ? 0.005 : 0.01) + 0.5), QZ_LA_MAX - 1);
-qz_la_t !== qz_la ? ( qz_la = qz_la_t;   // the ring always holds the last samples: a change reads real history
+// A change fades from the old read point to the new over 10 ms (the outside audit 2026-11-04: the tap jumped, a click on
+// a held note; DDC and the De-Esser fade the same way). The first block after a load takes it at once.
+qz_la_t !== qz_la ? ( qz_la_ok ? ( qz_la_o = qz_la; qz_la_x = 0; ) : qz_la_x = 1;
+                      qz_la = qz_la_t;   // the ring always holds the last samples: a change reads real history
                       pdc_delay = qz_la; pdc_bot_ch = 0; pdc_top_ch = 2; );
+qz_la_ok = 1; qz_la_st = 1 / (0.010 * max(srate, 8000));
 // The house NATIVE tick: an instance off screen follows a NATIVE pick made on another one (rk_theme TH:234-250, as the
 // 3-Band at 3B:628-631). The values are 0 / 1, so `!=` is exact enough here.
 rkth_native_tick();
@@ -719,7 +730,14 @@ qz_native != rkth_local_off ? ( qz_native = rkth_local_off; slider_automate(qz_n
 // the Codex review 2026-11-04)
 qz_la > 0 ? ( qz_dyn_listen >= 0.5 ? ( qz_di0 = spl2; qz_di1 = spl3; ) : ( qz_di0 = spl0 * qz_in_c; qz_di1 = spl1 * qz_in_c; ); );
 qz_la_buf[2 * qz_la_w] = spl0; qz_la_buf[2 * qz_la_w + 1] = spl1;
-qz_la > 0 ? (
+qz_la_x < 1 ? (                       // a lookahead change: the old read point fades into the new one (10 ms)
+  qz_la_r = qz_la_w - qz_la_o; qz_la_r < 0 ? qz_la_r += QZ_LA_MAX;
+  qz_la_a0 = qz_la_buf[2 * qz_la_r]; qz_la_a1 = qz_la_buf[2 * qz_la_r + 1];
+  qz_la_r = qz_la_w - qz_la; qz_la_r < 0 ? qz_la_r += QZ_LA_MAX;
+  spl0 = qz_la_a0 + (qz_la_buf[2 * qz_la_r] - qz_la_a0) * qz_la_x;
+  spl1 = qz_la_a1 + (qz_la_buf[2 * qz_la_r + 1] - qz_la_a1) * qz_la_x;
+  qz_la_x = min(1, qz_la_x + qz_la_st);
+) : qz_la > 0 ? (
   qz_la_r = qz_la_w - qz_la; qz_la_r < 0 ? qz_la_r += QZ_LA_MAX;
   spl0 = qz_la_buf[2 * qz_la_r]; spl1 = qz_la_buf[2 * qz_la_r + 1];
 );
@@ -837,7 +855,7 @@ qza_an_on ? (
 @serialize
 // The version field from day one (wiki 3.4): each later batch of fields gets its own new gate, never this one.
 // Gate 2 (build step 4a): the window's view state. Older saves stop after the version and keep @init's defaults.
-qz_ser_ver = 13;
+qz_ser_ver = 14;
 file_var(0, qz_ser_ver);
 qz_ser_ver >= 2 ? (
   file_var(0, qzv_range);
@@ -906,6 +924,11 @@ qz_ser_ver >= 12 ? (
 // Older saves keep 0: dots always, normal text.
 qz_ser_ver >= 13 ? (
   file_var(0, qzv_dots); file_var(0, qzv_txt);
+);
+// Gate 14 (2026-11-04): the other A / B slot's lookahead and dynamics extras (cells 219..283; gates 8 and 11 hold the
+// first 219) and whether they are set. Older saves keep qzv_abx 0: the first switch fills them from the live ones.
+qz_ser_ver >= 14 ? (
+  file_var(0, qzv_abx); file_mem(0, qz_abm + 219, 65);
 );
 
 @gfx 648 1944
