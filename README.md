@@ -49,7 +49,7 @@ The CURVE drawer shows the response with a node per filter to drag. In the mixer
 
 ### Quezy
 
-![Quezy on the master: four bands over the live spectrum](screenshots/web/quezy.jpg)
+![Quezy on a drum bus: band 5 reacting to the music, band 4 being listened to](screenshots/web/quezy.jpg)
 
 A parametric EQ with up to sixteen bands. Double-click the graph to add a band, drag its dot, wheel for its width; each
 band picks one of seventeen shapes (bell, shelves, cuts with slopes up to 120 dB per octave, notch, band-pass,
