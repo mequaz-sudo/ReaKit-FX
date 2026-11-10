@@ -38,8 +38,9 @@ They gave these away, so they are free here too, and both authors stay credited
 in the plugins' own interfaces. EON Studios added the interfaces.
 
 The libraries in `ReaKit/` are EON Studios code under the MIT licence — see
-`LICENSE` at the root of this repository — except Quezy's own `qz_face` and
-`qz_engine` (EON Free Licence 1.0). `rk_svf` and `rk_spectrum` are ports of Justin
+`LICENSE` at the root of this repository — except Quezy's own `qz_*` files, `qz_face`,
+`qz_engine` and the generated `qz_rec_*` band records (EON Free Licence 1.0). `rk_svf` and
+`rk_spectrum` are ports of Justin
 Johnson's MIT includes and keep his notice. Five of them are also published in the
 ReaKit library package (`buttons_kbsg`, `knobs_kbsg`, `meters_kbsg`,
 `sliders_kbsg`, `rk_vu`); the others ship only here (`rk_theme`,

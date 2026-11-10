@@ -204,8 +204,9 @@ detector are Lubomir I. Ivanov's (Liteon), under the GPL as he released it, with
 original header, word for word. GainKit, Stereo Width, Filter, Quezy, the GainKit Plus scripts, EON Floatter,
 the templates and the track icons are EON Studios' own work under the EON Free Licence 1.0
 ([LICENSE-EON-FREE.md](LICENSE-EON-FREE.md)): free to use in any work, not for sale or redistribution. The
-`ReaKit/` includes stay MIT, except Quezy's own two, `qz_face` and `qz_engine`, which are under the EON Free
-Licence like the rest of Quezy. Quezy follows Justin Johnson's ReEQ and Yuriy Ivantsov's filter maps, both MIT.
+`ReaKit/` includes stay MIT, except Quezy's own `qz_*` files (`qz_face`, `qz_engine` and the generated `qz_rec_*`
+band records), which are under the EON Free Licence like the rest of Quezy. Quezy follows Justin Johnson's ReEQ
+and Yuriy Ivantsov's filter maps, both MIT.
 Details in [LICENSE.md](LICENSE.md).
 
 ## Building on it
