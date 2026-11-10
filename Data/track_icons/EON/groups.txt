@@ -54,6 +54,9 @@ vibraslap
 [Percussion/Mallets]
 mallets
 
+[Percussion/Orchestral]
+timpani
+
 [Percussion/Other]
 clap
 snap
@@ -111,6 +114,10 @@ drum_machine
 turntable
 engine
 
+[Hip hop]
+drum_machine
+turntable
+
 [Strings]
 violin
 cello
@@ -121,10 +128,30 @@ upright_bass
 [Brass]
 brass
 trumpet
+trombone
+tuba
 
 [Winds]
 saxophone
+clarinet
+oboe
+bassoon
 flute
+
+[Orchestra]
+strings
+violin
+cello
+harp
+brass
+trumpet
+trombone
+tuba
+clarinet
+oboe
+bassoon
+flute
+timpani
 
 [Vocals]
 vocal

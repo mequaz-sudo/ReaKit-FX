@@ -135,14 +135,14 @@ effects from their own tabs (a pinned tab keeps its own); off hands them back.
 
 ![SLOT scrolling every mixer strip to Slot 3, to Slot 5, then back to the top](screenshots/session/dock_slot.gif)
 
-The icon picker sorts REAPER's icons and our own 104 into groups, with groups inside them (Drums, then Kick,
+The icon picker sorts REAPER's icons and our own 110 into groups, with groups inside them (Drums, then Kick,
 Snare, Toms...). It has a search box, a size slider, favourites, and your own folders and groups. **Icons follow
 the track colour** (off to start) paints a coloured track's icon in its colour. The picker and the gear menu use
 ReaImGui; without it the gear shows a plain menu and REAPER's own icon dialog opens instead.
 
 ![The icon picker on the Kick track: Drums picked, its own groups in the second row](screenshots/session/dock_icon_picker.png)
 
-![The 104 ReaKit FX track icons](screenshots/session/track_icons.png)
+![The ReaKit FX track icons (the first 104; six orchestral ones joined later)](screenshots/session/track_icons.png)
 
 ## Themes
 
