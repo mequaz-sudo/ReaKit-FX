@@ -234,7 +234,9 @@ local EMB = 31365504
 local SEVEN = { "ChannelTool_ReaKit.jsfx", "Saturation_ReaKit.jsfx", "3BandEQ_ReaKit.jsfx",
                 "DDC_ReaKit.jsfx", "DeEsser_ReaKit.jsfx", "StereoWidth_ReaKit.jsfx",
                 "Filter_ReaKit.jsfx",                  -- the seventh (ReaKit FX 1.5.0, 2026-10-07)
-                "Quezy_ReaKit.jsfx" }                  -- the eighth, the free EQ (joining the set: Quezy step 8, 2026-10-30)
+                "Quezy_ReaKit.jsfx",                   -- the eighth, the free EQ (joining the set: Quezy step 8, 2026-10-30)
+                "GrandTour_ReaKit.jsfx" }              -- EON Grand Tour (the owner, 2026-11-06: its theme EMBED row must work, and it
+                                                       -- opens embedded in the mixer by default; before, Plus ignored its row)
 local RES = r.GetResourcePath()
 local OPT = RES .. "/reaper-fxoptions.ini"
 local function slurp(p) local fh = io.open(p, "rb"); if not fh then return nil end; local s = fh:read("*a"); fh:close(); return s end
@@ -286,18 +288,36 @@ local function replace_file(p, text)
 end
 
 -- the seven's paths as REAPER names them in [defcfg]: each one reaper-jsfx.ini lists, plus ReaPack's
--- place when it is not scanned yet; GainKit's first
+-- place when it is not scanned yet; GainKit's first. The long-view copies (<dir>/.tall/<file>) go LAST: the
+-- list's first path with a line decides the place a new path gets (fill_new_paths), and paths[1] is the default
+-- the plugins are told (read_default), and reaper-jsfx.ini can list a long-view copy before the normal one --
+-- so EON Grand Tour's first line was written "track panel" beside a GainKit set to the mixer (the owner's machine,
+-- 2026-11-10; gkplus_fill_place_test.py). A long-view copy is never inserted new: LONG VIEW swaps it in.
+-- A NAME line counts only while its file is there: REAPER keeps a JSFX whose file has gone in reaper-jsfx.ini (seen
+-- on the owner's machine, 2026-11-10: a bare old 3-Band EQ path), and such a line made Plus give a
+-- [defcfg] line to a plugin that exists nowhere, or let a dead path decide the set's place.
 local function six_paths()
-  local paths, have = {}, {}
-  local function put(p) if not have[p] then have[p] = true; paths[#paths + 1] = p end end
+  local paths, tall, have = {}, {}, {}
+  local function put(p)
+    if have[p] then return end
+    have[p] = true
+    local to = p:lower():match("[/\\]%.tall[/\\][^/\\]+$") and tall or paths
+    to[#to + 1] = p
+  end
+  local function there(p)                      -- opened and closed, not read
+    local fh = io.open(RES .. "/Effects/" .. p, "rb")
+    if fh then fh:close() end
+    return fh ~= nil
+  end
   local ini = slurp(RES .. "/reaper-jsfx.ini") or ""
   for _, f in ipairs(SEVEN) do
     for p in ini:gmatch('NAME%s+"?([^"\r\n]-%.jsfx)"?%s') do
-      if p == f or p:sub(-(#f + 1)) == "/" .. f then put(p) end
+      if (p == f or p:sub(-(#f + 1)) == "/" .. f) and there(p) then put(p) end
     end
     local rp = "ReaKit FX/FX/Eon_JSFX/FX/" .. f
     if slurp(RES .. "/Effects/" .. rp) then put(rp) end
   end
+  for _, p in ipairs(tall) do paths[#paths + 1] = p end
   return paths
 end
 

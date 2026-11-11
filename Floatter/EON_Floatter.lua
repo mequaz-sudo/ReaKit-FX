@@ -1,5 +1,5 @@
 -- @description EON Floatter
--- @version 1.0.10
+-- @version 1.0.11
 -- @author EON Studios
 -- @about
 --   Opens every EON plugin's floating window at the size EON designed for it,
@@ -43,7 +43,7 @@
 
 local r = reaper
 
-local VERSION   = "1.0.10"   -- shown in the panel; keep with @version above (deploy_floatter.sh checks the two agree)
+local VERSION   = "1.0.11"   -- shown in the panel; keep with @version above (deploy_floatter.sh checks the two agree)
 local EXT_D     = "EON_FloatSize"      -- captures / scale / global (the keys the pair used)
 local EXT_F     = "EON_Floatter"       -- this script's own state
 -- ⚠ Mirrored in rk_lua_core.lua (core.ALIVE_FLOATTER_*) for the Kit Bridge,
@@ -335,6 +335,7 @@ local SIZES = {
   ["Filter_ReaKit"] = { w = 260, h = 244, gfx_w = 260, gfx_h = 283 },
   ["Gate_ReaKit"] = { w = 512, h = 430, gfx_w = 560, gfx_h = 520 },
   ["Quezy_ReaKit"] = { w = 648, h = 534, gfx_w = 648, gfx_h = 534 },
+  ["GrandTour_ReaKit"] = { w = 720, h = 460, gfx_w = 340, gfx_h = 952 },
   ["Saturation_ReaKit"] = { w = 288, h = 306, gfx_w = 220, gfx_h = 320 },
   ["StereoWidth_ReaKit"] = { w = 291, h = 204, gfx_w = 200, gfx_h = 280 },
   -- EON SIZES END
